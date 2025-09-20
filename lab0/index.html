@@ -1,0 +1,2081 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="浙江大学操作系统课程实验指导">
+      
+      
+        <meta name="author" content="浙江大学计算机科学与技术学院">
+      
+      
+        <link rel="canonical" href="https://zju-os.github.io/doc/lab0/">
+      
+      
+        <link rel="prev" href="../faq/">
+      
+      
+        <link rel="next" href="../lab1/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.20">
+    
+    
+      
+        <title>Lab 0: Linux 内核调试 - ZJU OS</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.e53b48f4.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../css/timeago.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+      <link rel="stylesheet" href="../stylesheets/counter.css">
+    
+      <link rel="stylesheet" href="../stylesheets/neoteroi-v1.1.2.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  <link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#lab-0-linux-内核调试" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="ZJU OS" class="md-header__button md-logo" aria-label="ZJU OS" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ZJU OS
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Lab 0: Linux 内核调试
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ZJU-OS/doc" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    ZJU-OS/doc
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="ZJU OS" class="md-nav__button md-logo" aria-label="ZJU OS" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    ZJU OS
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ZJU-OS/doc" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    ZJU-OS/doc
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    首页
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    实验文档
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            实验文档
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    OS 实验导读
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Lab 0: Linux 内核调试
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lab 0: Linux 内核调试
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#实验简介" class="md-nav__link">
+    <span class="md-ellipsis">
+      实验简介
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#实验要求" class="md-nav__link">
+    <span class="md-ellipsis">
+      实验要求
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-1环境配置" class="md-nav__link">
+    <span class="md-ellipsis">
+      Part 1：环境配置
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1：环境配置">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#安装-docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      安装 Docker
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#克隆代码仓库" class="md-nav__link">
+    <span class="md-ellipsis">
+      克隆代码仓库
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#启动开发容器" class="md-nav__link">
+    <span class="md-ellipsis">
+      启动开发容器
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2linux-内核编译与调试" class="md-nav__link">
+    <span class="md-ellipsis">
+      Part 2：Linux 内核编译与调试
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2：Linux 内核编译与调试">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#使用交叉编译工具链" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用交叉编译工具链
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#编译本地架构内核" class="md-nav__link">
+    <span class="md-ellipsis">
+      编译本地架构内核
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#交叉编译-risc-v-架构内核" class="md-nav__link">
+    <span class="md-ellipsis">
+      交叉编译 RISC-V 架构内核
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#使用-qemu-运行-risc-v-内核" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用 QEMU 运行 RISC-V 内核
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qemu-启动过程" class="md-nav__link">
+    <span class="md-ellipsis">
+      QEMU 启动过程
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#risc-v-执行环境" class="md-nav__link">
+    <span class="md-ellipsis">
+      RISC-V 执行环境
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gdb-调试内核" class="md-nav__link">
+    <span class="md-ellipsis">
+      GDB 调试内核
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lab 1：内核启动与时钟中断
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../z1-spike/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    附录 1：Spike 工具链
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3">
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    参考手册
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            参考手册
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-privileged.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    RISC-V 特权级手册
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-unprivileged.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    RISC-V 用户级手册
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-abi.pdf" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    RISC-V ELF ABI 手册
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-sbi.pdf" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    RISC-V SBI 手册
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-asm.pdf" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    RISC-V 汇编手册
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://riscv-programming.org/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    RISC-V 汇编教程
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sourceware.org/binutils/docs/as.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    as 汇编器手册
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sourceware.org/binutils/docs/ld.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ld 链接器手册
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sourceware.org/binutils/docs/binutils.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    binutils 工具集（objdump、readelf）手册
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://gcc.gnu.org/onlinedocs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    gcc 编译器手册
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4">
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    源码仓库
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            源码仓库
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/torvalds/linux" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Linux 源码（GitHub）
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://elixir.bootlin.com/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Linux 源码（Bootlin Elixir Cross Referencer）
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/riscv-software-src/opensbi" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    OpenSBI 源码
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/qemu/qemu/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    QEMU 源码
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5">
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    助教文档
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            助教文档
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/dev/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    助教开发手册
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/tool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    助教工具手册
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#实验简介" class="md-nav__link">
+    <span class="md-ellipsis">
+      实验简介
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#实验要求" class="md-nav__link">
+    <span class="md-ellipsis">
+      实验要求
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-1环境配置" class="md-nav__link">
+    <span class="md-ellipsis">
+      Part 1：环境配置
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1：环境配置">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#安装-docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      安装 Docker
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#克隆代码仓库" class="md-nav__link">
+    <span class="md-ellipsis">
+      克隆代码仓库
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#启动开发容器" class="md-nav__link">
+    <span class="md-ellipsis">
+      启动开发容器
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2linux-内核编译与调试" class="md-nav__link">
+    <span class="md-ellipsis">
+      Part 2：Linux 内核编译与调试
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2：Linux 内核编译与调试">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#使用交叉编译工具链" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用交叉编译工具链
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#编译本地架构内核" class="md-nav__link">
+    <span class="md-ellipsis">
+      编译本地架构内核
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#交叉编译-risc-v-架构内核" class="md-nav__link">
+    <span class="md-ellipsis">
+      交叉编译 RISC-V 架构内核
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#使用-qemu-运行-risc-v-内核" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用 QEMU 运行 RISC-V 内核
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qemu-启动过程" class="md-nav__link">
+    <span class="md-ellipsis">
+      QEMU 启动过程
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#risc-v-执行环境" class="md-nav__link">
+    <span class="md-ellipsis">
+      RISC-V 执行环境
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gdb-调试内核" class="md-nav__link">
+    <span class="md-ellipsis">
+      GDB 调试内核
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/ZJU-OS/doc/blob/main/docs/lab0.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
+    </a>
+  
+  
+
+
+<h1 id="lab-0-linux-内核调试">Lab 0: Linux 内核调试<a class="headerlink" href="#lab-0-linux-内核调试" title="Permanent link">¶</a></h1><p style="color:#bdbdbd"><i>Estimated time to read: 9 minutes</i></p>
+
+<div class="admonition tip">
+<p class="admonition-title">请先阅读 <a href="../intro/">OS 实验导读</a></p>
+</div>
+<div class="admonition danger">
+<p class="admonition-title">代码、报告提交 DDL</p>
+<p>（仅验收）暂定第三周(2025-09-30)</p>
+</div>
+<h2 id="实验简介">实验简介<a class="headerlink" href="#实验简介" title="Permanent link">¶</a></h2>
+<p>在 Lab 0 中，我们将学习下列内容，完成环境搭建：</p>
+<ul>
+<li><strong>使用 Docker 容器：</strong>为了避免同学们在不同操作系统和环境下遇到各种各样的问题，我们将实验环境打包成 <a href="https://www.docker.com/">Docker</a> 容器镜像，免去同学们自行搭建环境的麻烦。</li>
+<li><strong>使用 QEMU 模拟器：</strong>同学们使用的一般是 x86-64 或 Arm 架构的设备，而本课程实现的内核使用 RISC-V 汇编指令和 C 语言编写。我们将使用 <a href="https://www.qemu.org/">QEMU</a>、<a href="https://github.com/riscv-software-src/riscv-isa-sim">Spike</a> 等虚拟机、模拟器来模拟 RISC-V 架构的计算机系统，由它们提供对应的 CPU、内存、外设等环境，供我们运行和调试内核。</li>
+<li><strong>使用交叉编译工具链</strong>：特定架构上的编译器等工具一般只生成对应架构的二进制文件，生成其他架构的二进制文件的过程称为交叉编译。<a href="https://github.com/riscv-collab/riscv-gnu-toolchain">RISC-V GNU Compiler Toolchain</a> 支持在 x86-64 或 Arm 架构的机器上编译、调试 RISC-V 架构的程序。</li>
+<li><strong>使用 GDB 调试器：</strong>在内核开发过程中，调试是必不可少的环节。我们将使用 <a href="https://www.gnu.org/software/gdb/">GDB</a> 来调试内核代码，定位和修复问题。</li>
+</ul>
+<h2 id="实验要求">实验要求<a class="headerlink" href="#实验要求" title="Permanent link">¶</a></h2>
+<p>本实验非常简单，无需写代码，无需提交报告。</p>
+<p>后续实验的文档会提供尽可能详细的指导，但你仍有很多问题需要回到原始文档、标准规范中仔细求证。<strong>为了锻炼同学们阅读文档解决问题的能力，我们适当删减了本实验的指导，而是给出了一些原始文档链接，要求同学们寻找答案。</strong></p>
+<p>验收时，请你现场演示使用 QEMU 启动内核，并使用 GDB 打断点、查看各类信息。</p>
+<p>如果你有兴趣，请阅读 <a href="../z1-spike/">附录 1：Spike 工具链</a>，在验收时展示使用 Spike 运行的结果。</p>
+<div class="admonition question">
+<p class="admonition-title">考点</p>
+<p>本文档中标记为考点的方块是希望同学们能掌握的知识点，会在验收时提问。</p>
+</div>
+<h2 id="part-1环境配置">Part 1：环境配置<a class="headerlink" href="#part-1环境配置" title="Permanent link">¶</a></h2>
+<h3 id="安装-docker">安装 Docker<a class="headerlink" href="#安装-docker" title="Permanent link">¶</a></h3>
+<p>如果你尚未安装 Docker：</p>
+<ul>
+<li>Linux 和 WSL 环境请参考 <a href="https://mirrors.zju.edu.cn/docs/docker-ce/">Docker CE | ZJU Mirror</a></li>
+<li>macOS 推荐使用 <a href="https://docs.docker.com/desktop/setup/install/mac-install/">Docker Desktop</a> 或 <a href="https://orbstack.dev/download">OrbStack</a> (可以用 <a href="https://formulae.brew.sh/formula/docker">Homebrew</a> 直接安装)</li>
+</ul>
+<h3 id="克隆代码仓库">克隆代码仓库<a class="headerlink" href="#克隆代码仓库" title="Permanent link">¶</a></h3>
+<p>在 <a href="../intro/">OS 实验导读</a> 中，你已经了解了 Git 工作流。现在执行第一步，克隆代码仓库。</p>
+<div class="admonition tip">
+<p class="admonition-title">WSL 用户请不要将代码存放在 Windows 目录下</p>
+<p>WSL 用户应该了解：Linux 和 Windows 的文件系统不同，文件权限、换行符、链接、大小写等方面都存在区别。</p>
+<p>WSL 将 Windows 目录挂载到了 <code>/mnt/c</code> 等路径下，这只是为文件互访提供便利。官方并不建议你将文件<strong>存放</strong>在一边，又在另一边<strong>使用</strong>。首先性能较低，其次代码仓库等对文件权限、链接等有要求的项目很容易出问题。</p>
+<p>请 WSL 用户将代码仓库克隆到 WSL 的 Linux 文件系统中（比如 <code>/home/&lt;username&gt;/</code> 下），以避免出现各种奇怪的问题。</p>
+</div>
+<h3 id="启动开发容器">启动开发容器<a class="headerlink" href="#启动开发容器" title="Permanent link">¶</a></h3>
+<p>关于本课程使用的容器，请同学们了解一下几点：</p>
+<ul>
+<li>
+<p><strong>基本概念：</strong>我们发布<strong>镜像（image）</strong>，同学们在本地<strong>拉取（pull）</strong>镜像，然后用镜像创建<strong>容器（container）</strong>，容器是镜像的一个运行实例。</p>
+<p>容器可以看作一个轻量级的虚拟机，可以启动、停止、删除。容器内的文件系统和运行状态是独立的，删除容器会丢失<strong>容器内</strong>的文件和状态。</p>
+</li>
+<li>
+<p><strong>代码挂载：</strong>代码库会被<strong>挂载（mount）</strong>到容器内的 <code>/zju-os/code</code> 目录下。这意味着宿主机和容器共享代码库的文件，容器内对代码的修改会直接反映到宿主机上，反之亦然。文件保存在宿主机，所以不会因为容器被删除而丢失。</p>
+</li>
+<li>
+<p><strong>用户与文件权限：</strong>容器内的用户是 <code>root</code>，而宿主机上你一般使用的是普通用户。容器内创建的文件（比如编译产物等）属于 <code>root</code>，在宿主机上操作时可能遇到权限问题。此时可以执行下面的命令将文件所有者转交回普通用户：</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span>&lt;username&gt;:&lt;username&gt;<span class="w"> </span>.
+</span></code></pre></div>
+</li>
+<li>
+<p><strong>Git 和 SSH 配置映射：</strong></p>
+<p>特别地，执行一些 Git 操作也会产生文件，因此会产生这样的情况：在容器内执行 Git 操作后，在宿主机执行 Git 操作遇到 Permission Denied。所以我们将宿主机的 Git 和 SSH 配置映射到容器内，这样同学们的开发、Git 操作都在容器内进行，不用回到宿主机了。</p>
+<p>配置映射是通过挂载宿主机的 <code>~/.gitconfig</code>、<code>~/.ssh</code> 等文件实现的。因此请先在宿主机上配置好 Git 和 SSH（在上面你拉取仓库的时候应该已经配置好了），否则我们的检测脚本会报错。</p>
+</li>
+</ul>
+<p>你有以下几种方式使用开发容器：</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">VSCode DevContainer（推荐）</label><label for="__tabbed_1_2">Makefile（需要掌握）</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>VSCode、CLion 等现代编辑器/IDE 大多支持 DevContainer。通过代码仓库下的 <code>.devcontainer</code> 目录中的配置文件，编辑器/IDE 可以自动创建并连接到容器，保证所有开发者使用相同的容器环境。</p>
+<p>下面以 VSCode 为例介绍使用流程：</p>
+<ul>
+<li>VSCode 安装 <a href="https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers">Dev Containers 插件</a></li>
+<li><mark class="critic">VSCode 打开实验仓库</mark></li>
+<li>
+<p>右下角可能会出现<strong>开发容器（Dev Container）相关的弹窗</strong>，点击在开发容器中打开</p>
+<p>如果没有弹窗，则 <span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-shift">Shift</kbd><span>+</span><kbd class="key-p">P</kbd></span>，输入 <code>reopen</code> 找到 <code>Dev Containers: Reopen in Container</code> 选项，选择它</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>VSCode 是从当前打开的文件夹找 <code>.devcontainer</code> 的，所以请确保 VSCode 当前打开了实验仓库的根目录。</p>
+<p>如果选择 <code>Reopen in Container</code> 后 VSCode 弹出了选择容器之类的窗口，说明你没有打开正确的目录。</p>
+</div>
+</li>
+<li>
+<p>VSCode 将重载窗口，启动并连接到容器，自动完成插件安装等配置步骤</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>实验镜像比较大（约 10G），你可以结合自己的网速评估一下需要的拉取时间，耐心等待。</p>
+<p>右下角应该会有弹窗表示开发容器正在启动，你可以点击查看日志了解启动进度。</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="tabbed-block">
+<p>实验代码库根目录下的 <code>Makefile</code> 将相关 Docker 命令封装成了 Makefile 目标：</p>
+<ul>
+<li>
+<p><code>make</code>：创建并启动容器</p>
+<p><span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-d">D</kbd></span> 退出并关闭容器，此时你在容器内的更改会被保存，下次 <code>make</code> 进入容器时可以继续使用</p>
+</li>
+<li>
+<p><code>make clean</code>：删除容器</p>
+<p>如果你不小心搞坏了容器内的环境，运行该命令清除，然后重新 <code>make</code> 运行一个新的容器</p>
+</li>
+<li>
+<p><code>make update</code>：拉取最新的镜像</p>
+<p>如果课程群有通知容器更新，运行该命令，注意它会先执行 <code>make clean</code> 删除旧容器</p>
+</li>
+</ul>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="gp">$ </span>make
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="go">docker compose create</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="go">docker compose start</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="go">[+] Running 1/1</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="go">✔ Container zju-os  Started               0.3s</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="go">docker compose exec -it zju-os /usr/bin/fish</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="go">Welcome to fish, the friendly interactive shell</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="go">Type help for instructions on how to use fish</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="gp">root@zju-os /zju-os/code#</span>
+</span></code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>将 Docker 命令封装为 Makefile 目标仅仅是为了让常用操作更简便，不用打一长串命令。建议你自行学习 Makefile 中的命令含义，以便日后遇到问题时知道该怎么做。</p>
+</div>
+</div>
+</div>
+</div>
+<div class="admonition info">
+<p class="admonition-title">更多资料</p>
+<ul>
+<li>如果你不了解 Docker：<a href="https://www.docker.com/resources/what-container">What is a Container? | Docker</a></li>
+<li><code>compose.yml</code> 描述了容器的运行参数：<a href="https://docs.docker.com/reference/compose-file/">Compose file reference | Docker Docs</a></li>
+<li><code>Dockerfile</code> 描述了容器镜像是如何构建的：<a href="https://docs.docker.com/reference/dockerfile/">Dockerfile reference | Docker Docs</a></li>
+<li>本课程的 <code>Dockerfile</code>：<a href="https://github.com/ZJU-OS/tool/blob/main/container/Dockerfile">tool/container/Dockerfile at main · ZJU-OS/tool</a></li>
+<li>容器内默认使用 <code>fish</code>，这是一个比 <code>bash</code> 更友好的 shell，提供开箱即用的历史纪录、自动补全显示等功能：<a href="https://fishshell.com/">fish shell</a></li>
+</ul>
+</div>
+<h2 id="part-2linux-内核编译与调试">Part 2：Linux 内核编译与调试<a class="headerlink" href="#part-2linux-内核编译与调试" title="Permanent link">¶</a></h2>
+<h3 id="使用交叉编译工具链">使用交叉编译工具链<a class="headerlink" href="#使用交叉编译工具链" title="Permanent link">¶</a></h3>
+<p>也许你接触过下列编译器工具：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>gcc gdb objdump readelf as ...
+</span></code></pre></div>
+<p>它们对应的交叉编译工具带有格式为 <code>&lt;目标架构&gt;-&lt;系统&gt;-&lt;套件名&gt;-</code> 的前缀。比如 Linux 系统上用于交叉编译 RISC-V 64 架构的 GNU 工具前缀为 <code>riscv64-linux-gnu-</code>，使用方式与原版相同。以 GCC 为例：</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="gp">root@zju-os-code /z/code# </span>riscv64-linux-gnu-gcc<span class="w"> </span>hello.c<span class="w"> </span>-o<span class="w"> </span>hello
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="gp">root@zju-os-code /z/code# </span>file<span class="w"> </span>hello
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="go">hello: ELF 64-bit LSB pie executable, UCB RISC-V, RVC, double-float ABI, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-riscv64-lp64d.so.1, BuildID[sha1]=963fa6ea0ba96c8e9b928927d0e0306355e326d5, for GNU/Linux 4.15.0, not stripped</span>
+</span></code></pre></div>
+<p>请你用 C 写一个 Hello World 程序，然后执行下面的步骤：</p>
+<ul>
+<li>生成它的 RISC-V 汇编代码</li>
+<li>将其编译为 RISC-V 可执行程序</li>
+<li>将 RISC-V 可执行程序反汇编</li>
+</ul>
+<div class="admonition question">
+<p class="admonition-title">考点</p>
+<p>上面的步骤分别使用了哪几个工具？</p>
+</div>
+<div class="admonition info">
+<p class="admonition-title">更多资料</p>
+<ul>
+<li>GNU 二进制工具文档，介绍了实验中会用到的相关工具：<a href="https://www.gnu.org/software/binutils/">Binutils - GNU Project - Free Software Foundation</a></li>
+<li><a href="https://www.gnu.org/software/coreutils/">Coreutils - GNU core utilities</a></li>
+</ul>
+</div>
+<h3 id="编译本地架构内核">编译本地架构内核<a class="headerlink" href="#编译本地架构内核" title="Permanent link">¶</a></h3>
+<p>容器内的 <code>/zju-os/linux-source-*</code> 是预先放置好的 Linux 内核源码：</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="gp">root@zju-os /zju-os# </span>ls
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="go">code/  linux-source-6.16/</span>
+</span></code></pre></div>
+<p>在容器中编译内核的基本流程如下：</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gp">root@zju-os /zju-os# </span><span class="nb">cd</span><span class="w"> </span>linux-source-6.16
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="gp">root@zju-os /z/linux-source-6.16# </span>make<span class="w"> </span>defconfig
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="gp">root@zju-os /z/linux-source-6.16# </span>make<span class="w"> </span>-j<span class="k">$(</span>nproc<span class="k">)</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="go">  ...</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="go">  LD      vmlinux</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="go">  NM      System.map</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="go">  ...</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="go">  BUILD   arch/x86/boot/bzImage</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="go">Kernel: arch/x86/boot/bzImage is ready  (#1)</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="gp">root@zju-os /z/linux-source-6.16# </span>make<span class="w"> </span>distclean
+</span></code></pre></div>
+<p>上面的日志是 x86-64 架构的内核编译输出。其他架构的输出可能不一样，比如笔者的 macOS（arm64）上输出结尾如下：</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="go">  LD [M]  net/qrtr/qrtr-tun.ko</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="go">make[1]: Leaving directory '/zju-os/linux-source-6.16'</span>
+</span></code></pre></div>
+<p><strong>总之，只要 Make 没有报 Error，一般就说明构建成功了。</strong>此时文件夹中应该有我们需要两个重要的产物：</p>
+<ul>
+<li><code>arch/&lt;arch&gt;/boot/Image</code></li>
+<li><code>vmlinux</code></li>
+</ul>
+<div class="admonition question">
+<p class="admonition-title">考点</p>
+<ul>
+<li>运行 <code>make help</code>，了解上面运行的 <code>defconfig</code>、<code>distclean</code> 等 target 的含义</li>
+<li>如何开启构建过程的详细输出？当构建失败时，你很可能需要查看详细的编译命令</li>
+<li><code>Image</code> 和 <code>vmlinux</code> 是什么？有什么异同？</li>
+</ul>
+</div>
+<div class="admonition info">
+<p class="admonition-title">更多资料</p>
+<ul>
+<li>内核发行说明：<a href="https://www.kernel.org/doc/Documentation/admin-guide/README.rst">kernel.org/doc/Documentation/admin-guide/README.rst</a></li>
+<li>Debian 发行版内核手册：<a href="https://www.debian.org/doc/manuals/debian-kernel-handbook/ch-common-tasks.html">Chapter&nbsp;4.&nbsp;Common kernel-related tasks</a></li>
+<li>Linux 内核的构建系统十分复杂，如果你有兴趣了解：<a href="https://docs.kernel.org/kbuild/makefiles.html">Linux Kernel Makefiles — The Linux Kernel documentation</a></li>
+</ul>
+</div>
+<h3 id="交叉编译-risc-v-架构内核">交叉编译 RISC-V 架构内核<a class="headerlink" href="#交叉编译-risc-v-架构内核" title="Permanent link">¶</a></h3>
+<p>请阅读这篇简明的文档 <a href="https://wiki.gentoo.org/wiki/Embedded_Handbook/General/Cross-compiling_the_kernel">Embedded Handbook/General/Cross-compiling the kernel - Gentoo wiki</a>，了解内核交叉编译的步骤。</p>
+<div class="admonition question">
+<p class="admonition-title">考点</p>
+<ul>
+<li>使用哪两个变量来指定目标架构？这两个变量的值在哪里找？</li>
+<li>如何在命令行中为 <code>make</code> 指定变量的值？</li>
+</ul>
+</div>
+<p>请你使用交叉编译工具链编译 RISC-V 架构的内核。如果看到 <code>Kernel: arch/riscv/boot/Image is ready</code> 这一行，说明成功构建出了 RISC-V 架构的内核。使用 <code>file</code> 命令来验证它是否为 RISC-V 架构的内核：</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="gp">root@zju-os /z/linux-source-6.16# </span>file<span class="w"> </span>arch/riscv/boot/Image
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="go">arch/riscv/boot/Image: Linux kernel RISC-V boot executable Image, little-endian</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="gp">root@zju-os /z/linux-source-6.16# </span>file<span class="w"> </span>vmlinux
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="go">vmlinux: ELF 64-bit LSB executable, UCB RISC-V, RVC, soft-float ABI, version 1 (SYSV), statically linked, BuildID[sha1]=657ad614b9ebd9723a2d5ee0a25505df3a43b918, not stripped</span>
+</span></code></pre></div>
+<h3 id="使用-qemu-运行-risc-v-内核">使用 QEMU 运行 RISC-V 内核<a class="headerlink" href="#使用-qemu-运行-risc-v-内核" title="Permanent link">¶</a></h3>
+<p>回到代码仓库，使用 <code>make run</code> 启动 QEMU，运行构建好的内核：</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="gp">root@zju-os /zju-os/code# </span>make<span class="w"> </span>run
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="go">...</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="go">Welcome to Buildroot</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="go">buildroot login:</span>
+</span></code></pre></div>
+<p>buildroot 默认用户为 <code>root</code>，密码为空。你可以登录 Shell，试试这个极简的 RISC-V 系统能干些什么（它应该能联网）：</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="go">buildroot login: root</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="gp"># </span><span class="nb">pwd</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="go">/root</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="gp"># </span>uname<span class="w"> </span>-a
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="go">Linux buildroot 6.16.3 #1 SMP Fri Sep 12 03:45:12 UTC 2025 riscv64 GNU/Linux</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="gp"># </span>wget<span class="w"> </span>http://www.baidu.com
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="go">Connecting to www.baidu.com (223.109.82.16:80)</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="go">saving to 'index.html'</span>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="go">index.html           100% |********************************|  2381  0:00:00 ETA</span>
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="go">'index.html' saved</span>
+</span></code></pre></div>
+<p>接下来学习 QEMU 操作：</p>
+<ul>
+<li>
+<p>现在与你交互的是 <a href="https://www.qemu.org/docs/master/system/mux-chardev.html">QEMU 自带的终端复用器（Terminal Multiplexer）</a></p>
+<ul>
+<li>它连接着 QEMU Monitor 和虚拟机的控制台（Console），默认情况下连接后者。</li>
+<li><span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-a">A</kbd></span> 再按 <span class="keys"><kbd class="key-c">C</kbd></span> 可以在两者间切换。</li>
+<li><span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-a">A</kbd></span> 再按 <span class="keys"><kbd class="key-h">H</kbd></span> 可以查看帮助。</li>
+<li><span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-a">A</kbd></span> 再按 <span class="keys"><kbd class="key-x">X</kbd></span> 可以退出 QEMU。</li>
+</ul>
+<div class="admonition tip">
+<p class="admonition-title">像这里的 <span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-a">A</kbd></span> 这样的前导组合键在终端复用器（如 tmux）中被称为逃逸键（escape key）。初始状态下，其他所有按键都会被直接传递给当前连接的终端。当你按下逃逸键时，终端复用器会进入「其自身的」命令模式，等待你输入后续的命令键。</p>
+</div>
+</li>
+<li>
+<p><a href="https://qemu-project.gitlab.io/qemu/system/monitor.html">QEMU Monitor</a> 可以控制、查看、调试虚拟机。</p>
+<p>它与下文介绍的 GDB 各有所长：QEMU Monitor 可以查看内存映射、TLB 等各类系统信息，而 GDB 专注于程序调试，主要是查看和控制代码运行。在后续实验中，如果你的代码有问题，可能导致 GDB 无法调试，而 QEMU Monitor 仍然可以使用。</p>
+<p>你可以在 Monitor 中运行 <code>help</code> 查看支持的命令。</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>QEMU 10.1.0 monitor - type 'help' for more information
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>(qemu) help
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>...
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>x /fmt addr -- virtual memory dump starting at 'addr'
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>(qemu) info mem
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>vaddr            paddr            size             attr
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>---------------- ---------------- ---------------- -------
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>000055556ae09000 0000000081055000 0000000000001000 r-xu-a-
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>(qemu) info registers
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>CPU#0
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>V      =   0
+</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>pc       ffffffff80b57780
+</span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>mhartid  0000000000000000
+</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>mstatus  0000000a000000a0
+</span><span id="__span-10-16"><a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>hstatus  0000000200000000
+</span></code></pre></div>
+</li>
+</ul>
+<div class="admonition question">
+<p class="admonition-title">考点</p>
+<p>使用 QEMU Monitor 进行下列操作：</p>
+<ul>
+<li>查看寄存器、内存树、设备树、物理内存中的值</li>
+<li>Linux 第一条指令位于物理内存 <code>0x80200000</code>，打印这条指令</li>
+</ul>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>仅有一个内核镜像是无法运行系统的，你还需要一个根文件系统（root filesystem），其中包含了 Linux 启动后需要的各种文件，例如执行你输入的指令的 Shell 程序。容器内预置的 <code>/zju-os/rootfs.ext2</code> 就是一个已经构建好的根文件系统镜像。</p>
+</div>
+<div class="admonition info">
+<p class="admonition-title">更多资料</p>
+<ul>
+<li>QEMU System 手册：<a href="https://www.qemu.org/docs/master/system/qemu-manpage.html">QEMU User Documentation — QEMU documentation</a></li>
+<li>QEMU Monitor 手册：<a href="https://www.qemu.org/docs/master/system/monitor.html">QEMU Monitor Commands — QEMU documentation</a></li>
+<li><code>rootfs.ext2</code> 制作方法：<a href="https://archive.fosdem.org/2019/schedule/event/riscvbuildroot/attachments/slides/3040/export/events/attachments/riscvbuildroot/slides/3040/FOSDEM_2019_Buildroot_RISCV.pdf">FOSDEM 2019 - Buildroot for RISC-V</a></li>
+</ul>
+</div>
+<h3 id="qemu-启动过程">QEMU 启动过程<a class="headerlink" href="#qemu-启动过程" title="Permanent link">¶</a></h3>
+<p>当你按下电脑的电源键，计算机开始按照下面的流程启动：</p>
+<ol>
+<li>
+<p><strong>固件加载（Firmware）</strong></p>
+<ul>
+<li>在主板 ROM 中烧录的固件（如 BIOS 或 UEFI）会首先被加载到内存中执行。</li>
+<li>固件会完成 <strong>硬件自检</strong>（Power-On Self Test，POST），检测 CPU、内存、外设等是否可用，并进行基础初始化。</li>
+<li>接着，它会寻找合适的启动设备（如硬盘、U 盘、网络等），然后将 <strong>引导程序</strong>（Bootloader）加载到内存并执行。</li>
+</ul>
+</li>
+<li>
+<p><strong>引导程序（Bootloader）阶段</strong></p>
+<p>该阶段不是必要的，固件可以直接引导进入内核。如果有多个操作系统，则引导程序可以提供选择界面。</p>
+<ul>
+<li>引导程序的任务是把系统带入可以运行内核的状态。</li>
+<li>典型的引导程序如 <strong>GRUB</strong> 或 <strong>U-Boot</strong> 会加载内核镜像（Kernel Image）和 <strong>根文件系统</strong>（Root File System）。</li>
+<li>加载完成后，控制权会被转交给内核，开始执行内核入口点的代码。</li>
+</ul>
+</li>
+<li>
+<p><strong>内核启动（Kernel Boot）</strong></p>
+<ul>
+<li>内核会初始化内存管理、设备驱动、进程调度等核心功能。</li>
+<li>初始化完成后，内核会启动 <strong>第一个用户空间进程</strong>（通常是 <code>/sbin/init</code> 或 <code>systemd</code>），进一步完成系统服务和登录界面的启动。</li>
+<li>最终，用户可以登录系统，进入正常的操作环境。</li>
+</ul>
+</li>
+</ol>
+<p>具体到本课程：</p>
+<ul>
+<li><strong>QEMU</strong> 提供模拟的 RISC-V <a href="https://www.qemu.org/docs/master/system/riscv/virt.html"><strong>硬件环境</strong>（CPU、内存、外设等）</a></li>
+<li><strong>OpenSBI</strong> 内置在 QEMU 中，作为 RISC-V 架构的<strong>默认固件</strong>，它运行在 <strong>RISC-V M-Mode</strong></li>
+<li>因为系统简单没有引导程序，固件直接启动内核，<strong>内核</strong>运行在 <strong>RISC-V S-Mode</strong></li>
+</ul>
+<p>整体流程如下图所示：</p>
+<figure>
+    <a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../lab0.assets/boot.webp" data-desc-position="bottom"><img alt="boot.webp" src="../lab0.assets/boot.webp"></a>
+    <figcaption>
+    <a href="https://riscv.org/wp-content/uploads/2024/12/13.30-RISCV_OpenSBI_Deep_Dive_v5.pdf">OpenSBI Deep Dive - RISC-V International</a>
+    </figcaption>
+</figure>
+<p>让我们结合输出信息来看</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>...
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>   ____                    _____ ____ _____
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>  / __ \                  / ____|  _ \_   _|
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a> | |  | |_ __   ___ _ __ | (___ | |_) || |
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a> | |  | | '_ \ / _ \ '_ \ \___ \|  _ &lt; | |
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a> | |__| | |_) |  __/ | | |____) | |_) || |_
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>  \____/| .__/ \___|_| |_|_____/|____/_____|
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>        | |
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>        |_|
+</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>Firmware Base               : 0x80000000
+</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>Domain0 Next Address        : 0x0000000080200000
+</span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>Domain0 Next Arg1           : 0x0000000087e00000
+</span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>Domain0 Next Mode           : S-mode
+</span><span id="__span-11-14"><a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>...
+</span><span id="__span-11-15"><a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>[    0.000000] Booting Linux on hartid 0
+</span><span id="__span-11-16"><a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>[    0.000000] Linux version 6.16.3 (root@zju-os-code) (riscv64-linux-gnu-gcc (Debian 15.2.0-3) 15.2.0, GNU ld (GNU Binutils for Debian) 2.45) #1 SMP Fri Sep 12 03:45:12 UTC 2025
+</span></code></pre></div>
+<ul>
+<li>QEMU 作为 Loader<ul>
+<li>将 OpenSBI 加载到内存中的 <code>0x80000000</code></li>
+<li>将 Linux 内核加载到内存中的 <code>0x80200000</code></li>
+</ul>
+</li>
+<li>QEMU 内置的 OpenSBI 使用 <code>FW_DYNAMIC</code> 模式<ul>
+<li>QEMU 将 <code>next_addr</code> 等信息放在 <code>struct fw_dynamic_info</code> 结构体中，将该结构体的地址存放在 <code>a2</code> 寄存器中</li>
+<li>OpenSBI 读取该信息，了解下一步要怎么做，从日志中可以看到它下一步跳转到 <code>next_addr</code> 即内核入口点地址，并调整特权级为 <code>next_mode</code> 即 S-Mode</li>
+</ul>
+</li>
+<li><code>Booting Linux on hartid 0</code> 是内核 <a href="https://github.com/torvalds/linux/blob/master/init/main.c#L903"><code>start_kernel()</code></a> 打印出的第一条日志</li>
+</ul>
+<div class="admonition info">
+<p class="admonition-title">更多信息</p>
+<ul>
+<li>QEMU RISC-V 启动实现：<a href="https://github.com/qemu/qemu/blob/master/hw/riscv/boot.c">qemu/hw/riscv/boot.c at master · qemu/qemu</a></li>
+<li>OpenSBI 详解：<a href="https://riscv.org/wp-content/uploads/2024/12/13.30-RISCV_OpenSBI_Deep_Dive_v5.pdf">OpenSBI Deep Dive - RISC-V International</a></li>
+</ul>
+</div>
+<h3 id="risc-v-执行环境">RISC-V 执行环境<a class="headerlink" href="#risc-v-执行环境" title="Permanent link">¶</a></h3>
+<p>请打开 RISC-V 非特权级手册，阅读：</p>
+<ul>
+<li><a href="../spec/riscv-unprivileged.html#_risc_v_software_execution_environments_and_harts">1.2. RISC-V Software Execution Environments and Harts</a></li>
+</ul>
+<p>你应该理解下列概念：</p>
+<ul>
+<li>
+<p><strong>Hart（hardware thread）</strong>是抽象的执行资源，独立获取和执行指令。</p>
+<p>因为有 Hart 这一层抽象，操作系统看到的情况也有可能与真实的硬件不同。比如，即使 CPU 只有单个物理核心，OpenSBI 这样的 SEE 也可以通过时间复用的方式，向上层提供多个 Hart。</p>
+</li>
+<li>
+<p><strong>RISC-V 执行环境接口（Execution Environment Interface, EEI）</strong></p>
+<ul>
+<li>描述程序运行的环境，包括：程序初始状态、异常、中断及环境调用的处理方式</li>
+<li><strong>例子：</strong>Linux ABI、RISC-V Supervisor Binary Interface (SBI)</li>
+<li><strong>实现方式：</strong>纯硬件、纯软件或软硬件结合。<ul>
+<li><strong>Bare-metal 平台：</strong>hart 直接由物理处理器线程实现，指令直接访问物理地址。</li>
+<li><strong>RISC-V 操作系统：</strong>通过虚拟内存和时间复用，为用户提供多个用户级执行环境。</li>
+<li><strong>RISC-V Hypervisor：</strong>为客操作系统提供多个 supervisor 级执行环境。</li>
+<li><strong>模拟器：</strong>如 Spike、QEMU、rv8，可在 x86 系统上模拟 RISC-V harts。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>并且能理解上一节介绍的 QEMU 启动过程中，各个组件的角色：</p>
+<ul>
+<li>QEMU 作为模拟器，实现 RISC-V ISA，提供 RISC-V hart</li>
+<li>OpenSBI 作为固件，实现 SBI，提供 SEE</li>
+<li>Linux 作为操作系统，实现 Linux ABI，提供 AEE</li>
+</ul>
+<p>这些抽象层次奠定了后续实验的整体框架，请务必理解。</p>
+<div class="admonition question">
+<p class="admonition-title">考点</p>
+<ul>
+<li>你实现的操作系统需要 SEE，你应该去查看哪个规范了解 SEE 的接口？</li>
+</ul>
+</div>
+<h3 id="gdb-调试内核">GDB 调试内核<a class="headerlink" href="#gdb-调试内核" title="Permanent link">¶</a></h3>
+<p>现在需要打开两个终端，一个运行 QEMU，另一个运行 GDB 进行调试。你可以：</p>
+<ul>
+<li>按 <a href="../intro/#工具使用">OS 实验导读#工具使用</a> 的说明使用 VSCode Attach 到容器内，开多个终端窗口</li>
+<li>在容器内使用 <a href="https://github.com/tmux/tmux">tmux</a> 等终端复用工具。可参考 <a href="https://www.ruanyifeng.com/blog/2019/10/tmux.html">Tmux 使用教程 - 阮一峰的网络日志</a> 或 <a href="https://github.com/tmux/tmux/wiki">Home · tmux/tmux Wiki</a>。</li>
+<li>在宿主机上打开两个终端窗口，均执行 <code>make</code> 进入容器。</li>
+</ul>
+<p>在其中一个终端运行 <code>make debug</code>，会看到 QEMU 命令执行后就停住了。在另一个终端运行 <code>make gdb</code>，GDB 自动连接到 QEMU 上，但因为什么命令都没执行，GDB 显示的内容全空：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>┌─────────────────────────────────────────────────────────────┐
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>│                                                             │
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>│                    [ No Source Available ]                  │
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>│                                                             │
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>└─────────────────────────────────────────────────────────────┘
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>┌─────────────────────────────────────────────────────────────┐
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>│                                                             │
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>│                    [ No Assembly Available ]                │
+</span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>│                                                             │
+</span><span id="__span-12-10"><a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>└─────────────────────────────────────────────────────────────┘
+</span><span id="__span-12-11"><a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>remote Thread 1.1 (src) In:                     L??   PC: 0x1000
+</span><span id="__span-12-12"><a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>(gdb)
+</span></code></pre></div>
+<p>接下来，请你任选资料阅读：</p>
+<ul>
+<li><a href="https://visualgdb.com/gdbreference/commands/">GDB Command Reference - Index page</a></li>
+<li><a href="https://sourceware.org/gdb/current/onlinedocs/gdb">Debugging with GDB</a></li>
+<li><a href="https://wizardforcel.gitbooks.io/100-gdb-tips/content/">100个gdb小技巧</a></li>
+<li><a href="https://note.tonycrane.cc/cs/tools/gdb/">gdb 相关使用备忘 - 鹤翔万里的笔记本</a></li>
+</ul>
+<p>了解下列命令的含义，并进行实操：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>layout [Name]
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>start [Arguments]
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>break [Function Name]
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>break *[Address]
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>break [...] if [Condition]
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>continue [Repeat count]
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>stepi [Repeat count]
+</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>backtrace
+</span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>finish
+</span><span id="__span-13-10"><a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>info register [Register name]
+</span><span id="__span-13-11"><a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>print [Expression]
+</span><span id="__span-13-12"><a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>x /[Length][Format] [Address expression]
+</span><span id="__span-13-13"><a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>quit
+</span></code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">关于 gdb 脚本</p>
+<p>当你运行 <code>make gdb</code> 启动调试时，它会首先执行 <code>gdbinit</code> 脚本，进行一些初始化设置，这避免了我们每次手动输入一些重复的命令。如果你想尝试更加“现代”的 gdb 调试，现在的 gdb 为我们提供了 <a href="https://sourceware.org/gdb/current/onlinedocs/gdb.html/Python-API.html">Python API</a>，我们可以更加方便地实现事件回调、调试状态访问、自定义打印等功能，也可以借助 Python 生态实现更丰富的自动化流程。未来的内核调试可能越来越复杂，你可以积极探索更多更好的调试方式。</p>
+<p>在代码仓库中，你可以通过修改 <code>GDB_INIT_SCRIPT</code> 变量选择使用 <code>gdbinit.py</code> 替代 <code>gdbinit</code> 脚本：</p>
+<div class="language-makefile highlight"><span class="filename">Makefile</span><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c"># GDB_INIT_SCRIPT := gdbinit</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="nv">GDB_INIT_SCRIPT</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span>gdbinit.py
+</span></code></pre></div>
+</div>
+<div class="admonition question">
+<p class="admonition-title">考点</p>
+<p>阅读 <code>Makefile</code> 和 <code>gdbinit</code>：</p>
+<ul>
+<li><code>make run</code> 和 <code>make debug</code> 有什么不同？新增的选项含义是什么？</li>
+<li>你运行 <code>make gdb</code> 时，脚本对 GDB 做了哪些设置？</li>
+</ul>
+<p>使用 GDB 进行下列操作：</p>
+<ul>
+<li><strong>断点：</strong>设置断点、查看断点、删除断点</li>
+<li><strong>调试：</strong>单指令执行、逐过程执行、结束当前函数、继续执行</li>
+<li><strong>查看：</strong>汇编代码、函数调用栈、变量、寄存器值、内存中的内容</li>
+<li><strong>分屏：</strong>如何在汇编代码和交互命令行窗格之间切换</li>
+</ul>
+<p>上一节我们了解了启动的详细过程，要求你使用 GDB 进一步了解：</p>
+<ul>
+<li>在 OpenSBI 的起始处打断点，看看这时候 <code>a2</code> 寄存器的值是多少；进一步，查看对应内存位置的值</li>
+<li>在内核起始处打断点，看看这时候 Next Arg1 处的内存存放了什么内容</li>
+</ul>
+</div>
+<div class="admonition info">
+<p class="admonition-title">更多资料</p>
+<ul>
+<li>GDB 插件：<a href="https://github.com/cyrus-and/gdb-dashboard">gdb-dashboard</a></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+  
+    
+  
+  
+    
+  
+
+
+  <aside class="md-source-file">
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Last update">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="2025年9月18日 13:16:55 UTC"><span class="timeago" datetime="2025-09-18T13:16:55+00:00" locale="zh"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="2025年9月18日 13:16:55 UTC">2025-09-18</span>
+  </span>
+
+    
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Created">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"></path></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="2025年9月12日 01:35:33 UTC"><span class="timeago" datetime="2025-09-12T01:35:33+00:00" locale="zh"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="2025年9月12日 01:35:33 UTC">2025-09-12</span>
+  </span>
+
+    
+    
+    
+      
+  <span class="md-source-file__fact">
+    
+      
+  <span class="md-icon" title="Contributors">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"></path></svg>
+  </span>
+  <span>GitHub</span>
+
+    
+    <nav>
+      
+        <a href="https://github.com/bowling233" class="md-author" title="@bowling233">
+          
+          <img src="https://avatars.githubusercontent.com/u/35755846?v=4&amp;size=72" alt="bowling233">
+        </a>
+      
+        <a href="https://github.com/hharryz" class="md-author" title="@hharryz">
+          
+          <img src="https://avatars.githubusercontent.com/u/122276274?v=4&amp;size=72" alt="hharryz">
+        </a>
+      
+      
+      
+    </nav>
+  </span>
+
+    
+  </aside>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer">
+        
+          
+          <a href="../faq/" class="md-footer__link md-footer__link--prev" aria-label="Previous: FAQ">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                FAQ
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../lab1/" class="md-footer__link md-footer__link--next" aria-label="Next: Lab 1：内核启动与时钟中断">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Lab 1：内核启动与时钟中断
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"></path></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      浙江大学计算机科学与技术学院
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer", "navigation.sections", "navigation.expand", "navigation.indexes", "navigation.tracking", "navigation.path", "navigation.top", "toc.follow", "content.action.edit", "search.suggest", "search.highlight", "search.share"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+        <script src="../js/timeago.min.js"></script>
+      
+        <script src="../js/timeago_mkdocs_material.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/polyfill/index.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax/es5/tex-mml-chtml.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/tablesort/dist/tablesort.min.js"></script>
+      
+        <script src="../javascripts/tablesort.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>
