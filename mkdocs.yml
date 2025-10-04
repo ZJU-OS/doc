@@ -38,6 +38,8 @@ nav:
 
 theme:
   name: material
+  favicon: assets/zjueagle.png
+  logo: assets/zjueagle_white.svg
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
