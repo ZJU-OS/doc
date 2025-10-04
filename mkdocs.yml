@@ -10,12 +10,11 @@ edit_uri: blob/main/docs/
 nav:
   - 首页: index.md
   - 实验文档:
-    - faq.md
+    - manual.md
     - lab0.md
     - lab1.md
     #- lab2.md
     - z1-spike.md
-    - z2-manual.md
   - RISC-V 规范:
     - 特权级规范: spec/riscv-privileged.html
     - 非特权级规范: spec/riscv-unprivileged.html
