@@ -32,7 +32,7 @@
 
 ### 拉取代码
 
-请确保你已经阅读 [附录2：工具使用](z2-manual.md) ，并了解基本的 Git 工作流，现在请你将代码仓库克隆下来。助教已经为所有学生创建了私有仓库，你可以从 ZJU Git 直接拉取自己的私有仓库 `git@git.zju.edu.cn:os/fa25/jijiangming/os-<你的学号>.git`。请注意你所在的分支应为 `lab0`，如果不是，请尝试通过如下操作进行切换：
+请确保你已经阅读 [实验流程及工具讲解](manual.md) ，并了解基本的 Git 工作流，现在请你将代码仓库克隆下来。助教已经为所有学生创建了私有仓库，你可以从 ZJU Git 直接拉取自己的私有仓库 `git@git.zju.edu.cn:os/fa25/jijiangming/os-<你的学号>.git`。请注意你所在的分支应为 `lab0`，如果不是，请尝试通过如下操作进行切换：
 
 ```shell
 git fetch origin

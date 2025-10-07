@@ -13,7 +13,7 @@ nav:
     - manual.md
     - lab0.md
     - lab1.md
-    #- lab2.md
+    - lab2.md
     - z1-spike.md
   - RISC-V 规范:
     - 特权级规范: spec/riscv-privileged.html

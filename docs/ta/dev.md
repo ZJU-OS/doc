@@ -88,3 +88,22 @@ git difftool main --
 ```
 
 上面这行命令会对所有有差异的文件逐个打开 VSCode 的对比界面，可以利用 VSCode 的差异合并功能方便地处理变更。完成一对文件的对比后，关闭对应的 VSCode 窗格即可进入下一对文件的对比。
+
+## 开发日志
+
+### Lab2
+
+- 内存：增加难度，引入 `list_head` 供进程数据结构使用
+- 标准化内核线程，引入 `kernel_thread` 和 `user_mode_thread`
+
+    ```c
+    kernel_thread->kernel_clone->copy_process
+    user_mode_thread->kernel_clone->copy_process
+    ```
+
+    核心是 copy_process，两者都会调用
+
+    - dup_task_struct
+    - copy_thread
+
+- 进程生命周期管理：实现 `do_exit()`，释放资源
