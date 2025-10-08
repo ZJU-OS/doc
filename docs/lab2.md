@@ -314,6 +314,63 @@ free_pages(a);               // 释放之前分配的一页
 
     - 通过评测框架的 `lab2 task1` 测试。
 
+### 空闲链表缓存
+
+在上一节中，我们学习了如何实现**侵入式双向循环链表**。现在，我们将用它来实现一个内核中非常常见的机制——**对象缓存（object cache）**。
+
+在内核中，许多内核对象（如 `task_struct`、`inode`、`vm_area_struct` 等）会被**频繁创建和销毁**。如果动态创建都调用通用的内存分配器（如 Buddy System），会对性能产生较大影响，且容易引起内存碎片。
+
+为了解决这些问题，Linux 内核引入了 **Slab 分配器**：它为每种类型的对象维护一个缓存池，将整页内存切分为多个固定大小的对象块，用链表管理这些空闲对象。
+
+不过，Linux 的 Slab 实现更加复杂，感兴趣的同学可以阅读 [Slab Layer - Linux Kernel Development Second Edition](https://litux.nl/mirror/kerneldevelopment/0672327201/ch11lev1sec6.html)。在我们的教学实验中，只保留了它的**核心思想：用空闲链表（free list）预分配缓存对象。**
+
+- **`kmem_cache` 结构**：为每种类型的对象建立的缓存池
+
+    它记录了对象大小、对齐方式以及一个空闲链表：
+
+    ```c
+    struct kmem_cache {
+        const char *name;           // 缓存名称
+        size_t obj_size;            // 对象大小
+        size_t align;               // 对齐要求
+        struct list_head list;      // 链入全局缓存链表
+        struct list_head free_objects; // 空闲对象链表
+    };
+    ```
+
+    所有空闲的 `kmem_cache` 结构本身也组织为空闲列表 `free_caches`，由 `cache_init()` 在启动时初始化。
+
+- **创建缓存**：
+
+    当内核需要为某种类型创建对象缓存时：
+
+    ```c
+    struct kmem_cache *task_cache =
+        kmem_cache_create("task_struct", sizeof(struct task_struct), 8);
+    ```
+
+    系统会从 `free_caches` 中取出一个空闲条目，初始化为新的缓存描述符。
+
+- **分配与释放对象**：
+
+    当我们需要真正分配一个对象时：
+
+    ```c
+    struct task_struct *t = kmem_cache_alloc(task_cache);
+    ```
+
+    执行流程如下：
+
+    1. 检查 `task_cache` 的空闲链表是否为空；
+    2. 如果为空，从 Buddy System 申请一页新的物理内存；
+        - 按对象大小（外加链表节点头）将该页切分为多个小对象；
+        - 将这些对象逐个加入 `cachep->free_objects` 链表；
+    3. 从链表头取出一个对象返回；
+
+    `kmem_cache_free(t)` 释放对象时，只需将其重新挂回空闲链表。
+
+换句话说，Slab 缓存层（`kmem_cache`）相当于物理页分配器（`alloc_page()`）之上的对象粒度的再分配层。
+
 ## Part 2：进程数据结构
 
 ### 进程上下文与数据结构
@@ -363,7 +420,7 @@ free_pages(a);               // 释放之前分配的一页
     </figcaption>
 </figure>
 
-### 进程生命周期管理
+### 进程复制与加载
 
 Windows 使用 [`CreateProcess()`](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessa?redirectedfrom=MSDN) **创建进程**，这个接口庞大且僵化，还有好几个衍生版本：
 
@@ -397,7 +454,9 @@ BOOL CreateProcessA(
 - `switch_to()`：**切换**到另一个 Task
 - `do_exit()`：在 Task 结束时调用，**释放**相关资源
 
-### Task 2：进程创建与切换
+### Task 2：实现内核线程创建
+
+### 进程切换
 
 ### Task 3：进程退出
 
