@@ -81,7 +81,7 @@
 
 ### 更新镜像
 
-助教对镜像进行了一些重要更新。最新的镜像 Digest 可以在 [Container registry · OS / Tool · GitLab](https://git.zju.edu.cn/os/tool/container_registry/15) 查看。
+助教对镜像进行了一些重要更新。最新的镜像 Digest 可以在 [Container registry · ZJU CS Lab / Tool  · GitLab](https://git.zju.edu.cn/zju-cs-lab/tool/container_registry/17) 查看。
 
 请运行 `docker images --digests` 命令，确认你拉取的镜像 Digest 与 ZJU Git Registry 上的 `latest` **或**对应架构的 Digest 一致。
 
