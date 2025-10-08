@@ -151,6 +151,24 @@ git clone git@git.zju.edu.cn:os/<学期>/<教学班>/os-<你的学号>.git
 
     同学们的网络、SSH 和 Git 配置非常多样，导致的错误也非常多样。请根据具体错误信息进行排查。
 
+    ??? question "Failed ... via ... after ...ms"
+
+        - 现象：
+
+            ```console
+            Failed to connect to git.zju.edu.cn port 443 via 127.0.0.1 after 0 ms: Could not connect to server
+            ```
+
+        - 原因：
+
+            `via 127.0.0.1` 表明 Git 试图通过本地代理连接到 ZJU Git，但连接失败。请检查你的代理设置。
+
+            代理设置除了环境变量（如 `http_proxy`、`https_proxy`）外，还可能存在于 Git 配置中，运行 `git config --list` 检查是否有错误的配置。
+
+        - 解决办法：
+
+            删去相关错误配置，或者正确设置代理。
+
     ??? question "Connection timed out"
 
         - 现象：
