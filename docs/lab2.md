@@ -593,12 +593,16 @@ struct task_struct {
 - 在 `head.S` 将 `init_task` 的地址加载到 `tp` 寄存器中
 - 在 `proc.c` 设置 `init_task` 中设置合适字段（读到这里好像只能设置 `stack`）
 
+TODO
+
 ### Task 3：重构 Trap Handler
 
 请同学们根据本 Part 学习到的知识，重构 Lab1 的 Trap 处理代码，使其在第一个时钟中断处理完成后从自己切换到自己。要点如下：
 
 - 在中断处理完成后允许抢占
 - 在 `trap_handler()`
+
+TODO
 
 ## Part 3：进程生命周期
 
@@ -638,11 +642,19 @@ BOOL CreateProcessA(
 - `switch_to()`：**切换**到另一个 Task
 - `do_exit()`：在 Task 结束时调用，**释放**相关资源
 
-### Task 2：实现内核线程创建
+### Task 4：实现进程复制
 
-### 进程切换
+TODO
 
-### Task 3：进程退出
+### 进程退出与销毁
+
+TODO
+
+### Task 5：实现 `kthread()` 与进程退出
+
+`kthread()` 本质上是内核线程的一个 wrapper，目的就是为了帮所有内核线程结束时调用 `do_exit()`，而不用在所有函数末尾都加上 `do_exit()`。
+
+TODO
 
 ## Part 4：调度器
 
@@ -650,4 +662,8 @@ BOOL CreateProcessA(
 
 ### 优先级调度
 
-### Task 4：实现优先级调度
+TODO
+
+### Task 6：实现优先级调度
+
+TODO
