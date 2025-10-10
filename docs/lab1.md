@@ -1018,7 +1018,12 @@ sstatus sip sie stvec scause sepc stval
 
     断点打在内核第一条指令处，使用 QEMU Monitor 查看此时 CSR 寄存器的状态。解释**本节学习的**所有 M、S 模式 CSR 寄存器的值的含义。你会发现有些 S 模式寄存器没有在 QEMU 中展示，这并不是一个 Bug，请查看 [RISC-V sstatus register is missing in qemu console / gdb (#1260) · Issue · qemu-project/qemu](https://gitlab.com/qemu-project/qemu/-/issues/1260) 了解原因。
 
-    移除你 Task1 做的工作，进行调试。你发现进入 `start_kernel()` 后发生了什么异常？接下来程序会如何执行？为什么仍能到达 `printk()`？
+!!! example "动手做"
+
+    移除你在 Task1 做的工作，然后：
+
+    - 单步调试，你发现进入 `start_kernel()` 后发生了什么异常？接下来程序会如何执行？
+    - 在 `printk()` 入口处打断点，然后继续运行（continue），你会发现最终能够到达该断点处停下来，这是为什么？
 
     （探究结束后记得 Task1 的工作还原回去）
 
