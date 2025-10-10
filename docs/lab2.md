@@ -369,49 +369,215 @@ free_pages(a);               // 释放之前分配的一页
 
     阅读 `cache.h` 和 `cache.c`，理解空闲链表缓存的实现。
 
-    画一幅图，展示空闲链表缓存相关的数据结构及其布局。
+    画一幅图，展示相关的数据结构及其布局。
 
-## Part 2：进程生命周期管理
+## Part 2：进程切换与 Trap 处理
 
-### 进程上下文与数据结构
+本节我们探究实现用于切换进程上下文的汇编函数 `__switch_to()`，以及进程切换与 Trap 处理的相互影响。
 
-设想这样一个场景：Task1 正在 CPU 上运行 ，现在想将 Task2 调度上去，并在一段时间后再切换回来继续执行 Task1。应该怎么做？
+### 进程切换：非抢占情况
 
-其实 Lab1 中断处理已经实现了切换的功能：
+让我们从最简单的不考虑 Trap 的情况开始。这种情况下没有时钟中断，进程切换仅能依靠进程主动调用 `__switch_to()` 完成。
 
-- 发生中断时，上下文被 `_traps()` 保存到栈上，然后 `trap_handler()` 上去执行
-- 中断处理完毕后，从栈上恢复中断上下文
+设想这样一个场景：CPU 上正在运行 Task1，Task1 想调用 `__switch_to()` 切换到 Task2，然后 Task2 运行一段时间后再切换回来继续执行 Task1。`__switch_to()` 应该怎么设计？
 
-进程上下文与中断上下文类似，但有两点区别：
+Lab 1 Trap 处理的场景与此类似：可以将 `_traps()` 看作 `__switch_to()`，将 `trap_handler()` 看作 Task2。`trap_handler()` 执行完毕后，恢复 Trap 上下文就相当于 Task2 切换回 Task1。**但进程切换与 Trap 有一个重要区别：Trap 可以发生在任何时候**，因此 Trap 上下文是所有寄存器的状态；而 `__switch_to()` 是一个函数，**它的调用者一定是遵守 RISC-V 调用约定的**，因此不需要保存所有寄存器。示意图如下：
 
-- **需要保存的寄存器更少**，这是由下面两个条件保证：
+![switch.drawio](lab2.assets/switch.drawio)
 
-    - 稍后我们将实现 `__switch_to()`，**所有进程切换都将通过它实现**。这意味着再次调度时将从它原路返回。
-    - `__switch_to()` 的调用者都遵守 RISC-V 调用约定。
+理解了这些，我们容易设计出 `__switch_to()` 需要保存的进程上下文：
 
-    如下图所示：
+- `ra`：函数返回地址，我们需要它来返回到调用 `__switch_to()` 的位置
+- `sp`、`s0-s11`：调用约定中规定的 callee-saved 寄存器
 
-    ![switch.drawio](lab2.assets/switch.drawio)
+于是我们写出了进程上下文的数据结构：
 
-    于是进程上下文实现为下面的结构体：
+```c
+struct thread_struct {
+    uint64 ra;      // return address
+    uint64 sp;      // stack pointer
+    uint64 s[12];   // callee-saved registers
+};
+```
 
-    ```c
-    struct thread_struct {
-        uint64 ra;      // return address
-        uint64 sp;      // stack pointer
-        uint64 s[12];   // callee-saved registers
-    };
-    ```
+那么这个结构体应该存放在哪里呢？暂且按下不表，留到设计进程数据结构时再说。反正不能像 Trap 上下文那样放在栈 `sp` 上，否则会出现下面的情况：
 
-- **存放在独立的位置**：
-
-    中断处理时可以简单地复用当前栈 `sp` 来保存中断下文，但进程上下文之间不可以复用栈，否则会出现下面的情况：
-
+<figure markdown="span">
     ![no_stack.drawio](lab2.assets/no_stack.drawio)
+    <figcaption>
+    进程上下文不能放在栈上
+    </figcaption>
+</figure>
 
-    我们使用 Buddy System 为每个进程分配一页内存作为栈，并将 `thread_struct` 放在栈的另一端。
+于是我们实现了 `__switch_to()`：
 
-进程除了上下文还有 ID、状态、优先级等信息，它们将存储在 `struct task_struct` 中，在理论课上称之为 PCB（Process Control Block）。最终，这些数据结构的布局如下图所示：
+```asm title="第一版 __switch_to"
+    .globl __switch_to
+__switch_to:
+    la t0, /* 存放 Task1 上下文的地址 */
+    sd ra, 0(t0)          // 保存 Task1 上下文
+    sd sp, 8(t0)
+    sd s0, 16(t0)
+    ...
+
+    la t0, /* 存放 Task2 上下文的地址 */
+    ld ra, 0(t0)          // 恢复 Task2 上下文
+    ld sp, 8(t0)
+    ld s0, 16(t0)
+    ...
+    ret                    // 返回到 Task2
+```
+
+> 我们还能再换个角度：站在 Task1 的角度看，调用 `__switch_to()` **就像调用了一个空函数**。它遵守 RISC-V 调用约定，但什么都没做，原路返回了。
+
+但嗅觉敏锐的同学会发现问题：切换的目标 Task 2 的上下文从哪里来？在目前不考虑 Trap 的场景，只有两种可能：
+
+1. Task 2 之前运行过，但主动调用 `__switch_to()` 切换到别的进程。这种情况**保存过进程上下文**，能够顺利恢复。
+2. Task 2 是新创建的进程，尚未运行过。这种情况需要我们**设计一个初始的进程上下文**。
+
+初始进程上下文的设计想想也很简单：`ra` 指向进程的第一条指令就行了。如果要考虑向进程传递参数，可以利用 `s0-s11` 这些寄存器，然后设置一个蹦床函数（trampoline）来将其移动到 `a0-a7` 作为参数。事实上 Linux 就是这么实现 kthread 的初始上下文的，这个蹦床函数如下所示：
+
+```asm title="(Linux)arch/riscv/kernel/entry.S"
+SYM_CODE_START(ret_from_fork_kernel_asm)
+    call schedule_tail
+    move a0, s1 /* fn_arg */
+    move a1, s0 /* fn */
+    move a2, sp /* pt_regs */
+    call ret_from_fork_kernel
+    j ret_from_exception
+SYM_CODE_END(ret_from_fork_kernel_asm)
+```
+
+```c title="(Linux)arch/riscv/kernel/process.c"
+asmlinkage void ret_from_fork_kernel(void *fn_arg, int (*fn)(void *), struct pt_regs *regs)
+{
+    fn(fn_arg);
+
+    syscall_exit_to_user_mode(regs);
+}
+```
+
+从代码中可以看出，Linux 将 kthread 要运行的函数 `fn` 放在了初始进程上下文的 `s0` 寄存器中，将参数 `fn_arg` 放在了 `s1` 寄存器中。蹦床函数 `ret_from_fork_kernel_asm` 将它们分别移动到 `a1` 和 `a0`，然后调用 `ret_from_fork_kernel` 去具体执行。简化一下就是这样：
+
+```asm
+move a0, s1  // fn_arg
+move a1, s0  // fn
+call a1      // 调用 fn(fn_arg)
+```
+
+### 进程切换：抢占与 Trap 处理
+
+当我们希望实现[内核抢占（Kernel preemption）](https://kernelnewbies.org/FAQ/Preemption)，综合考虑时钟中断、系统调用等 Trap 情况时，进程切换就变得复杂起来。
+
+#### 内核中不能被抢占的部分
+
+首先，我们要明确内核中不能被抢占的部分。抢占一定是通过（时钟）中断触发的，此外没有其他途径，因此**不能抢占 = 禁用中断**。回忆 RISC-V 中断机制，进入 Trap 处理时，CPU 会自动执行下面的操作禁用中断：
+
+- `sstatus.SPIE = sstatus.SIE`
+- `sstatus.SIE = 0`
+
+除了 Trap 处理，暂时我们没有想到其他不能被抢占的部分。
+
+#### `_trap()` 中可以抢占的部分
+
+接下来思考：整个 `_traps()` 都不能被抢占吗？一定要等到它 `sret` 恢复 `SIE` 吗？
+
+- 不是的，Trap 的处理过程本质上是从 `xIP.i` 置 1、中断 Pending 开始，到该 Pending 位被置 0 为止。
+
+    以 Lab1 涉及的 Trap 情况为例：时钟中断的处理从 SEE 发现 `stimecmp > stime` 将 `STIP` 置 1 开始，到 `sbi_set_timer()` 将 `STIP` 置 0 结束。软件中断的处理从 `SSIP` 置 1 开始，到 `clear_ssip()` 将 `SSIP` 置 0 结束。
+
+- 一旦 Pending 位被置 0（Trap 处理完成），就可以打开 `sstatus.SIE` 处理新的 Trap，并不需要等到 `sret` 恢复 `SIE`。
+
+    如果 Trap 处理未完成，能打开 `sstatus.SIE` 吗？一旦打开，CPU 马上会再次触发该 Trap，再次进入 `_traps()`，重复循环下去导致栈 `sp` 溢出。
+
+    > 你是否想起这一情况与 Lab1 「动手做」探究的为什么能进入 `printk()` 类似。`printk()` 的情况比较幸运，`sp` 最初位于 OpenSBI 保护的地址，爆栈也没有破坏 OpenSBI 的代码和数据，最终走到了 `0x7???????` 之类的位置（并未探究这是什么地方，反正既不是内核也不是 OpenSBI）。但是当我们将 `sp` 设置为内核栈后，爆栈向下增长将直接破坏内核数据（data 段）和代码（text 段），导致系统崩溃。
+
+    在 Trap 处理完成后立刻打开 `SIE`，会导致 `_traps()` 的嵌套调用，最终它们能正确返回吗？
+
+    - 答案是肯定的，就如上一节所讨论的，设计 `_traps()` 时我们考虑到它会在任何时候被调用，因此 Trap 上下文包括了所有整数寄存器和 sepc。设刚刚处理完的中断为 A，新的中断为 B，B 在 A 处理完到 `sret` 的过程中触发，A 此时的状态将被保存到栈上，B 处理完毕后从栈上恢复 A 的状态，继续执行 A 的 `sret`，一切正常。
+    - 唯一的问题是 Trap 处理程序不能太长，否则开启 `SIE` 时总是又触发时钟中断 Trap，又会导致栈溢出。在 Linux 中，为了保证 Trap 的快速响应，仅会在 Trap 处理程序中做必要的工作，其余工作放入任务队列延后处理。
+
+    > 细心的同学可能会追问 `scause`、`stval` 等其他 CSR 寄存器为什么不视为 Trap 上下文。它们的作用就是辅助中断处理，而中断处理过程是不能抢占的，它们不会丢失。处理完了它们的值就不重要了，仅剩 `sepc` 用于恢复到中断前的位置。
+
+没有理解上面两段论述的同学，请仔细阅读 RISC-V 特权级手册 3.1.9. Machine Interrupt (mip and mie) Registers 部分，彻底理解中断触发和清除的机制。
+
+#### 时钟中断与进程切换时机
+
+最后，我们考虑时钟中断触发的进程切换（`__switch_to()`）应该在什么时候发生。显然它应该在 `SIE` 开启之后，Trap 上下文恢复之前。这一步可以用排除法来思考：
+
+- Trap 处理过程不能被打断，当然也不能 `__switch_to()`。
+- 如果在 `SIE` 开启之前切换，进程上下文的切换并不会修改 `sstatus`，新的进程就继续运行在中断禁用的状态，无法响应新的中断。
+- 如果在 Trap 上下文恢复过程中切换进程，就破坏 Trap 上下文了。
+- Trap 上下文恢复完成后，就没机会切换进程了。
+
+#### 进程切换是否能被抢占
+
+当我们这样安排 `__switch_to()` 的调用，它还能被抢占吗？请同学们思考这样的场景：
+
+- Task 1 主动调用 `__switch_to()` 切换到其他任务，我们把这次调用称为 A
+- 在这个 `__switch_to()` 过程中，时钟中断触发，进入 `_traps()` 处理
+- Trap 处理完成后，因为我们安排了时钟中断触发进程切换，于是又开始调用 `__switch_to()` 切换到其他任务，我们把这次调用称为 B
+
+请问 A 和 B 都能顺利完成吗？请你思考后再展开下面的答案。
+
+??? note "答案"
+
+    B 保存的上下文覆盖了 A 保存的上下文，A 再也没办法恢复了。示意图如下：
+
+    <figure markdown="span">
+        ![double_switch.drawio](lab2.assets/double_switch.drawio)
+        <figcaption>
+        抢占导致的双重进程切换
+        </figcaption>
+    </figure>
+
+    因此 `__switch_to()` 不能被抢占，进入 `__switch_to()` 时应当禁用中断。
+
+    > 如果整个 `_traps()` 不会触发 `__switch_to()`，那么 `__switch_to()` 应当是可以抢占的。但如果 `_traps()` 不触发进程切换，时钟中断还有意义吗？还能实现抢占吗？这一点留给有兴趣的同学思考，助教也没有深入思考过，欢迎讨论。
+
+!!! success "恭喜你"
+
+    至此，你已经彻底理解了**内核抢占的原理**（注意这与用户态抢占不同，仅用户态抢占的实现很容易）。Linux 在 2.6 版本才引入内核抢占。当其他班级还在 Linux 0.11 时，你已经领先了 12 年😉。
+
+!!! info "更多资料"
+
+    - [linux kernel - What happens to preempted interrupt handler? - Stack Overflow](https://stackoverflow.com/questions/11779397/what-happens-to-preempted-interrupt-handler)
+
+### 进程数据结构和内存布局
+
+理解完进程切换机制，我们终于可以开始设计进程的数据结构了。我们需要存储的信息包括：
+
+- 进程的上下文 `struct thread_struct`
+- 进程的栈 `void *stack`
+
+    如果不给每个进程独立的栈，则会产生下图所示的局面：
+
+    <figure markdown="span">
+        ![no_stack.drawio](lab2.assets/no_stack.drawio)
+        <figcaption>
+        多个进程复用同一栈会导致冲突
+        </figcaption>
+    </figure>
+
+    细心的同学会注意到，这样的设计也让不同进程的 Trap 上下文分离了，存储在各自的栈上。预告一下，在后续的 Lab 中我们会继续完善 Trap 处理，让它不再复用 `sp` 保存上下文。
+
+- 进程 ID、状态、优先级等调度相关的信息，供 Part 4 实现的调度器使用
+- 所有进程数据结构都组织成一个双向循环链表，方便调度器遍历
+
+于是我们设计出了 `struct task_struct` 结构体来保存这些信息：
+
+```c title="kernel/arch/riscv/include/proc.h"
+struct task_struct {
+    uint64_t pid;
+    uint64_t state;
+
+    struct sched_entity se;
+    struct thread_struct thread;
+    struct list_head list;
+};
+```
+
+内存布局如下所示：
 
 <figure markdown="span">
     ![task_struct.drawio](lab2.assets/task_struct.drawio)
@@ -419,6 +585,24 @@ free_pages(a);               // 释放之前分配的一页
     进程数据结构示意图
     </figcaption>
 </figure>
+
+此外，我们令 `tp`（RISC-V 调用约定称为 Thread Pointer）寄存器始终指向当前 CPU 上运行的进程的 `task_struct` 结构体，这样内核就能轻松地通过 `tp` 访问当前进程的信息。
+
+### Task 2：设置初始进程
+
+- 在 `head.S` 将 `init_task` 的地址加载到 `tp` 寄存器中
+- 在 `proc.c` 设置 `init_task` 中设置合适字段（读到这里好像只能设置 `stack`）
+
+### Task 3：重构 Trap Handler
+
+请同学们根据本 Part 学习到的知识，重构 Lab1 的 Trap 处理代码，使其在第一个时钟中断处理完成后从自己切换到自己。要点如下：
+
+- 在中断处理完成后允许抢占
+- 在 `trap_handler()`
+
+## Part 3：进程生命周期
+
+本节我们实现 kthread 的创建、运行和退出，完成进程的生命周期管理。
 
 ### 进程复制与加载
 
@@ -460,7 +644,9 @@ BOOL CreateProcessA(
 
 ### Task 3：进程退出
 
-## Part 3：调度器
+## Part 4：调度器
+
+到本节，我们终于可以把「进程切换（switch）」这个词升级为「调度（schedule）」了，因为我们有了调度算法，由它替我们选择要切换的进程。
 
 ### 优先级调度
 
