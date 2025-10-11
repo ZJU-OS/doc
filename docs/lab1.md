@@ -1022,8 +1022,8 @@ sstatus sip sie stvec scause sepc stval
 
     移除你在 Task1 做的工作，然后：
 
-    - 单步调试，你发现进入 `start_kernel()` 后发生了什么异常？接下来程序会如何执行？
-    - 在 `printk()` 入口处打断点，然后继续运行（continue），你会发现最终能够到达该断点处停下来，这是为什么？
+    - 在 `_start()` 打断点，然后单步调试，进入 `start_kernel()` 后程序能顺利跳转到 `printk()` 吗？如果不顺利，检查合适的 CSR 寄存器，看看发生了什么异常？
+    - 删掉在 `_start()` 打的断点，在 `printk()` 入口处打断点，然后继续运行（continue），你会发现最终能够到达 `printk()` 停下来，这是为什么？
 
     （探究结束后记得 Task1 的工作还原回去）
 
