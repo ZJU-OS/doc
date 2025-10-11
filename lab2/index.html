@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="浙江大学操作系统课程实验指导" name="description"/>
+<meta content="浙江大学计算机科学与技术学院" name="author"/>
+<link href="https://zju-os.github.io/doc/lab2/" rel="canonical"/>
+<link href="../lab1/" rel="prev"/>
+<link href="../z1-spike/" rel="next"/>
+<link href="../assets/zjueagle.png" rel="icon"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.6.21" name="generator"/>
+<title>Lab 2：单核内核线程调度 - ZJU OS</title>
+<link href="../assets/stylesheets/main.2a3383ac.min.css" rel="stylesheet"/>
+<link href="../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<link href="../css/timeago.css" rel="stylesheet"/>
+<link href="../stylesheets/fonts.css" rel="stylesheet"/>
+<link href="../stylesheets/counter.css" rel="stylesheet"/>
+<link href="../stylesheets/neoteroi-v1.1.2.css" rel="stylesheet"/>
+<script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+<link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"/><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+<body data-md-color-accent="indigo" data-md-color-primary="indigo" data-md-color-scheme="default" dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#lab-2单核内核线程调度">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header md-header--shadow" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="ZJU OS" class="md-header__button md-logo" data-md-component="logo" href=".." title="ZJU OS">
+<img alt="logo" src="../assets/zjueagle_white.svg"/>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            ZJU OS
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              Lab 2：单核内核线程调度
+            
+          </span>
+</div>
+</div>
+</div>
+<form class="md-header__option" data-md-component="palette">
+<input aria-label="Switch to dark mode" class="md-option" data-md-color-accent="indigo" data-md-color-media="(prefers-color-scheme: light)" data-md-color-primary="indigo" data-md-color-scheme="default" id="__palette_0" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_1" hidden="" title="Switch to dark mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+</label>
+<input aria-label="Switch to light mode" class="md-option" data-md-color-accent="indigo" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-primary="indigo" data-md-color-scheme="slate" id="__palette_1" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_0" hidden="" title="Switch to light mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+</label>
+</form>
+<script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<a aria-label="Share" class="md-search__icon md-icon" data-clipboard="" data-clipboard-text="" data-md-component="search-share" href="javascript:void(0)" tabindex="-1" title="Share">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
+</a>
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+<div class="md-search__suggest" data-md-component="search-suggest"></div>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="" tabindex="0">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="md-header__source">
+<a class="md-source" data-md-component="source" href="https://github.com/ZJU-OS/doc" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    ZJU-OS/doc
+  </div>
+</a>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="ZJU OS" class="md-nav__button md-logo" data-md-component="logo" href=".." title="ZJU OS">
+<img alt="logo" src="../assets/zjueagle_white.svg"/>
+</a>
+    ZJU OS
+  </label>
+<div class="md-nav__source">
+<a class="md-source" data-md-component="source" href="https://github.com/ZJU-OS/doc" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    ZJU-OS/doc
+  </div>
+</a>
+</div>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="..">
+<span class="md-ellipsis">
+    首页
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+<span class="md-ellipsis">
+    实验文档
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="true" aria-labelledby="__nav_2_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_2">
+<span class="md-nav__icon md-icon"></span>
+            实验文档
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../manual/">
+<span class="md-ellipsis">
+    实验流程及工具讲解
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../lab0/">
+<span class="md-ellipsis">
+    Lab 0: Linux 内核调试
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../lab1/">
+<span class="md-ellipsis">
+    Lab 1：内核启动与时钟中断
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+<span class="md-ellipsis">
+    Lab 2：单核内核线程调度
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="./">
+<span class="md-ellipsis">
+    Lab 2：单核内核线程调度
+    
+  </span>
+</a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#实验简介">
+<span class="md-ellipsis">
+      实验简介
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-0合并代码">
+<span class="md-ellipsis">
+      Part 0：合并代码
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-1内存管理">
+<span class="md-ellipsis">
+      Part 1：内存管理
+    </span>
+</a>
+<nav aria-label="Part 1：内存管理" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#物理内存空间">
+<span class="md-ellipsis">
+      物理内存空间
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#buddy-system">
+<span class="md-ellipsis">
+      Buddy System
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#侵入式双向循环链表">
+<span class="md-ellipsis">
+      侵入式双向循环链表
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-1实现双向链表">
+<span class="md-ellipsis">
+      Task 1：实现双向链表
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#空闲链表缓存">
+<span class="md-ellipsis">
+      空闲链表缓存
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-2进程切换与-trap-处理">
+<span class="md-ellipsis">
+      Part 2：进程切换与 Trap 处理
+    </span>
+</a>
+<nav aria-label="Part 2：进程切换与 Trap 处理" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程切换非抢占情况">
+<span class="md-ellipsis">
+      进程切换：非抢占情况
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程切换抢占与-trap-处理">
+<span class="md-ellipsis">
+      进程切换：抢占与 Trap 处理
+    </span>
+</a>
+<nav aria-label="进程切换：抢占与 Trap 处理" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#内核中不能被抢占的部分">
+<span class="md-ellipsis">
+      内核中不能被抢占的部分
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#_trap-中可以抢占的部分">
+<span class="md-ellipsis">
+      _trap() 中可以抢占的部分
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#时钟中断与进程切换时机">
+<span class="md-ellipsis">
+      时钟中断与进程切换时机
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程切换是否能被抢占">
+<span class="md-ellipsis">
+      进程切换是否能被抢占
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程数据结构和内存布局">
+<span class="md-ellipsis">
+      进程数据结构和内存布局
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-2设置初始进程">
+<span class="md-ellipsis">
+      Task 2：设置初始进程
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-3重构-trap-handler">
+<span class="md-ellipsis">
+      Task 3：重构 Trap Handler
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-3进程生命周期">
+<span class="md-ellipsis">
+      Part 3：进程生命周期
+    </span>
+</a>
+<nav aria-label="Part 3：进程生命周期" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程复制与加载">
+<span class="md-ellipsis">
+      进程复制与加载
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-4实现进程复制">
+<span class="md-ellipsis">
+      Task 4：实现进程复制
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程退出与销毁">
+<span class="md-ellipsis">
+      进程退出与销毁
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-5实现-kthread-与进程退出">
+<span class="md-ellipsis">
+      Task 5：实现 kthread() 与进程退出
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-4调度器">
+<span class="md-ellipsis">
+      Part 4：调度器
+    </span>
+</a>
+<nav aria-label="Part 4：调度器" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#优先级调度">
+<span class="md-ellipsis">
+      优先级调度
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-6实现优先级调度">
+<span class="md-ellipsis">
+      Task 6：实现优先级调度
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../z1-spike/">
+<span class="md-ellipsis">
+    附录 1：Spike 工具链
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_3" type="checkbox"/>
+<label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+<span class="md-ellipsis">
+    RISC-V 规范
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_3_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_3">
+<span class="md-nav__icon md-icon"></span>
+            RISC-V 规范
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-privileged.html">
+<span class="md-ellipsis">
+    特权级规范
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-unprivileged.html">
+<span class="md-ellipsis">
+    非特权级规范
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-abi.pdf">
+<span class="md-ellipsis">
+    ELF ABI 规范
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-sbi.pdf">
+<span class="md-ellipsis">
+    SBI 规范
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-asm.pdf">
+<span class="md-ellipsis">
+    汇编规范
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://riscv-programming.org/">
+<span class="md-ellipsis">
+    汇编教程
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_4" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+<span class="md-ellipsis">
+    工具文档
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_4_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_4">
+<span class="md-nav__icon md-icon"></span>
+            工具文档
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://www.qemu.org/docs/master/index.html">
+<span class="md-ellipsis">
+    QEMU
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://sourceware.org/gdb/current/onlinedocs/gdb">
+<span class="md-ellipsis">
+    GDB
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://gcc.gnu.org/onlinedocs/">
+<span class="md-ellipsis">
+    GCC
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://sourceware.org/binutils/docs/as">
+<span class="md-ellipsis">
+    as
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://sourceware.org/binutils/docs/ld">
+<span class="md-ellipsis">
+    ld
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://sourceware.org/binutils/docs/binutils">
+<span class="md-ellipsis">
+    binutils
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_5" type="checkbox"/>
+<label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+<span class="md-ellipsis">
+    源码仓库
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_5_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_5">
+<span class="md-nav__icon md-icon"></span>
+            源码仓库
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://github.com/torvalds/linux">
+<span class="md-ellipsis">
+    Linux (GitHub)
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://elixir.bootlin.com/">
+<span class="md-ellipsis">
+    Linux (Cross Referencer)
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://github.com/riscv-software-src/opensbi">
+<span class="md-ellipsis">
+    OpenSBI
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://github.com/qemu/qemu/">
+<span class="md-ellipsis">
+    QEMU
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_6" type="checkbox"/>
+<label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+<span class="md-ellipsis">
+    助教文档
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_6_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_6">
+<span class="md-nav__icon md-icon"></span>
+            助教文档
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/autograder/">
+<span class="md-ellipsis">
+    评测框架
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/dev/">
+<span class="md-ellipsis">
+    助教开发手册
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/tool/">
+<span class="md-ellipsis">
+    助教工具手册
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#实验简介">
+<span class="md-ellipsis">
+      实验简介
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-0合并代码">
+<span class="md-ellipsis">
+      Part 0：合并代码
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-1内存管理">
+<span class="md-ellipsis">
+      Part 1：内存管理
+    </span>
+</a>
+<nav aria-label="Part 1：内存管理" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#物理内存空间">
+<span class="md-ellipsis">
+      物理内存空间
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#buddy-system">
+<span class="md-ellipsis">
+      Buddy System
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#侵入式双向循环链表">
+<span class="md-ellipsis">
+      侵入式双向循环链表
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-1实现双向链表">
+<span class="md-ellipsis">
+      Task 1：实现双向链表
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#空闲链表缓存">
+<span class="md-ellipsis">
+      空闲链表缓存
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-2进程切换与-trap-处理">
+<span class="md-ellipsis">
+      Part 2：进程切换与 Trap 处理
+    </span>
+</a>
+<nav aria-label="Part 2：进程切换与 Trap 处理" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程切换非抢占情况">
+<span class="md-ellipsis">
+      进程切换：非抢占情况
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程切换抢占与-trap-处理">
+<span class="md-ellipsis">
+      进程切换：抢占与 Trap 处理
+    </span>
+</a>
+<nav aria-label="进程切换：抢占与 Trap 处理" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#内核中不能被抢占的部分">
+<span class="md-ellipsis">
+      内核中不能被抢占的部分
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#_trap-中可以抢占的部分">
+<span class="md-ellipsis">
+      _trap() 中可以抢占的部分
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#时钟中断与进程切换时机">
+<span class="md-ellipsis">
+      时钟中断与进程切换时机
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程切换是否能被抢占">
+<span class="md-ellipsis">
+      进程切换是否能被抢占
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程数据结构和内存布局">
+<span class="md-ellipsis">
+      进程数据结构和内存布局
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-2设置初始进程">
+<span class="md-ellipsis">
+      Task 2：设置初始进程
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-3重构-trap-handler">
+<span class="md-ellipsis">
+      Task 3：重构 Trap Handler
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-3进程生命周期">
+<span class="md-ellipsis">
+      Part 3：进程生命周期
+    </span>
+</a>
+<nav aria-label="Part 3：进程生命周期" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程复制与加载">
+<span class="md-ellipsis">
+      进程复制与加载
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-4实现进程复制">
+<span class="md-ellipsis">
+      Task 4：实现进程复制
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程退出与销毁">
+<span class="md-ellipsis">
+      进程退出与销毁
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-5实现-kthread-与进程退出">
+<span class="md-ellipsis">
+      Task 5：实现 kthread() 与进程退出
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-4调度器">
+<span class="md-ellipsis">
+      Part 4：调度器
+    </span>
+</a>
+<nav aria-label="Part 4：调度器" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#优先级调度">
+<span class="md-ellipsis">
+      优先级调度
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-6实现优先级调度">
+<span class="md-ellipsis">
+      Task 6：实现优先级调度
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<a class="md-content__button md-icon" href="https://github.com/ZJU-OS/doc/blob/main/docs/lab2.md" rel="edit" title="Edit this page">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
+</a>
+<h1 id="lab-2单核内核线程调度">Lab 2：单核内核线程调度<a class="headerlink" href="#lab-2单核内核线程调度" title="Permanent link">¶</a></h1><p style="color:#bdbdbd"><i>Estimated time to read: 9 minutes</i></p>
+
+<div class="admonition danger">
+<p class="admonition-title">DDL</p>
+<p>本实验文档正在编写中，尚未正式发布。</p>
+</div>
+<h2 id="实验简介">实验简介<a class="headerlink" href="#实验简介" title="Permanent link">¶</a></h2>
+<div class="admonition tip">
+<p class="admonition-title">术语：进程、线程与 Task（任务）</p>
+<p>在理论课上，我们明确定义了进程和线程。而在工程中，实现并不会那么死板。请你阅读下面的文段，了解在 Linux 和本实验的语境中这些术语的含义：</p>
+<blockquote>
+<p>As you will see later, Linux has a unique implementation of threads: <strong>It does not differentiate between threads and processes.</strong>To Linux, a thread is just a special kind of process.</p>
+<p>Another name for <strong>a process is a task</strong>. The Linux kernel internally refers to processes as tasks. In this book, <strong>I use the terms interchangeably</strong>, although when I say task I am generally referring to a process from the kernel’s point of view.</p>
+</blockquote>
+<p>上面的文段来自 <a href="https://www.oreilly.com/library/view/linux-kernel-development/9780768696974/">Linux Kernel Development</a>，一本经典的 Linux 内核开发入门书籍。</p>
+<p>具体来说：</p>
+<ul>
+<li>Linux 系统调用 <code>clone()</code> 可以创建新的 Task，传入的参数将决定新 Task 具有怎样的性质：<ul>
+<li><code>CLONE_FILES | CLONE_VM | CLONE_FS</code>：表示新 Task 与父 Task 共享文件系统、内存空间和文件描述符表，这样的 Task 符合我们对<strong>线程（Thread）</strong>的定义。</li>
+<li>不使用上面的参数：表示新 Task 拥有独立的文件系统、内存空间和文件描述符表，这样的 Task 符合我们对<strong>进程（Process）</strong>的定义。</li>
+</ul>
+</li>
+<li>在调度器看来，只有 Task，没有进程和线程的区别。</li>
+</ul>
+<p>那为什么本实验叫做「内核线程」不叫「内核任务」呢？因为历史上一直把运行在内核态的 Task 叫做<strong>内核线程（Kernel Thread）</strong>。</p>
+<p>现在你已经理解在实验中这些术语的区分并没有那么严格，接下来阅读实验内容时就不用扣字眼了😉。</p>
+</div>
+<p>在 Lab1 中，我们已经让内核能够启动并处理时钟中断。但是如果没有进一步的机制，操作系统仍然只能在 CPU 上执行单个任务（即 <code>start_kernel</code> 函数）。本次实验的目标是：<strong>实现单核内核线程调度，让多个任务能够在一个 CPU 上通过时间复用的方式交替运行。</strong></p>
+<p>要完成这一目标，我们需要逐步解决以下几个问题：</p>
+<ol>
+<li>
+<p><strong>如何在内核中管理物理内存？</strong>（理论课第八章内容 - 主存）</p>
+<p>在后续实验里，我们要为进程、线程分配栈和控制块。这些数据结构必须存放在内存里。但是操作系统不能直接调用 <code>malloc</code> 等标准库函数，那么问题来了：</p>
+<ul>
+<li><strong>操作系统如何在裸机环境下动态分配内存？</strong></li>
+<li><strong>为什么我们不能直接线性地“挖一块”内存？碎片化如何解决？</strong></li>
+</ul>
+<p>实验框架提供了一个简化版 <strong>Buddy System 物理内存分配器</strong>。同学们需要理解它的基本原理，并学会通过接口分配和释放物理页，为后续任务管理打下基础。</p>
+<p>Buddy System 仅能实现物理页分配，<strong>无法满足对象粒度的分配需求</strong>。因此，我们还需要实现一个<strong>空闲链表缓存（free list cache）</strong>，用于高效地分配内核对象。</p>
+</li>
+<li>
+<p><strong>如何管理进程？</strong>（理论课第三章内容 - 进程）</p>
+<p>任务交替运行的核心在于<strong>上下文切换（context switch）</strong>。要让任务 A 运行完一段时间后交出 CPU，再切换到任务 B，必须保存 A 的上下文，并在之后恢复它。</p>
+<ul>
+<li><strong>上下文具体包含哪些内容？</strong></li>
+<li><strong>RISC-V 调用约定和中断机制如何影响上下文切换？</strong></li>
+</ul>
+<p>这一步，我们需要为每个 Task 设计一个数据结构（即理论课介绍的 PCB，Process Control Block），用于保存任务的上下文和其他属性。</p>
+<p>此外，我们还需要实现进程的创建和销毁机制，从而让内核能够动态地管理多个任务。</p>
+</li>
+<li>
+<p><strong>调度器应该如何工作？</strong>（理论课第五章内容 - 调度算法）</p>
+<p>有了内存和进程管理，接下来就能够实现调度器。调度器的任务是：</p>
+<ol>
+<li>根据调度算法选择下一个要运行的任务</li>
+<li>调用上下文切换代码，将 CPU 控制权交给它</li>
+</ol>
+<p>本次实验中，我们将先实现一个简单的<strong>优先级调度器</strong>。之后，同学们可以在此基础上扩展更复杂的调度算法（如多级反馈队列）。</p>
+</li>
+</ol>
+<h2 id="part-0合并代码">Part 0：合并代码<a class="headerlink" href="#part-0合并代码" title="Permanent link">¶</a></h2>
+<p>现在你位于 <code>lab1</code> 分支。你需要创建 <code>lab2</code> 分支，合并上游的代码：</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>lab2
+</span><span id="__span-0-2"><a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a>git<span class="w"> </span>fetch<span class="w"> </span>upstream
+</span><span id="__span-0-3"><a href="#__codelineno-0-3" id="__codelineno-0-3" name="__codelineno-0-3"></a>git<span class="w"> </span>merge<span class="w"> </span>upstream/lab2
+</span></code></pre></div>
+<p>合并说明：</p>
+<ul>
+<li>新增内存管理代码，见 <code>mm.h</code></li>
+<li>新增进程管理相关实验代码，见 <code>proc.h</code></li>
+</ul>
+<h2 id="part-1内存管理">Part 1：内存管理<a class="headerlink" href="#part-1内存管理" title="Permanent link">¶</a></h2>
+<h3 id="物理内存空间">物理内存空间<a class="headerlink" href="#物理内存空间" title="Permanent link">¶</a></h3>
+<p>在学习如何管理物理内存之前，我们需要先弄清楚<strong>物理内存空间</strong>的概念。所谓内存空间，就是 <strong>CPU 可以直接寻址的地址范围</strong>，其大小通常由寄存器的位数决定。</p>
+<ul>
+<li>例如，在 <strong>RV32 架构</strong>中，通用寄存器宽度为 32 位。当执行指令 <code>ld x1, 0(x2)</code> 时，<code>x2</code> 中存放的就是一个内存地址，它决定了 <code>x1</code> 要从哪里取数据。由于寄存器只有 32 位，最多能寻址 <span class="arithmatex">\(2^{32}\)</span> 个字节，因此 RV32 的地址空间大小为 <span class="arithmatex">\(2^{32} \text{B} = 4 \text{GB}\)</span>。</li>
+<li>而在 <strong>RV64 架构</strong>下，寄存器宽度扩展为 64 位，对应的寻址空间理论上可以达到 <span class="arithmatex">\(2^{64} \text{B} = 2^{34} \text{GB} = 16 \text{EB}\)</span>，远超当前实际硬件所能提供的内存容量。</li>
+</ul>
+<p>在真实机器上，CPU 不可能真的拥有 16 EB 的内存。<strong>系统只会映射其中的一小部分地址作为物理内存，其余地址范围通常保留给外设、固件、I/O 总线等。</strong>在 Lab0 中，我们已经使用过 <code>info mtree</code> 命令来查看 QEMU 模拟的内存映射，接下来基于该结果进行具体分析：</p>
+<ul>
+<li>
+<p><strong>RV64 架构的地址空间</strong>：<code>0000000000000000</code> 到 <code>ffffffffffffffff</code>，总共 16 EB。</p>
+<div class="language-text highlight"><span class="filename">(qemu) info mtree</span><pre><span></span><code><span id="__span-1-1"><a href="#__codelineno-1-1" id="__codelineno-1-1" name="__codelineno-1-1"></a>address-space: cpu-memory-0
+</span><span id="__span-1-2"><a href="#__codelineno-1-2" id="__codelineno-1-2" name="__codelineno-1-2"></a>address-space: memory
+</span><span id="__span-1-3"><a href="#__codelineno-1-3" id="__codelineno-1-3" name="__codelineno-1-3"></a>  0000000000000000-ffffffffffffffff (prio 0, i/o): system
+</span><span id="__span-1-4"><a href="#__codelineno-1-4" id="__codelineno-1-4" name="__codelineno-1-4"></a>    ...
+</span></code></pre></div>
+</li>
+<li>
+<p><strong>地址空间的具体划分</strong>：</p>
+<ul>
+<li>
+<p>某些区域存放固件或测试寄存器（如 <code>mrom</code>, <code>sifive.test</code>）</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a>0000000000001000-000000000000ffff (prio 0, rom): riscv_virt_board.mrom
+</span><span id="__span-2-2"><a href="#__codelineno-2-2" id="__codelineno-2-2" name="__codelineno-2-2"></a>0000000000100000-0000000000100fff (prio 0, i/o): riscv.sifive.test
+</span></code></pre></div>
+</li>
+<li>
+<p>某些区域对应定时器、PLIC（中断控制器）、串口、virtio 设备等外设</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a href="#__codelineno-3-1" id="__codelineno-3-1" name="__codelineno-3-1"></a>000000000c000000-000000000c5fffff (prio 0, i/o): riscv.sifive.plic
+</span><span id="__span-3-2"><a href="#__codelineno-3-2" id="__codelineno-3-2" name="__codelineno-3-2"></a>0000000010000000-0000000010000007 (prio 0, i/o): serial
+</span><span id="__span-3-3"><a href="#__codelineno-3-3" id="__codelineno-3-3" name="__codelineno-3-3"></a>0000000000101000-0000000000101023 (prio 0, i/o): goldfish_rtc
+</span></code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">要点：总线与内存映射 I/O</p>
+<p>在计科的硬件课程中，大家可能还没有系统学习过<strong>总线 (Bus)</strong> 的概念（图灵班的计算机系统贯通课已经在实验中加入了 AXI 总线）。在这里我们只需要掌握最基本的理解：</p>
+<ul>
+<li><strong>总线是一种统一的通信通道</strong>，CPU、内存、外设都通过总线交互数据。</li>
+<li>在现代计算机中，CPU 把一部分地址空间“划给”外设。当我们用普通的 <code>load/store</code> 指令访问这些地址时，看似在访问内存，实际上是通过总线把数据读写到某个外设寄存器上。</li>
+<li>举个例子：当我们向串口地址空间写入一个字节，硬件就会把它输出到终端；当我们读取 RTC（实时时钟）的寄存器，就能获得当前时间。</li>
+</ul>
+<p>这就是所谓的 <strong>Memory-Mapped I/O（MMIO）</strong>：通过“内存地址空间”来操纵外设。</p>
+</div>
+</li>
+<li>
+<p>最关键的是，一部分地址范围被映射为 <strong>RAM</strong>，即实验中我们真正可以使用的物理内存。例如：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a href="#__codelineno-4-1" id="__codelineno-4-1" name="__codelineno-4-1"></a>0000000080000000-0000000087ffffff (prio 0, ram): riscv_virt_board.ram
+</span></code></pre></div>
+<p>这表示从 <code>0x80000000</code> 开始，有一段连续的物理内存区域被作为可用 RAM 提供给操作系统。</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>并且，在前述的实验中，我们也具体了解到 <code>0x80000000-0x87ffffff</code> 这 128MB 的物理内存的划分：</p>
+<ul>
+<li><code>0x80000000-0x801fffff</code>：OpenSBI 占用</li>
+<li><code>0x80200000-_ekernel</code>：内核占用</li>
+<li><code>_ekernel-0x87ffffff</code>：可以自由使用的物理内存</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">要点：物理内存空间</p>
+<ul>
+<li>RV64 的理论地址空间非常大，但实际可用的物理内存只是其中一小块。</li>
+<li>QEMU 会在 <code>0x80000000</code> 起映射出一段 RAM，这是我们在实验中管理和使用的主要物理内存区域。</li>
+<li>其他区域虽然也是“地址”，但对应的是固件或外设。CPU 通过读写这些地址，与硬件进行交互。</li>
+</ul>
+</div>
+<h3 id="buddy-system">Buddy System<a class="headerlink" href="#buddy-system" title="Permanent link">¶</a></h3>
+<p>在理解了“我们有哪些物理内存”之后，下一步要思考的就是：<strong>如何高效地管理这段有限的物理内存</strong>。如果没有一套规则来分配和回收内存，那么很快就会出现“要么分配不出去，要么浪费大片空间”的问题。</p>
+<p>最常见的一个困难是 <strong>内存碎片</strong>：</p>
+<ul>
+<li>如果我们每次都按照请求大小直接分配，随着不断申请和释放，内存会被切得零零碎碎，即使总剩余空间很多，也可能无法满足一个大块内存的请求。</li>
+<li>我们需要一种机制来让内存块尽量保持“规整”，方便回收和再次利用。</li>
+</ul>
+<p><strong>Buddy System</strong> 就是这样一种经典方案：</p>
+<ol>
+<li>
+<p><strong>内存划分规则</strong></p>
+<ul>
+<li>假设我们有一段连续的物理内存，总大小是 <span class="arithmatex">\(2^n\)</span> 页。</li>
+<li>系统按 <strong>2 的幂次方大小</strong>划分内存块：1 页、2 页、4 页……直到 <span class="arithmatex">\(2^n\)</span> 页。</li>
+<li>每次分配时，如果需要的大小不是 2 的幂，会自动向上取整。</li>
+</ul>
+</li>
+<li>
+<p><strong>分配过程</strong></p>
+<ul>
+<li>找到能满足需求的最小块，如果没有，就从更大的块中“劈开一半”。</li>
+<li>每劈一次，就会得到一对“伙伴块”（buddy）。</li>
+</ul>
+</li>
+<li>
+<p><strong>释放过程</strong></p>
+<ul>
+<li>当一个块被释放后，系统会检查它的伙伴是否空闲。</li>
+<li>如果伙伴也空闲，就将两者合并成更大的块，并继续向上合并，直到不能合并为止。</li>
+<li>这样可以减少碎片，使得大块空间能重新腾出来。</li>
+</ul>
+</li>
+</ol>
+<p>在实验框架里，我们已经为大家实现了一个简化版的 <strong>Buddy System 物理内存分配器</strong>（位于 <code>mm.c</code> / <code>mm.h</code>）。你无需从零开始写算法，只需要掌握它的使用方式。</p>
+<p>常用接口如下：</p>
+<ul>
+<li>
+<p><strong>初始化</strong></p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-5-1"><a href="#__codelineno-5-1" id="__codelineno-5-1" name="__codelineno-5-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">mm_init</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+</span></code></pre></div>
+<p>在系统启动时调用，完成 buddy allocator 的初始化工作。</p>
+</li>
+<li>
+<p><strong>分配物理页</strong></p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-6-1"><a href="#__codelineno-6-1" id="__codelineno-6-1" name="__codelineno-6-1"></a><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="nf">alloc_page</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span><span class="w">          </span><span class="c1">// 分配 1 页</span>
+</span><span id="__span-6-2"><a href="#__codelineno-6-2" id="__codelineno-6-2" name="__codelineno-6-2"></a><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="nf">alloc_pages</span><span class="p">(</span><span class="kt">size_t</span><span class="w"> </span><span class="n">n</span><span class="p">);</span><span class="w">     </span><span class="c1">// 分配 n 页（n 向上取整为 2 的幂）</span>
+</span></code></pre></div>
+<p>返回值是一个 <strong>物理地址</strong>，指向分配到的页首地址。</p>
+</li>
+<li>
+<p><strong>释放物理页</strong></p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-7-1"><a href="#__codelineno-7-1" id="__codelineno-7-1" name="__codelineno-7-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">free_pages</span><span class="p">(</span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">pa</span><span class="p">);</span>
+</span></code></pre></div>
+<p>参数 <code>pa</code> 是一个物理地址，必须是 <code>alloc_page(s)</code> 的返回值，否则可能破坏 buddy 系统的状态。</p>
+</li>
+</ul>
+<p>在实验里，你只需要通过这些接口申请或释放物理页，而不必关心内部具体是如何实现的。</p>
+<p>例如：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-8-1"><a href="#__codelineno-8-1" id="__codelineno-8-1" name="__codelineno-8-1"></a><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">alloc_page</span><span class="p">();</span><span class="w">      </span><span class="c1">// 分配一页</span>
+</span><span id="__span-8-2"><a href="#__codelineno-8-2" id="__codelineno-8-2" name="__codelineno-8-2"></a><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">alloc_pages</span><span class="p">(</span><span class="mi">8</span><span class="p">);</span><span class="w">    </span><span class="c1">// 分配 8 页</span>
+</span><span id="__span-8-3"><a href="#__codelineno-8-3" id="__codelineno-8-3" name="__codelineno-8-3"></a><span class="n">free_pages</span><span class="p">(</span><span class="n">a</span><span class="p">);</span><span class="w">               </span><span class="c1">// 释放之前分配的一页</span>
+</span></code></pre></div>
+<p>通过这一套接口，我们的内核就能在后续实验（如进程调度、内存管理、虚拟内存）中，稳定地使用物理页作为底层资源。</p>
+<h3 id="侵入式双向循环链表">侵入式双向循环链表<a class="headerlink" href="#侵入式双向循环链表" title="Permanent link">¶</a></h3>
+<p>在内核中我们经常需要组织各种动态对象，例如空闲页链表、就绪任务队列、等待队列等。Linux 内核实现了<strong>侵入式双向循环链表（intrusive doubly-linked list）</strong>来高效地管理这些对象。</p>
+<ul>
+<li>
+<p><strong>侵入式与泛型接口</strong>：</p>
+<p>普通链表实现<strong>将数据嵌入在链表中</strong>，而侵入式实现<strong>将链表嵌入在数据中</strong>。前者<strong>每一种数据类型都需要单独定义链表节点结构体和相关的函数</strong>，导致代码重复且不易维护。后者<strong>不同类型可以复用同一套接口</strong>，这就是泛型（generic）。</p>
+<div class="grid cards" markdown="">
+<div class="language-c highlight"><span class="filename">侵入式链表</span><pre><span></span><code><span id="__span-9-1"><a href="#__codelineno-9-1" id="__codelineno-9-1" name="__codelineno-9-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-9-2"><a href="#__codelineno-9-2" id="__codelineno-9-2" name="__codelineno-9-2"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">next</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="p">;</span>
+</span><span id="__span-9-3"><a href="#__codelineno-9-3" id="__codelineno-9-3" name="__codelineno-9-3"></a><span class="p">};</span>
+</span><span id="__span-9-4"><a href="#__codelineno-9-4" id="__codelineno-9-4" name="__codelineno-9-4"></a><span class="cp">#define LIST_HEAD_INIT(name) { &amp;(name), &amp;(name) }</span>
+</span><span id="__span-9-5"><a href="#__codelineno-9-5" id="__codelineno-9-5" name="__codelineno-9-5"></a><span class="cp">#define LIST_HEAD(name) struct list_head name = LIST_HEAD_INIT(name)</span>
+</span><span id="__span-9-6"><a href="#__codelineno-9-6" id="__codelineno-9-6" name="__codelineno-9-6"></a><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">list_add</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">);</span>
+</span><span id="__span-9-7"><a href="#__codelineno-9-7" id="__codelineno-9-7" name="__codelineno-9-7"></a><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">list_del</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">entry</span><span class="p">)</span>
+</span><span id="__span-9-8"><a href="#__codelineno-9-8" id="__codelineno-9-8" name="__codelineno-9-8"></a>
+</span><span id="__span-9-9"><a href="#__codelineno-9-9" id="__codelineno-9-9" name="__codelineno-9-9"></a><span class="c1">// 使用例</span>
+</span><span id="__span-9-10"><a href="#__codelineno-9-10" id="__codelineno-9-10" name="__codelineno-9-10"></a><span class="k">struct</span><span class="w"> </span><span class="nc">data_node_A</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-9-11"><a href="#__codelineno-9-11" id="__codelineno-9-11" name="__codelineno-9-11"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">data</span><span class="p">;</span>
+</span><span id="__span-9-12"><a href="#__codelineno-9-12" id="__codelineno-9-12" name="__codelineno-9-12"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="n">list</span><span class="p">;</span>
+</span><span id="__span-9-13"><a href="#__codelineno-9-13" id="__codelineno-9-13" name="__codelineno-9-13"></a><span class="p">}</span><span class="w"> </span><span class="n">a</span><span class="p">;</span>
+</span><span id="__span-9-14"><a href="#__codelineno-9-14" id="__codelineno-9-14" name="__codelineno-9-14"></a><span class="k">struct</span><span class="w"> </span><span class="nc">data_node_B</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-9-15"><a href="#__codelineno-9-15" id="__codelineno-9-15" name="__codelineno-9-15"></a><span class="w">    </span><span class="kt">char</span><span class="w"> </span><span class="n">data</span><span class="p">;</span>
+</span><span id="__span-9-16"><a href="#__codelineno-9-16" id="__codelineno-9-16" name="__codelineno-9-16"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="n">list</span><span class="p">;</span>
+</span><span id="__span-9-17"><a href="#__codelineno-9-17" id="__codelineno-9-17" name="__codelineno-9-17"></a><span class="p">}</span><span class="w"> </span><span class="n">x</span><span class="p">;</span>
+</span><span id="__span-9-18"><a href="#__codelineno-9-18" id="__codelineno-9-18" name="__codelineno-9-18"></a><span class="n">LIST_HEAD</span><span class="p">(</span><span class="n">list_A</span><span class="p">);</span>
+</span><span id="__span-9-19"><a href="#__codelineno-9-19" id="__codelineno-9-19" name="__codelineno-9-19"></a><span class="n">LIST_HEAD</span><span class="p">(</span><span class="n">list_B</span><span class="p">);</span>
+</span><span id="__span-9-20"><a href="#__codelineno-9-20" id="__codelineno-9-20" name="__codelineno-9-20"></a><span class="n">list_add</span><span class="p">(</span><span class="o">&amp;</span><span class="n">a</span><span class="p">.</span><span class="n">list</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">list_A</span><span class="p">);</span>
+</span><span id="__span-9-21"><a href="#__codelineno-9-21" id="__codelineno-9-21" name="__codelineno-9-21"></a><span class="n">list_add</span><span class="p">(</span><span class="o">&amp;</span><span class="n">x</span><span class="p">.</span><span class="n">list</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">list_B</span><span class="p">);</span>
+</span></code></pre></div>
+<div class="language-c highlight"><span class="filename">普通链表</span><pre><span></span><code><span id="__span-10-1"><a href="#__codelineno-10-1" id="__codelineno-10-1" name="__codelineno-10-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">data_node_A</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-10-2"><a href="#__codelineno-10-2" id="__codelineno-10-2" name="__codelineno-10-2"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">data</span><span class="p">;</span>
+</span><span id="__span-10-3"><a href="#__codelineno-10-3" id="__codelineno-10-3" name="__codelineno-10-3"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">data_node_A</span><span class="w"> </span><span class="o">*</span><span class="n">next</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="p">;</span>
+</span><span id="__span-10-4"><a href="#__codelineno-10-4" id="__codelineno-10-4" name="__codelineno-10-4"></a><span class="p">}</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">list_A</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
+</span><span id="__span-10-5"><a href="#__codelineno-10-5" id="__codelineno-10-5" name="__codelineno-10-5"></a><span class="k">struct</span><span class="w"> </span><span class="nc">data_node_B</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-10-6"><a href="#__codelineno-10-6" id="__codelineno-10-6" name="__codelineno-10-6"></a><span class="w">    </span><span class="kt">char</span><span class="w"> </span><span class="n">data</span><span class="p">;</span>
+</span><span id="__span-10-7"><a href="#__codelineno-10-7" id="__codelineno-10-7" name="__codelineno-10-7"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">data_node_B</span><span class="w"> </span><span class="o">*</span><span class="n">next</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="p">;</span>
+</span><span id="__span-10-8"><a href="#__codelineno-10-8" id="__codelineno-10-8" name="__codelineno-10-8"></a><span class="p">}</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">list_B</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
+</span><span id="__span-10-9"><a href="#__codelineno-10-9" id="__codelineno-10-9" name="__codelineno-10-9"></a><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">list_A_add</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">data_node_A</span><span class="w"> </span><span class="o">*</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">data_node_A</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">);</span>
+</span><span id="__span-10-10"><a href="#__codelineno-10-10" id="__codelineno-10-10" name="__codelineno-10-10"></a><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">list_B_add</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">data_node_B</span><span class="w"> </span><span class="o">*</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">data_node_B</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">);</span>
+</span><span id="__span-10-11"><a href="#__codelineno-10-11" id="__codelineno-10-11" name="__codelineno-10-11"></a>
+</span><span id="__span-10-12"><a href="#__codelineno-10-12" id="__codelineno-10-12" name="__codelineno-10-12"></a><span class="c1">// 使用例</span>
+</span><span id="__span-10-13"><a href="#__codelineno-10-13" id="__codelineno-10-13" name="__codelineno-10-13"></a><span class="n">list_A_add</span><span class="p">(</span><span class="o">&amp;</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">list_A</span><span class="p">);</span>
+</span><span id="__span-10-14"><a href="#__codelineno-10-14" id="__codelineno-10-14" name="__codelineno-10-14"></a><span class="n">list_B_add</span><span class="p">(</span><span class="o">&amp;</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">list_B</span><span class="p">);</span>
+</span></code></pre></div>
+</div>
+</li>
+<li>
+<p><strong>访问数据</strong>：</p>
+<p>理解了上面的代码，你会发现盲点：<code>list_head</code> 结构体并不包含数据字段。怎么通过 <code>list_A</code> 这样的链表头，访问到 <code>data_node_A</code> 结构体呢？</p>
+<p>这就需要使用编译器魔法了：<code>container_of</code> 宏。它的定义如下：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-11-1"><a href="#__codelineno-11-1" id="__codelineno-11-1" name="__codelineno-11-1"></a><span class="cp">#define container_of(ptr, type, member) ({          \</span>
+</span><span id="__span-11-2"><a href="#__codelineno-11-2" id="__codelineno-11-2" name="__codelineno-11-2"></a><span class="cp">    const typeof( ((type *)0)-&gt;member ) *__mptr = (ptr); \</span>
+</span><span id="__span-11-3"><a href="#__codelineno-11-3" id="__codelineno-11-3" name="__codelineno-11-3"></a><span class="cp">    (type *)( (char *)__mptr - offsetof(type,member) );})</span>
+</span></code></pre></div>
+<p>编译器知道类型的大小，提供了 <code>typeof()</code> 和 <code>offestof()</code>。我们可以利用这些信息<strong>移动成员变量的指针，计算出包含该成员变量的结构体的起始地址</strong>。例如：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-12-1"><a href="#__codelineno-12-1" id="__codelineno-12-1" name="__codelineno-12-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">data_node_A</span><span class="w"> </span><span class="n">a</span><span class="p">;</span>
+</span><span id="__span-12-2"><a href="#__codelineno-12-2" id="__codelineno-12-2" name="__codelineno-12-2"></a><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">a</span><span class="p">.</span><span class="n">list</span><span class="p">;</span>
+</span><span id="__span-12-3"><a href="#__codelineno-12-3" id="__codelineno-12-3" name="__codelineno-12-3"></a><span class="k">struct</span><span class="w"> </span><span class="nc">data_node_A</span><span class="w"> </span><span class="o">*</span><span class="n">q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">container_of</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">data_node_A</span><span class="p">,</span><span class="w"> </span><span class="n">list</span><span class="p">);</span>
+</span><span id="__span-12-4"><a href="#__codelineno-12-4" id="__codelineno-12-4" name="__codelineno-12-4"></a><span class="n">assert</span><span class="p">(</span><span class="n">q</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="o">&amp;</span><span class="n">a</span><span class="p">);</span><span class="w"> </span><span class="c1">// q 恰好指向 a 的起始地址</span>
+</span></code></pre></div>
+</li>
+</ul>
+<figure>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab2.assets/list_head.drawio"><div class="mxgraph" data-mxgraph='{"toolbar": "zoom", "tooltips": "1", "border": 5, "resize": "1", "edit": "_blank", "xml": "&lt;mxfile host=\"65bd71144e\"&gt;\n    &lt;diagram id=\"zt6Frfhi11MsrxubBEZP\" name=\"Page-1\"&gt;\n        &lt;mxGraphModel dx=\"1184\" dy=\"681\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"1\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"850\" pageHeight=\"1100\" math=\"0\" shadow=\"0\"&gt;\n            &lt;root&gt;\n                &lt;mxCell id=\"0\"/&gt;\n                &lt;mxCell id=\"1\" parent=\"0\"/&gt;\n                &lt;mxCell id=\"2\" value=\"struct list_head\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=top;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"120\" y=\"340\" width=\"120\" height=\"60\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"3\" value=\"Node 0\" style=\"rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontSize=16;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"260\" y=\"270\" width=\"160\" height=\"150\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"4\" value=\"prev\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"130\" y=\"370\" width=\"50\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"15\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;\" edge=\"1\" parent=\"1\" source=\"5\" target=\"6\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"5\" value=\"next\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"180\" y=\"370\" width=\"50\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"6\" value=\"struct list_head\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=top;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"280\" y=\"340\" width=\"120\" height=\"60\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"17\" style=\"edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeColor=#82b366;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;fillColor=#d5e8d4;\" edge=\"1\" parent=\"1\" source=\"7\" target=\"2\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"7\" value=\"prev\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"290\" y=\"370\" width=\"50\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"8\" value=\"next\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"340\" y=\"370\" width=\"50\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"9\" value=\"data\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"280\" y=\"300\" width=\"120\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"10\" value=\"Node 1\" style=\"rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontSize=16;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"440\" y=\"270\" width=\"160\" height=\"150\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"11\" value=\"struct list_head\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=top;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"460\" y=\"340\" width=\"120\" height=\"60\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"18\" style=\"edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeColor=#82b366;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;fillColor=#d5e8d4;\" edge=\"1\" parent=\"1\" source=\"12\" target=\"6\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"12\" value=\"prev\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"470\" y=\"370\" width=\"50\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"22\" style=\"edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;html=1;entryX=0.25;entryY=1;entryDx=0;entryDy=0;strokeColor=#6c8ebf;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;exitX=1;exitY=0.5;exitDx=0;exitDy=0;fillColor=#dae8fc;\" edge=\"1\" parent=\"1\" source=\"13\" target=\"2\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"580\" y=\"380\"/&gt;\n                            &lt;mxPoint x=\"580\" y=\"430\"/&gt;\n                            &lt;mxPoint x=\"150\" y=\"430\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"13\" value=\"next\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"520\" y=\"370\" width=\"50\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"14\" value=\"data\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"460\" y=\"300\" width=\"120\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"19\" style=\"edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#6c8ebf;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;fillColor=#dae8fc;\" edge=\"1\" parent=\"1\" source=\"8\" target=\"11\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"21\" value=\"Head\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Helvetica;fontSize=16;fontColor=default;labelBackgroundColor=default;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"150\" y=\"300\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"23\" style=\"edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#82b366;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;exitX=0;exitY=0.5;exitDx=0;exitDy=0;fillColor=#d5e8d4;\" edge=\"1\" parent=\"1\" source=\"4\" target=\"11\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"110\" y=\"380\"/&gt;\n                            &lt;mxPoint x=\"110\" y=\"250\"/&gt;\n                            &lt;mxPoint x=\"630\" y=\"250\"/&gt;\n                            &lt;mxPoint x=\"630\" y=\"370\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n            &lt;/root&gt;\n        &lt;/mxGraphModel&gt;\n    &lt;/diagram&gt;\n&lt;/mxfile&gt;"}' style="max-width:100%;border:1px solid transparent;"></div></a>
+<figcaption>
+    侵入式双向循环链表示意图
+    </figcaption>
+</figure>
+<h3 id="task-1实现双向链表">Task 1：实现双向链表<a class="headerlink" href="#task-1实现双向链表" title="Permanent link">¶</a></h3>
+<p>你应该早在大一的 C 语言课上就能秒杀双向链表了😉。请完成下列任务：</p>
+<ul>
+<li>补全 <code>list_empty()</code>。提示：观察 <code>LIST_HEAD</code> 宏，你会发现这是一个<strong>带哨兵</strong>的双向链表。</li>
+<li>补全 <code>list_add()</code>、<code>list_add_tail()</code> 和 <code>list_del()</code>。提示：一个优雅的做法是令 <code>list_add()</code> 和 <code>list_add_tail()</code> 都调用一个更底层的 <code>__list_add()</code>。</li>
+<li>补全 <code>list_for_each</code> 宏。</li>
+</ul>
+<p><code>main.c</code> 中的 <code>test_list()</code> 函数用于测试你的链表实现。</p>
+<div class="admonition success">
+<p class="admonition-title">完成条件</p>
+<ul>
+<li>通过评测框架的 <code>lab2 task1</code> 测试。</li>
+</ul>
+</div>
+<h3 id="空闲链表缓存">空闲链表缓存<a class="headerlink" href="#空闲链表缓存" title="Permanent link">¶</a></h3>
+<p>在上一节中，我们学习了如何实现<strong>侵入式双向循环链表</strong>。现在，我们将用它来实现一个内核中非常常见的机制——<strong>对象缓存（object cache）</strong>。</p>
+<p>在内核中，许多内核对象（如 <code>task_struct</code>、<code>inode</code>、<code>vm_area_struct</code> 等）会被<strong>频繁创建和销毁</strong>。如果动态创建都调用通用的内存分配器（如 Buddy System），会对性能产生较大影响，且容易引起内存碎片。</p>
+<p>为了解决这些问题，Linux 内核引入了 <strong>Slab 分配器</strong>：它为每种类型的对象维护一个缓存池，将整页内存切分为多个固定大小的对象块，用链表管理这些空闲对象。</p>
+<p>不过，Linux 的 Slab 实现更加复杂，感兴趣的同学可以阅读 <a href="https://litux.nl/mirror/kerneldevelopment/0672327201/ch11lev1sec6.html">Slab Layer - Linux Kernel Development Second Edition</a>。在我们的教学实验中，只保留了它的<strong>核心思想：用空闲链表（free list）预分配缓存对象。</strong></p>
+<ul>
+<li>
+<p><strong><code>kmem_cache</code> 结构</strong>：为每种类型的对象建立的缓存池</p>
+<p>它记录了对象大小、对齐方式以及一个空闲链表：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-13-1"><a href="#__codelineno-13-1" id="__codelineno-13-1" name="__codelineno-13-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">kmem_cache</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-13-2"><a href="#__codelineno-13-2" id="__codelineno-13-2" name="__codelineno-13-2"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">name</span><span class="p">;</span><span class="w">           </span><span class="c1">// 缓存名称</span>
+</span><span id="__span-13-3"><a href="#__codelineno-13-3" id="__codelineno-13-3" name="__codelineno-13-3"></a><span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">obj_size</span><span class="p">;</span><span class="w">            </span><span class="c1">// 对象大小</span>
+</span><span id="__span-13-4"><a href="#__codelineno-13-4" id="__codelineno-13-4" name="__codelineno-13-4"></a><span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">align</span><span class="p">;</span><span class="w">               </span><span class="c1">// 对齐要求</span>
+</span><span id="__span-13-5"><a href="#__codelineno-13-5" id="__codelineno-13-5" name="__codelineno-13-5"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="n">list</span><span class="p">;</span><span class="w">      </span><span class="c1">// 链入全局缓存链表</span>
+</span><span id="__span-13-6"><a href="#__codelineno-13-6" id="__codelineno-13-6" name="__codelineno-13-6"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="n">free_objects</span><span class="p">;</span><span class="w"> </span><span class="c1">// 空闲对象链表</span>
+</span><span id="__span-13-7"><a href="#__codelineno-13-7" id="__codelineno-13-7" name="__codelineno-13-7"></a><span class="p">};</span>
+</span></code></pre></div>
+<p>所有空闲的 <code>kmem_cache</code> 结构本身也组织为空闲列表 <code>free_caches</code>，由 <code>cache_init()</code> 在启动时初始化。</p>
+</li>
+<li>
+<p><strong>创建缓存</strong>：</p>
+<p>当内核需要为某种类型创建对象缓存时：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-14-1"><a href="#__codelineno-14-1" id="__codelineno-14-1" name="__codelineno-14-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">kmem_cache</span><span class="w"> </span><span class="o">*</span><span class="n">task_cache</span><span class="w"> </span><span class="o">=</span>
+</span><span id="__span-14-2"><a href="#__codelineno-14-2" id="__codelineno-14-2" name="__codelineno-14-2"></a><span class="w">    </span><span class="n">kmem_cache_create</span><span class="p">(</span><span class="s">"task_struct"</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="p">),</span><span class="w"> </span><span class="mi">8</span><span class="p">);</span>
+</span></code></pre></div>
+<p>系统会从 <code>free_caches</code> 中取出一个空闲条目，初始化为新的缓存描述符。</p>
+</li>
+<li>
+<p><strong>分配与释放对象</strong>：</p>
+<p>当我们需要真正分配一个对象时：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-15-1"><a href="#__codelineno-15-1" id="__codelineno-15-1" name="__codelineno-15-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="o">*</span><span class="n">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">kmem_cache_alloc</span><span class="p">(</span><span class="n">task_cache</span><span class="p">);</span>
+</span></code></pre></div>
+<p>执行流程如下：</p>
+<ol>
+<li>检查 <code>task_cache</code> 的空闲链表是否为空；</li>
+<li>如果为空，从 Buddy System 申请一页新的物理内存；<ul>
+<li>按对象大小（外加链表节点头）将该页切分为多个小对象；</li>
+<li>将这些对象逐个加入 <code>cachep-&gt;free_objects</code> 链表；</li>
+</ul>
+</li>
+<li>从链表头取出一个对象返回；</li>
+</ol>
+<p><code>kmem_cache_free(t)</code> 释放对象时，只需将其重新挂回空闲链表。</p>
+</li>
+</ul>
+<p>换句话说，Slab 缓存层（<code>kmem_cache</code>）相当于物理页分配器（<code>alloc_page()</code>）之上的对象粒度的再分配层。</p>
+<div class="admonition example">
+<p class="admonition-title">动手做</p>
+<p>阅读 <code>cache.h</code> 和 <code>cache.c</code>，理解空闲链表缓存的实现。</p>
+<p>画一幅图，展示相关的数据结构及其布局。</p>
+</div>
+<h2 id="part-2进程切换与-trap-处理">Part 2：进程切换与 Trap 处理<a class="headerlink" href="#part-2进程切换与-trap-处理" title="Permanent link">¶</a></h2>
+<p>本节我们探究实现用于切换进程上下文的汇编函数 <code>__switch_to()</code>，以及进程切换与 Trap 处理的相互影响。</p>
+<h3 id="进程切换非抢占情况">进程切换：非抢占情况<a class="headerlink" href="#进程切换非抢占情况" title="Permanent link">¶</a></h3>
+<p>让我们从最简单的不考虑 Trap 的情况开始。这种情况下没有时钟中断，进程切换仅能依靠进程主动调用 <code>__switch_to()</code> 完成。</p>
+<p>设想这样一个场景：CPU 上正在运行 Task1，Task1 想调用 <code>__switch_to()</code> 切换到 Task2，然后 Task2 运行一段时间后再切换回来继续执行 Task1。<code>__switch_to()</code> 应该怎么设计？</p>
+<p>Lab 1 Trap 处理的场景与此类似：可以将 <code>_traps()</code> 看作 <code>__switch_to()</code>，将 <code>trap_handler()</code> 看作 Task2。<code>trap_handler()</code> 执行完毕后，恢复 Trap 上下文就相当于 Task2 切换回 Task1。<strong>但进程切换与 Trap 有一个重要区别：Trap 可以发生在任何时候</strong>，因此 Trap 上下文是所有寄存器的状态；而 <code>__switch_to()</code> 是一个函数，<strong>它的调用者一定是遵守 RISC-V 调用约定的</strong>，因此不需要保存所有寄存器。示意图如下：</p>
+<p><a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab2.assets/switch.drawio"><div class="mxgraph" data-mxgraph='{"toolbar": "zoom", "tooltips": "1", "border": 5, "resize": "1", "edit": "_blank", "xml": "&lt;mxfile host=\"65bd71144e\"&gt;\n    &lt;diagram id=\"MKEIpqsYV9xL4WX14Jkj\" name=\"Page-1\"&gt;\n        &lt;mxGraphModel dx=\"766\" dy=\"517\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"1\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"850\" pageHeight=\"1100\" math=\"0\" shadow=\"0\"&gt;\n            &lt;root&gt;\n                &lt;mxCell id=\"0\"/&gt;\n                &lt;mxCell id=\"1\" parent=\"0\"/&gt;\n                &lt;mxCell id=\"67\" value=\"\" style=\"endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;\" edge=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"500\" y=\"380\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"500\" y=\"40\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"46\" value=\"\" style=\"endArrow=none;html=1;entryX=0;entryY=0;entryDx=0;entryDy=0;dashed=1;endFill=0;\" parent=\"1\" target=\"12\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"160\" y=\"140\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"225\" y=\"141\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"58\" value=\"call\" style=\"edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;resizable=0;endArrow=classic;exitX=0;exitY=0.5;exitDx=0;exitDy=0;endFill=1;\" parent=\"1\" source=\"8\" target=\"12\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"220\" y=\"130\"/&gt;\n                            &lt;mxPoint x=\"220\" y=\"150\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"8\" value=\"Task 1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"245\" y=\"120\" width=\"70\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"60\" value=\"call\" style=\"edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;resizable=0;endArrow=classic;endFill=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;\" parent=\"1\" source=\"12\" target=\"18\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"220\" y=\"150\"/&gt;\n                            &lt;mxPoint x=\"220\" y=\"170\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"12\" value=\"schedule()\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"245\" y=\"140\" width=\"70\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"49\" value=\"call\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;resizable=0;endArrow=block;endFill=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;\" parent=\"1\" source=\"18\" target=\"48\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"18\" value=\"switch_to()\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"245\" y=\"160\" width=\"70\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"74\" style=\"edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;\" edge=\"1\" parent=\"1\" source=\"42\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"340\" y=\"180\" as=\"targetPoint\"/&gt;\n                        &lt;mxPoint x=\"315\" y=\"220\" as=\"sourcePoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"42\" value=\"&amp;lt;div&amp;gt;caller-saved&amp;lt;/div&amp;gt;&amp;lt;div&amp;gt;\u8c03\u7528\u8005\u81ea\u5df1\u4fdd\u5b58&amp;lt;/div&amp;gt;\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"235\" y=\"214\" width=\"90\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"47\" value=\"\u5f00\u59cb\u5207\u6362\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"80\" y=\"130\" width=\"70\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"69\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;\" edge=\"1\" parent=\"1\" source=\"48\" target=\"68\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"48\" value=\"__switch_to()\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"435\" y=\"194.5\" width=\"130\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"61\" value=\"ret\" style=\"edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;resizable=0;endArrow=classic;endFill=1;\" parent=\"1\" source=\"50\" target=\"57\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"315\" y=\"294\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"50\" value=\"__switch_to()\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"435\" y=\"265.5\" width=\"130\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"53\" value=\"\" style=\"endArrow=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;endFill=0;\" parent=\"1\" target=\"50\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"160\" y=\"264\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"245\" y=\"260\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"54\" value=\"\u5f00\u59cb\u6062\u590d\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"80\" y=\"244\" width=\"70\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"55\" value=\"Task 1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"245\" y=\"340\" width=\"70\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"62\" value=\"ret\" style=\"edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;resizable=0;endArrow=classic;endFill=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;\" parent=\"1\" source=\"56\" target=\"55\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"240\" y=\"350\" as=\"targetPoint\"/&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"220\" y=\"330\"/&gt;\n                            &lt;mxPoint x=\"220\" y=\"350\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"56\" value=\"schedule()\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"245\" y=\"320\" width=\"70\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"63\" value=\"ret\" style=\"edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;resizable=0;endArrow=classic;endFill=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;\" parent=\"1\" source=\"57\" target=\"56\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"220\" y=\"310\"/&gt;\n                            &lt;mxPoint x=\"220\" y=\"330\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"57\" value=\"switch_to()\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"245\" y=\"300\" width=\"70\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"66\" value=\"\u539f\u8def\u8fd4\u56de\" style=\"endArrow=classic;html=1;rounded=1;strokeColor=#b85450;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;resizable=0;startArrow=classic;startFill=1;fillColor=#f8cecc;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry x=\"0.1175\" width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"210\" y=\"320\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"210\" y=\"160\" as=\"targetPoint\"/&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"190\" y=\"230\"/&gt;\n                        &lt;/Array&gt;\n                        &lt;mxPoint as=\"offset\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"70\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;dashed=1;\" edge=\"1\" parent=\"1\" source=\"68\" target=\"50\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"68\" value=\"Task2\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"575\" y=\"230\" width=\"70\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"71\" value=\"\" style=\"endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;\" edge=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"350\" y=\"380\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"350\" y=\"50\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"73\" value=\"&amp;lt;div&amp;gt;\u5230\u8fd9\u91cc\u4ec5\u5269&amp;lt;/div&amp;gt;&amp;lt;div&amp;gt;&amp;lt;span style=&amp;quot;background-color: transparent; color: rgb(63, 63, 63);&amp;quot;&amp;gt;callee-saved&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;&amp;lt;div&amp;gt;\u5c5e\u4e8e Task1&amp;lt;/div&amp;gt;&amp;lt;div&amp;gt;\u9700\u8981\u4fdd\u5b58&amp;lt;/div&amp;gt;\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"410\" y=\"140\" width=\"90\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"75\" value=\"C \u8bed\u8a00\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"280\" y=\"67\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"76\" value=\"\" style=\"endArrow=classic;html=1;\" edge=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"340\" y=\"97\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"280\" y=\"97\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"77\" value=\"\" style=\"endArrow=classic;html=1;\" edge=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"360\" y=\"97\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"420\" y=\"97\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"78\" value=\"\u6c47\u7f16\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"355\" y=\"67\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"83\" value=\"Task1\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"430\" y=\"35\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"84\" value=\"\" style=\"endArrow=classic;html=1;\" edge=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"490\" y=\"65\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"430\" y=\"65\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"85\" value=\"\" style=\"endArrow=classic;html=1;\" edge=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"510\" y=\"65\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"570\" y=\"65\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"86\" value=\"Task2\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"505\" y=\"35\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n            &lt;/root&gt;\n        &lt;/mxGraphModel&gt;\n    &lt;/diagram&gt;\n&lt;/mxfile&gt;"}' style="max-width:100%;border:1px solid transparent;"></div></a></p>
+<p>理解了这些，我们容易设计出 <code>__switch_to()</code> 需要保存的进程上下文：</p>
+<ul>
+<li><code>ra</code>：函数返回地址，我们需要它来返回到调用 <code>__switch_to()</code> 的位置</li>
+<li><code>sp</code>、<code>s0-s11</code>：调用约定中规定的 callee-saved 寄存器</li>
+</ul>
+<p>于是我们写出了进程上下文的数据结构：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-16-1"><a href="#__codelineno-16-1" id="__codelineno-16-1" name="__codelineno-16-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">thread_struct</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-16-2"><a href="#__codelineno-16-2" id="__codelineno-16-2" name="__codelineno-16-2"></a><span class="w">    </span><span class="n">uint64</span><span class="w"> </span><span class="n">ra</span><span class="p">;</span><span class="w">      </span><span class="c1">// return address</span>
+</span><span id="__span-16-3"><a href="#__codelineno-16-3" id="__codelineno-16-3" name="__codelineno-16-3"></a><span class="w">    </span><span class="n">uint64</span><span class="w"> </span><span class="n">sp</span><span class="p">;</span><span class="w">      </span><span class="c1">// stack pointer</span>
+</span><span id="__span-16-4"><a href="#__codelineno-16-4" id="__codelineno-16-4" name="__codelineno-16-4"></a><span class="w">    </span><span class="n">uint64</span><span class="w"> </span><span class="n">s</span><span class="p">[</span><span class="mi">12</span><span class="p">];</span><span class="w">   </span><span class="c1">// callee-saved registers</span>
+</span><span id="__span-16-5"><a href="#__codelineno-16-5" id="__codelineno-16-5" name="__codelineno-16-5"></a><span class="p">};</span>
+</span></code></pre></div>
+<p>那么这个结构体应该存放在哪里呢？暂且按下不表，留到设计进程数据结构时再说。反正不能像 Trap 上下文那样放在栈 <code>sp</code> 上，否则会出现下面的情况：</p>
+<figure>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab2.assets/no_stack.drawio"><div class="mxgraph" data-mxgraph='{"toolbar": "zoom", "tooltips": "1", "border": 5, "resize": "1", "edit": "_blank", "xml": "&lt;mxfile host=\"65bd71144e\"&gt;\n    &lt;diagram id=\"CBWTxGyERXmDpSufS4Sj\" name=\"Page-1\"&gt;\n        &lt;mxGraphModel dx=\"362\" dy=\"368\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"1\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"850\" pageHeight=\"1100\" math=\"0\" shadow=\"0\"&gt;\n            &lt;root&gt;\n                &lt;mxCell id=\"0\"/&gt;\n                &lt;mxCell id=\"1\" parent=\"0\"/&gt;\n                &lt;mxCell id=\"3\" value=\"Task2 \u6808\u6570\u636e\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"210\" y=\"180\" width=\"100\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"6\" value=\"Task1 \u6808\u6570\u636e\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"210\" y=\"140\" width=\"100\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"7\" value=\"\" style=\"endArrow=classic;html=1;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"180\" y=\"179.46\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"210\" y=\"179.46\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"8\" value=\"Task1 \u88ab\u5207\u6362\u51fa\u53bb\" style=\"text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"60\" y=\"160\" width=\"110\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"16\" value=\"&amp;lt;font style=&amp;quot;color: rgb(204, 0, 0);&amp;quot;&amp;gt;\u56de\u6765\u7684&amp;lt;/font&amp;gt;&amp;lt;div&amp;gt;&amp;lt;font style=&amp;quot;color: rgb(204, 0, 0);&amp;quot;&amp;gt;Task1 \u6808&amp;lt;/font&amp;gt;&amp;lt;div&amp;gt;&amp;lt;font color=&amp;quot;#cc0000&amp;quot;&amp;gt;\u5411\u4e0b\u589e\u957f&amp;lt;br&amp;gt;&amp;lt;/font&amp;gt;&amp;lt;div&amp;gt;&amp;lt;font style=&amp;quot;color: rgb(204, 0, 0);&amp;quot;&amp;gt;\u5c06\u7834\u574f Task2&amp;lt;/font&amp;gt;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fillStyle=hatch;fontColor=#CC0000;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"300\" y=\"180\" width=\"80\" height=\"70\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"17\" value=\"\" style=\"endArrow=classic;html=1;\" edge=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"180\" y=\"219.46\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"210\" y=\"219.46\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"18\" value=\"Task1 \u88ab\u5207\u6362\u56de\u6765\" style=\"text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"60\" y=\"200\" width=\"110\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n            &lt;/root&gt;\n        &lt;/mxGraphModel&gt;\n    &lt;/diagram&gt;\n&lt;/mxfile&gt;"}' style="max-width:100%;border:1px solid transparent;"></div></a>
+<figcaption>
+    进程上下文不能放在栈上
+    </figcaption>
+</figure>
+<p>于是我们实现了 <code>__switch_to()</code>：</p>
+<div class="language-asm highlight"><span class="filename">第一版 __switch_to</span><pre><span></span><code><span id="__span-17-1"><a href="#__codelineno-17-1" id="__codelineno-17-1" name="__codelineno-17-1"></a><span class="w">    </span><span class="na">.globl</span><span class="w"> </span><span class="no">__switch_to</span>
+</span><span id="__span-17-2"><a href="#__codelineno-17-2" id="__codelineno-17-2" name="__codelineno-17-2"></a><span class="nl">__switch_to:</span>
+</span><span id="__span-17-3"><a href="#__codelineno-17-3" id="__codelineno-17-3" name="__codelineno-17-3"></a><span class="w">    </span><span class="nf">la</span><span class="w"> </span><span class="no">t0</span><span class="p">,</span><span class="w"> </span><span class="cm">/* 存放 Task1 上下文的地址 */</span>
+</span><span id="__span-17-4"><a href="#__codelineno-17-4" id="__codelineno-17-4" name="__codelineno-17-4"></a><span class="w">    </span><span class="nf">sd</span><span class="w"> </span><span class="no">ra</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">(</span><span class="no">t0</span><span class="p">)</span><span class="w">          </span><span class="c1">// 保存 Task1 上下文</span>
+</span><span id="__span-17-5"><a href="#__codelineno-17-5" id="__codelineno-17-5" name="__codelineno-17-5"></a><span class="w">    </span><span class="nf">sd</span><span class="w"> </span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">(</span><span class="no">t0</span><span class="p">)</span>
+</span><span id="__span-17-6"><a href="#__codelineno-17-6" id="__codelineno-17-6" name="__codelineno-17-6"></a><span class="w">    </span><span class="nf">sd</span><span class="w"> </span><span class="no">s0</span><span class="p">,</span><span class="w"> </span><span class="mi">16</span><span class="p">(</span><span class="no">t0</span><span class="p">)</span>
+</span><span id="__span-17-7"><a href="#__codelineno-17-7" id="__codelineno-17-7" name="__codelineno-17-7"></a><span class="w">    </span><span class="na">...</span>
+</span><span id="__span-17-8"><a href="#__codelineno-17-8" id="__codelineno-17-8" name="__codelineno-17-8"></a>
+</span><span id="__span-17-9"><a href="#__codelineno-17-9" id="__codelineno-17-9" name="__codelineno-17-9"></a><span class="w">    </span><span class="nf">la</span><span class="w"> </span><span class="no">t0</span><span class="p">,</span><span class="w"> </span><span class="cm">/* 存放 Task2 上下文的地址 */</span>
+</span><span id="__span-17-10"><a href="#__codelineno-17-10" id="__codelineno-17-10" name="__codelineno-17-10"></a><span class="w">    </span><span class="nf">ld</span><span class="w"> </span><span class="no">ra</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">(</span><span class="no">t0</span><span class="p">)</span><span class="w">          </span><span class="c1">// 恢复 Task2 上下文</span>
+</span><span id="__span-17-11"><a href="#__codelineno-17-11" id="__codelineno-17-11" name="__codelineno-17-11"></a><span class="w">    </span><span class="nf">ld</span><span class="w"> </span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">(</span><span class="no">t0</span><span class="p">)</span>
+</span><span id="__span-17-12"><a href="#__codelineno-17-12" id="__codelineno-17-12" name="__codelineno-17-12"></a><span class="w">    </span><span class="nf">ld</span><span class="w"> </span><span class="no">s0</span><span class="p">,</span><span class="w"> </span><span class="mi">16</span><span class="p">(</span><span class="no">t0</span><span class="p">)</span>
+</span><span id="__span-17-13"><a href="#__codelineno-17-13" id="__codelineno-17-13" name="__codelineno-17-13"></a><span class="w">    </span><span class="na">...</span>
+</span><span id="__span-17-14"><a href="#__codelineno-17-14" id="__codelineno-17-14" name="__codelineno-17-14"></a><span class="w">    </span><span class="nf">ret</span><span class="w">                    </span><span class="c1">// 返回到 Task2</span>
+</span></code></pre></div>
+<blockquote>
+<p>我们还能再换个角度：站在 Task1 的角度看，调用 <code>__switch_to()</code> <strong>就像调用了一个空函数</strong>。它遵守 RISC-V 调用约定，但什么都没做，原路返回了。</p>
+</blockquote>
+<p>但嗅觉敏锐的同学会发现问题：切换的目标 Task 2 的上下文从哪里来？在目前不考虑 Trap 的场景，只有两种可能：</p>
+<ol>
+<li>Task 2 之前运行过，但主动调用 <code>__switch_to()</code> 切换到别的进程。这种情况<strong>保存过进程上下文</strong>，能够顺利恢复。</li>
+<li>Task 2 是新创建的进程，尚未运行过。这种情况需要我们<strong>设计一个初始的进程上下文</strong>。</li>
+</ol>
+<p>初始进程上下文的设计想想也很简单：<code>ra</code> 指向进程的第一条指令就行了。如果要考虑向进程传递参数，可以利用 <code>s0-s11</code> 这些寄存器，然后设置一个蹦床函数（trampoline）来将其移动到 <code>a0-a7</code> 作为参数。事实上 Linux 就是这么实现 kthread 的初始上下文的，这个蹦床函数如下所示：</p>
+<div class="language-asm highlight"><span class="filename">(Linux)arch/riscv/kernel/entry.S</span><pre><span></span><code><span id="__span-18-1"><a href="#__codelineno-18-1" id="__codelineno-18-1" name="__codelineno-18-1"></a><span class="nf">SYM_CODE_START</span><span class="p">(</span><span class="no">ret_from_fork_kernel_asm</span><span class="p">)</span>
+</span><span id="__span-18-2"><a href="#__codelineno-18-2" id="__codelineno-18-2" name="__codelineno-18-2"></a><span class="w">    </span><span class="nf">call</span><span class="w"> </span><span class="no">schedule_tail</span>
+</span><span id="__span-18-3"><a href="#__codelineno-18-3" id="__codelineno-18-3" name="__codelineno-18-3"></a><span class="w">    </span><span class="nf">move</span><span class="w"> </span><span class="no">a0</span><span class="p">,</span><span class="w"> </span><span class="no">s1</span><span class="w"> </span><span class="cm">/* fn_arg */</span>
+</span><span id="__span-18-4"><a href="#__codelineno-18-4" id="__codelineno-18-4" name="__codelineno-18-4"></a><span class="w">    </span><span class="nf">move</span><span class="w"> </span><span class="no">a1</span><span class="p">,</span><span class="w"> </span><span class="no">s0</span><span class="w"> </span><span class="cm">/* fn */</span>
+</span><span id="__span-18-5"><a href="#__codelineno-18-5" id="__codelineno-18-5" name="__codelineno-18-5"></a><span class="w">    </span><span class="nf">move</span><span class="w"> </span><span class="no">a2</span><span class="p">,</span><span class="w"> </span><span class="no">sp</span><span class="w"> </span><span class="cm">/* pt_regs */</span>
+</span><span id="__span-18-6"><a href="#__codelineno-18-6" id="__codelineno-18-6" name="__codelineno-18-6"></a><span class="w">    </span><span class="nf">call</span><span class="w"> </span><span class="no">ret_from_fork_kernel</span>
+</span><span id="__span-18-7"><a href="#__codelineno-18-7" id="__codelineno-18-7" name="__codelineno-18-7"></a><span class="w">    </span><span class="nf">j</span><span class="w"> </span><span class="no">ret_from_exception</span>
+</span><span id="__span-18-8"><a href="#__codelineno-18-8" id="__codelineno-18-8" name="__codelineno-18-8"></a><span class="nf">SYM_CODE_END</span><span class="p">(</span><span class="no">ret_from_fork_kernel_asm</span><span class="p">)</span>
+</span></code></pre></div>
+<div class="language-c highlight"><span class="filename">(Linux)arch/riscv/kernel/process.c</span><pre><span></span><code><span id="__span-19-1"><a href="#__codelineno-19-1" id="__codelineno-19-1" name="__codelineno-19-1"></a><span class="n">asmlinkage</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">ret_from_fork_kernel</span><span class="p">(</span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">fn_arg</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">fn</span><span class="p">)(</span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="p">),</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">pt_regs</span><span class="w"> </span><span class="o">*</span><span class="n">regs</span><span class="p">)</span>
+</span><span id="__span-19-2"><a href="#__codelineno-19-2" id="__codelineno-19-2" name="__codelineno-19-2"></a><span class="p">{</span>
+</span><span id="__span-19-3"><a href="#__codelineno-19-3" id="__codelineno-19-3" name="__codelineno-19-3"></a><span class="w">    </span><span class="n">fn</span><span class="p">(</span><span class="n">fn_arg</span><span class="p">);</span>
+</span><span id="__span-19-4"><a href="#__codelineno-19-4" id="__codelineno-19-4" name="__codelineno-19-4"></a>
+</span><span id="__span-19-5"><a href="#__codelineno-19-5" id="__codelineno-19-5" name="__codelineno-19-5"></a><span class="w">    </span><span class="n">syscall_exit_to_user_mode</span><span class="p">(</span><span class="n">regs</span><span class="p">);</span>
+</span><span id="__span-19-6"><a href="#__codelineno-19-6" id="__codelineno-19-6" name="__codelineno-19-6"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>从代码中可以看出，Linux 将 kthread 要运行的函数 <code>fn</code> 放在了初始进程上下文的 <code>s0</code> 寄存器中，将参数 <code>fn_arg</code> 放在了 <code>s1</code> 寄存器中。蹦床函数 <code>ret_from_fork_kernel_asm</code> 将它们分别移动到 <code>a1</code> 和 <code>a0</code>，然后调用 <code>ret_from_fork_kernel</code> 去具体执行。简化一下就是这样：</p>
+<div class="language-asm highlight"><pre><span></span><code><span id="__span-20-1"><a href="#__codelineno-20-1" id="__codelineno-20-1" name="__codelineno-20-1"></a><span class="nf">move</span><span class="w"> </span><span class="no">a0</span><span class="p">,</span><span class="w"> </span><span class="no">s1</span><span class="w">  </span><span class="c1">// fn_arg</span>
+</span><span id="__span-20-2"><a href="#__codelineno-20-2" id="__codelineno-20-2" name="__codelineno-20-2"></a><span class="nf">move</span><span class="w"> </span><span class="no">a1</span><span class="p">,</span><span class="w"> </span><span class="no">s0</span><span class="w">  </span><span class="c1">// fn</span>
+</span><span id="__span-20-3"><a href="#__codelineno-20-3" id="__codelineno-20-3" name="__codelineno-20-3"></a><span class="nf">call</span><span class="w"> </span><span class="no">a1</span><span class="w">      </span><span class="c1">// 调用 fn(fn_arg)</span>
+</span></code></pre></div>
+<h3 id="进程切换抢占与-trap-处理">进程切换：抢占与 Trap 处理<a class="headerlink" href="#进程切换抢占与-trap-处理" title="Permanent link">¶</a></h3>
+<p>当我们希望实现<a href="https://kernelnewbies.org/FAQ/Preemption">内核抢占（Kernel preemption）</a>，综合考虑时钟中断、系统调用等 Trap 情况时，进程切换就变得复杂起来。</p>
+<h4 id="内核中不能被抢占的部分">内核中不能被抢占的部分<a class="headerlink" href="#内核中不能被抢占的部分" title="Permanent link">¶</a></h4>
+<p>首先，我们要明确内核中不能被抢占的部分。抢占一定是通过（时钟）中断触发的，此外没有其他途径，因此<strong>不能抢占 = 禁用中断</strong>。回忆 RISC-V 中断机制，进入 Trap 处理时，CPU 会自动执行下面的操作禁用中断：</p>
+<ul>
+<li><code>sstatus.SPIE = sstatus.SIE</code></li>
+<li><code>sstatus.SIE = 0</code></li>
+</ul>
+<p>除了 Trap 处理，暂时我们没有想到其他不能被抢占的部分。</p>
+<h4 id="_trap-中可以抢占的部分"><code>_trap()</code> 中可以抢占的部分<a class="headerlink" href="#_trap-中可以抢占的部分" title="Permanent link">¶</a></h4>
+<p>接下来思考：整个 <code>_traps()</code> 都不能被抢占吗？一定要等到它 <code>sret</code> 恢复 <code>SIE</code> 吗？</p>
+<ul>
+<li>
+<p>不是的，Trap 的处理过程本质上是从 <code>xIP.i</code> 置 1、中断 Pending 开始，到该 Pending 位被置 0 为止。</p>
+<p>以 Lab1 涉及的 Trap 情况为例：时钟中断的处理从 SEE 发现 <code>stimecmp &gt; stime</code> 将 <code>STIP</code> 置 1 开始，到 <code>sbi_set_timer()</code> 将 <code>STIP</code> 置 0 结束。软件中断的处理从 <code>SSIP</code> 置 1 开始，到 <code>clear_ssip()</code> 将 <code>SSIP</code> 置 0 结束。</p>
+</li>
+<li>
+<p>一旦 Pending 位被置 0（Trap 处理完成），就可以打开 <code>sstatus.SIE</code> 处理新的 Trap，并不需要等到 <code>sret</code> 恢复 <code>SIE</code>。</p>
+<p>如果 Trap 处理未完成，能打开 <code>sstatus.SIE</code> 吗？一旦打开，CPU 马上会再次触发该 Trap，再次进入 <code>_traps()</code>，重复循环下去导致栈 <code>sp</code> 溢出。</p>
+<blockquote>
+<p>你是否想起这一情况与 Lab1 「动手做」探究的为什么能进入 <code>printk()</code> 类似。<code>printk()</code> 的情况比较幸运，<code>sp</code> 最初位于 OpenSBI 保护的地址，爆栈也没有破坏 OpenSBI 的代码和数据，最终走到了 <code>0x7???????</code> 之类的位置（并未探究这是什么地方，反正既不是内核也不是 OpenSBI）。但是当我们将 <code>sp</code> 设置为内核栈后，爆栈向下增长将直接破坏内核数据（data 段）和代码（text 段），导致系统崩溃。</p>
+</blockquote>
+<p>在 Trap 处理完成后立刻打开 <code>SIE</code>，会导致 <code>_traps()</code> 的嵌套调用，最终它们能正确返回吗？</p>
+<ul>
+<li>答案是肯定的，就如上一节所讨论的，设计 <code>_traps()</code> 时我们考虑到它会在任何时候被调用，因此 Trap 上下文包括了所有整数寄存器和 sepc。设刚刚处理完的中断为 A，新的中断为 B，B 在 A 处理完到 <code>sret</code> 的过程中触发，A 此时的状态将被保存到栈上，B 处理完毕后从栈上恢复 A 的状态，继续执行 A 的 <code>sret</code>，一切正常。</li>
+<li>唯一的问题是 Trap 处理程序不能太长，否则开启 <code>SIE</code> 时总是又触发时钟中断 Trap，又会导致栈溢出。在 Linux 中，为了保证 Trap 的快速响应，仅会在 Trap 处理程序中做必要的工作，其余工作放入任务队列延后处理。</li>
+</ul>
+<blockquote>
+<p>细心的同学可能会追问 <code>scause</code>、<code>stval</code> 等其他 CSR 寄存器为什么不视为 Trap 上下文。它们的作用就是辅助中断处理，而中断处理过程是不能抢占的，它们不会丢失。处理完了它们的值就不重要了，仅剩 <code>sepc</code> 用于恢复到中断前的位置。</p>
+</blockquote>
+</li>
+</ul>
+<p>没有理解上面两段论述的同学，请仔细阅读 RISC-V 特权级手册 3.1.9. Machine Interrupt (mip and mie) Registers 部分，彻底理解中断触发和清除的机制。</p>
+<h4 id="时钟中断与进程切换时机">时钟中断与进程切换时机<a class="headerlink" href="#时钟中断与进程切换时机" title="Permanent link">¶</a></h4>
+<p>最后，我们考虑时钟中断触发的进程切换（<code>__switch_to()</code>）应该在什么时候发生。显然它应该在 <code>SIE</code> 开启之后，Trap 上下文恢复之前。这一步可以用排除法来思考：</p>
+<ul>
+<li>Trap 处理过程不能被打断，当然也不能 <code>__switch_to()</code>。</li>
+<li>如果在 <code>SIE</code> 开启之前切换，进程上下文的切换并不会修改 <code>sstatus</code>，新的进程就继续运行在中断禁用的状态，无法响应新的中断。</li>
+<li>如果在 Trap 上下文恢复过程中切换进程，就破坏 Trap 上下文了。</li>
+<li>Trap 上下文恢复完成后，就没机会切换进程了。</li>
+</ul>
+<h4 id="进程切换是否能被抢占">进程切换是否能被抢占<a class="headerlink" href="#进程切换是否能被抢占" title="Permanent link">¶</a></h4>
+<p>当我们这样安排 <code>__switch_to()</code> 的调用，它还能被抢占吗？请同学们思考这样的场景：</p>
+<ul>
+<li>Task 1 主动调用 <code>__switch_to()</code> 切换到其他任务，我们把这次调用称为 A</li>
+<li>在这个 <code>__switch_to()</code> 过程中，时钟中断触发，进入 <code>_traps()</code> 处理</li>
+<li>Trap 处理完成后，因为我们安排了时钟中断触发进程切换，于是又开始调用 <code>__switch_to()</code> 切换到其他任务，我们把这次调用称为 B</li>
+</ul>
+<p>请问 A 和 B 都能顺利完成吗？请你思考后再展开下面的答案。</p>
+<details class="note">
+<summary>答案</summary>
+<p>B 保存的上下文覆盖了 A 保存的上下文，A 再也没办法恢复了。示意图如下：</p>
+<p></p><figure markdown="span">
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab2.assets/double_switch.drawio"><div class="mxgraph" data-mxgraph='{"toolbar": "zoom", "tooltips": "1", "border": 5, "resize": "1", "edit": "_blank", "xml": "&lt;mxfile host=\"65bd71144e\"&gt;\n    &lt;diagram id=\"MKEIpqsYV9xL4WX14Jkj\" name=\"Page-1\"&gt;\n        &lt;mxGraphModel dx=\"534\" dy=\"542\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"1\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"850\" pageHeight=\"1100\" math=\"0\" shadow=\"0\"&gt;\n            &lt;root&gt;\n                &lt;mxCell id=\"0\"/&gt;\n                &lt;mxCell id=\"1\" parent=\"0\"/&gt;\n                &lt;mxCell id=\"46\" value=\"\" style=\"endArrow=none;html=1;entryX=0;entryY=0;entryDx=0;entryDy=0;dashed=1;endFill=0;\" parent=\"1\" target=\"12\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"160\" y=\"140\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"225\" y=\"141\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"58\" value=\"call\" style=\"edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;resizable=0;endArrow=classic;exitX=0;exitY=0.5;exitDx=0;exitDy=0;endFill=1;\" parent=\"1\" source=\"8\" target=\"12\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"220\" y=\"130\"/&gt;\n                            &lt;mxPoint x=\"220\" y=\"150\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"8\" value=\"Task 1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"245\" y=\"120\" width=\"70\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"60\" value=\"call\" style=\"edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;resizable=0;endArrow=classic;endFill=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;\" parent=\"1\" source=\"12\" target=\"18\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"220\" y=\"150\"/&gt;\n                            &lt;mxPoint x=\"220\" y=\"170\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"12\" value=\"schedule()\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"245\" y=\"140\" width=\"70\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"49\" value=\"call\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#6c8ebf;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;resizable=0;endArrow=block;endFill=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fillColor=#dae8fc;\" parent=\"1\" source=\"18\" target=\"48\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"18\" value=\"switch_to()\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"245\" y=\"160\" width=\"70\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"47\" value=\"\u5f00\u59cb\u5207\u6362\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"80\" y=\"130\" width=\"70\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"89\" value=\"\u65f6\u949f\u4e2d\u65ad\u76f4\u63a5\u6253\u65ad\u6267\u884c\" style=\"edgeStyle=none;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;\" edge=\"1\" parent=\"1\" source=\"48\" target=\"88\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"440\" y=\"240\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"91\" value=\"\u5199\u5165 A\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;exitX=0.25;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;\" edge=\"1\" parent=\"1\" source=\"48\" target=\"90\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"108\" value=\"\u56de\u4e0d\u53bb\u4e86\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.25;entryDx=0;entryDy=0;fillColor=#f8cecc;strokeColor=#b85450;\" edge=\"1\" parent=\"1\" source=\"48\" target=\"18\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"48\" value=\"__switch_to()\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"435\" y=\"194.5\" width=\"130\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"71\" value=\"\" style=\"endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"350\" y=\"380\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"350\" y=\"50\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"93\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;\" edge=\"1\" parent=\"1\" source=\"88\" target=\"92\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"95\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;\" edge=\"1\" parent=\"1\" source=\"88\" target=\"94\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"106\" value=\"\u8fd4\u56de\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;fillColor=#d5e8d4;strokeColor=#82b366;\" edge=\"1\" parent=\"1\" source=\"88\" target=\"48\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"88\" value=\"_traps\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"428\" y=\"260\" width=\"80\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"104\" value=\"\u8fd4\u56de\u8bfb\u53d6 B\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;fillColor=#d5e8d4;strokeColor=#82b366;\" edge=\"1\" parent=\"1\" source=\"90\" target=\"94\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"107\" value=\"&amp;lt;div&amp;gt;&amp;lt;font style=&amp;quot;color: rgb(204, 0, 0);&amp;quot;&amp;gt;\u8fd4\u56de\u8bfb\u53d6 B&amp;lt;/font&amp;gt;&amp;lt;/div&amp;gt;&amp;lt;font style=&amp;quot;color: rgb(204, 0, 0);&amp;quot;&amp;gt;\u7206\u4e86&amp;lt;/font&amp;gt;\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;exitX=0;exitY=0.75;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;\" edge=\"1\" parent=\"1\" source=\"90\" target=\"48\"&gt;\n                    &lt;mxGeometry x=\"0.3374\" y=\"10\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint y=\"-1\" as=\"offset\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"90\" value=\"\u5b58\u653e Task1 \u8fdb\u7a0b\u4e0a\u4e0b\u6587\u7684\u5730\u65b9\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"600\" y=\"100\" width=\"130\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"96\" value=\"\u5904\u7406\u5b8c\u4e86\uff0cSIE \u5904\u4e8e\u5f00\u542f\u72b6\u6001\" style=\"edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;\" edge=\"1\" parent=\"1\" source=\"92\" target=\"94\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"92\" value=\"trap_handler()\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"385\" y=\"310\" width=\"80\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"98\" value=\"\u5199\u5165 B&amp;lt;div&amp;gt;&amp;lt;font style=&amp;quot;color: rgb(204, 0, 0);&amp;quot;&amp;gt;A \u4e22\u5931\u4e86&amp;lt;/font&amp;gt;&amp;lt;/div&amp;gt;\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.167;entryY=1.066;entryDx=0;entryDy=0;entryPerimeter=0;fillColor=#dae8fc;strokeColor=#6c8ebf;\" edge=\"1\" parent=\"1\" source=\"94\" target=\"90\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"105\" value=\"\u8fd4\u56de\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;fillColor=#d5e8d4;strokeColor=#82b366;\" edge=\"1\" parent=\"1\" source=\"94\" target=\"88\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"94\" value=\"__switch_to()\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"640\" y=\"310\" width=\"80\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"99\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;\" edge=\"1\" parent=\"1\" target=\"101\" source=\"94\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"740\" y=\"330\" as=\"sourcePoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"102\" value=\"\u8fd4\u56de\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;dashed=1;fillColor=#d5e8d4;strokeColor=#82b366;\" edge=\"1\" parent=\"1\" source=\"101\" target=\"94\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"802\" y=\"310\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"101\" value=\"Task2\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"750\" y=\"355\" width=\"70\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n            &lt;/root&gt;\n        &lt;/mxGraphModel&gt;\n    &lt;/diagram&gt;\n&lt;/mxfile&gt;"}' style="max-width:100%;border:1px solid transparent;"></div></a>
+<figcaption>
+    抢占导致的双重进程切换
+    </figcaption>
+</figure><p></p>
+<p>因此 <code>__switch_to()</code> 不能被抢占，进入 <code>__switch_to()</code> 时应当禁用中断。</p>
+<blockquote>
+<p>如果整个 <code>_traps()</code> 不会触发 <code>__switch_to()</code>，那么 <code>__switch_to()</code> 应当是可以抢占的。但如果 <code>_traps()</code> 不触发进程切换，时钟中断还有意义吗？还能实现抢占吗？这一点留给有兴趣的同学思考，助教也没有深入思考过，欢迎讨论。</p>
+</blockquote>
+</details>
+<div class="admonition success">
+<p class="admonition-title">恭喜你</p>
+<p>至此，你已经彻底理解了<strong>内核抢占的原理</strong>（注意这与用户态抢占不同，仅用户态抢占的实现很容易）。Linux 在 2.6 版本才引入内核抢占。当其他班级还在 Linux 0.11 时，你已经领先了 12 年😉。</p>
+</div>
+<div class="admonition info">
+<p class="admonition-title">更多资料</p>
+<ul>
+<li><a href="https://stackoverflow.com/questions/11779397/what-happens-to-preempted-interrupt-handler">linux kernel - What happens to preempted interrupt handler? - Stack Overflow</a></li>
+</ul>
+</div>
+<h3 id="进程数据结构和内存布局">进程数据结构和内存布局<a class="headerlink" href="#进程数据结构和内存布局" title="Permanent link">¶</a></h3>
+<p>理解完进程切换机制，我们终于可以开始设计进程的数据结构了。我们需要存储的信息包括：</p>
+<ul>
+<li>进程的上下文 <code>struct thread_struct</code></li>
+<li>
+<p>进程的栈 <code>void *stack</code></p>
+<p>如果不给每个进程独立的栈，则会产生下图所示的局面：</p>
+<p></p><figure markdown="span">
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab2.assets/no_stack.drawio"><div class="mxgraph" data-mxgraph='{"toolbar": "zoom", "tooltips": "1", "border": 5, "resize": "1", "edit": "_blank", "xml": "&lt;mxfile host=\"65bd71144e\"&gt;\n    &lt;diagram id=\"CBWTxGyERXmDpSufS4Sj\" name=\"Page-1\"&gt;\n        &lt;mxGraphModel dx=\"362\" dy=\"368\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"1\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"850\" pageHeight=\"1100\" math=\"0\" shadow=\"0\"&gt;\n            &lt;root&gt;\n                &lt;mxCell id=\"0\"/&gt;\n                &lt;mxCell id=\"1\" parent=\"0\"/&gt;\n                &lt;mxCell id=\"3\" value=\"Task2 \u6808\u6570\u636e\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"210\" y=\"180\" width=\"100\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"6\" value=\"Task1 \u6808\u6570\u636e\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"210\" y=\"140\" width=\"100\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"7\" value=\"\" style=\"endArrow=classic;html=1;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"180\" y=\"179.46\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"210\" y=\"179.46\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"8\" value=\"Task1 \u88ab\u5207\u6362\u51fa\u53bb\" style=\"text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"60\" y=\"160\" width=\"110\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"16\" value=\"&amp;lt;font style=&amp;quot;color: rgb(204, 0, 0);&amp;quot;&amp;gt;\u56de\u6765\u7684&amp;lt;/font&amp;gt;&amp;lt;div&amp;gt;&amp;lt;font style=&amp;quot;color: rgb(204, 0, 0);&amp;quot;&amp;gt;Task1 \u6808&amp;lt;/font&amp;gt;&amp;lt;div&amp;gt;&amp;lt;font color=&amp;quot;#cc0000&amp;quot;&amp;gt;\u5411\u4e0b\u589e\u957f&amp;lt;br&amp;gt;&amp;lt;/font&amp;gt;&amp;lt;div&amp;gt;&amp;lt;font style=&amp;quot;color: rgb(204, 0, 0);&amp;quot;&amp;gt;\u5c06\u7834\u574f Task2&amp;lt;/font&amp;gt;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fillStyle=hatch;fontColor=#CC0000;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"300\" y=\"180\" width=\"80\" height=\"70\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"17\" value=\"\" style=\"endArrow=classic;html=1;\" edge=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"180\" y=\"219.46\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"210\" y=\"219.46\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"18\" value=\"Task1 \u88ab\u5207\u6362\u56de\u6765\" style=\"text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"60\" y=\"200\" width=\"110\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n            &lt;/root&gt;\n        &lt;/mxGraphModel&gt;\n    &lt;/diagram&gt;\n&lt;/mxfile&gt;"}' style="max-width:100%;border:1px solid transparent;"></div></a>
+<figcaption>
+    多个进程复用同一栈会导致冲突
+    </figcaption>
+</figure><p></p>
+<p>细心的同学会注意到，这样的设计也让不同进程的 Trap 上下文分离了，存储在各自的栈上。预告一下，在后续的 Lab 中我们会继续完善 Trap 处理，让它不再复用 <code>sp</code> 保存上下文。</p>
+</li>
+<li>
+<p>进程 ID、状态、优先级等调度相关的信息，供 Part 4 实现的调度器使用</p>
+</li>
+<li>所有进程数据结构都组织成一个双向循环链表，方便调度器遍历</li>
+</ul>
+<p>于是我们设计出了 <code>struct task_struct</code> 结构体来保存这些信息：</p>
+<div class="language-c highlight"><span class="filename">kernel/arch/riscv/include/proc.h</span><pre><span></span><code><span id="__span-21-1"><a href="#__codelineno-21-1" id="__codelineno-21-1" name="__codelineno-21-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-21-2"><a href="#__codelineno-21-2" id="__codelineno-21-2" name="__codelineno-21-2"></a><span class="w">    </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">pid</span><span class="p">;</span>
+</span><span id="__span-21-3"><a href="#__codelineno-21-3" id="__codelineno-21-3" name="__codelineno-21-3"></a><span class="w">    </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">state</span><span class="p">;</span>
+</span><span id="__span-21-4"><a href="#__codelineno-21-4" id="__codelineno-21-4" name="__codelineno-21-4"></a>
+</span><span id="__span-21-5"><a href="#__codelineno-21-5" id="__codelineno-21-5" name="__codelineno-21-5"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">sched_entity</span><span class="w"> </span><span class="n">se</span><span class="p">;</span>
+</span><span id="__span-21-6"><a href="#__codelineno-21-6" id="__codelineno-21-6" name="__codelineno-21-6"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">thread_struct</span><span class="w"> </span><span class="kr">thread</span><span class="p">;</span>
+</span><span id="__span-21-7"><a href="#__codelineno-21-7" id="__codelineno-21-7" name="__codelineno-21-7"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="n">list</span><span class="p">;</span>
+</span><span id="__span-21-8"><a href="#__codelineno-21-8" id="__codelineno-21-8" name="__codelineno-21-8"></a><span class="p">};</span>
+</span></code></pre></div>
+<p>内存布局如下所示：</p>
+<figure>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab2.assets/task_struct.drawio"><div class="mxgraph" data-mxgraph='{"toolbar": "zoom", "tooltips": "1", "border": 5, "resize": "1", "edit": "_blank", "xml": "&lt;mxfile host=\"65bd71144e\"&gt;\n    &lt;diagram id=\"vo0tkf5X_ReAiEvZ1G07\" name=\"Page-1\"&gt;\n        &lt;mxGraphModel dx=\"340\" dy=\"234\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"1\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"850\" pageHeight=\"1100\" math=\"0\" shadow=\"0\"&gt;\n            &lt;root&gt;\n                &lt;mxCell id=\"0\"/&gt;\n                &lt;mxCell id=\"1\" parent=\"0\"/&gt;\n                &lt;mxCell id=\"2\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;movable=1;resizable=1;rotatable=1;deletable=1;editable=1;locked=0;connectable=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"170\" y=\"190\" width=\"120\" height=\"110\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"3\" value=\"\" style=\"endArrow=none;html=1;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"150\" y=\"190\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"170\" y=\"190\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"4\" value=\"\" style=\"endArrow=none;html=1;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"150\" y=\"300\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"170\" y=\"300\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"5\" value=\"PGSIZE\" style=\"endArrow=classic;startArrow=classic;html=1;horizontal=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;\" parent=\"1\" source=\"7\" edge=\"1\" target=\"6\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"160\" y=\"370\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"160\" y=\"160\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"6\" value=\"High\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"100\" y=\"174\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"7\" value=\"Low\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"100\" y=\"283\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"8\" value=\"Stack\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"170\" y=\"190\" width=\"120\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"55\" value=\".stack\" style=\"edgeStyle=none;html=1;\" parent=\"1\" source=\"9\" target=\"2\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint as=\"offset\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"9\" value=\"task_struct\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"170\" y=\"340\" width=\"120\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"10\" value=\"\u5411\u4e0b\u589e\u957f\" style=\"endArrow=classic;html=1;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"229.76000000000002\" y=\"220\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"230\" y=\"270\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"11\" value=\"thread_struct\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"180\" y=\"375\" width=\"100\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"56\" value=\".stack\" style=\"edgeStyle=none;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;\" parent=\"1\" source=\"43\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"370\" y=\"300\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"43\" value=\"task_struct\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"310\" y=\"340\" width=\"120\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"57\" value=\".stack\" style=\"edgeStyle=none;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;\" parent=\"1\" source=\"44\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"510\" y=\"300\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"44\" value=\"task_struct\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"450\" y=\"340\" width=\"120\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"45\" value=\"\" style=\"endArrow=classic;startArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;\" parent=\"1\" source=\"9\" target=\"43\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"330\" y=\"390\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"380\" y=\"340\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"46\" value=\"\" style=\"endArrow=classic;startArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;\" parent=\"1\" source=\"43\" target=\"44\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"420\" y=\"510\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"470\" y=\"460\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"47\" value=\"\" style=\"endArrow=classic;startArrow=classic;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;elbow=vertical;edgeStyle=orthogonalEdgeStyle;\" parent=\"1\" source=\"51\" target=\"44\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"240\" y=\"510\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"290\" y=\"460\" as=\"targetPoint\"/&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"10\" y=\"360\"/&gt;\n                            &lt;mxPoint x=\"10\" y=\"430\"/&gt;\n                            &lt;mxPoint x=\"580\" y=\"430\"/&gt;\n                            &lt;mxPoint x=\"580\" y=\"360\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"51\" value=\"list_head\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"30\" y=\"345\" width=\"120\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"52\" value=\"\" style=\"endArrow=classic;startArrow=classic;html=1;\" parent=\"1\" source=\"51\" target=\"9\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"170\" y=\"470\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"220\" y=\"420\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"53\" value=\"thread_struct\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"320\" y=\"375\" width=\"100\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"54\" value=\"thread_struct\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"460\" y=\"375\" width=\"100\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"59\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"310\" y=\"190\" width=\"120\" height=\"110\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"60\" value=\"Stack\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"310\" y=\"190\" width=\"120\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"63\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"450\" y=\"190\" width=\"120\" height=\"110\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"64\" value=\"Stack\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"450\" y=\"190\" width=\"120\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"68\" value=\"\u5411\u4e0b\u589e\u957f\" style=\"endArrow=classic;html=1;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"370\" y=\"220\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"370.24\" y=\"270\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"71\" value=\"\u5411\u4e0b\u589e\u957f\" style=\"endArrow=classic;html=1;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"510\" y=\"220\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"510.24\" y=\"270\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n            &lt;/root&gt;\n        &lt;/mxGraphModel&gt;\n    &lt;/diagram&gt;\n&lt;/mxfile&gt;"}' style="max-width:100%;border:1px solid transparent;"></div></a>
+<figcaption>
+    进程数据结构示意图
+    </figcaption>
+</figure>
+<p>此外，我们令 <code>tp</code>（RISC-V 调用约定称为 Thread Pointer）寄存器始终指向当前 CPU 上运行的进程的 <code>task_struct</code> 结构体，这样内核就能轻松地通过 <code>tp</code> 访问当前进程的信息。</p>
+<h3 id="task-2设置初始进程">Task 2：设置初始进程<a class="headerlink" href="#task-2设置初始进程" title="Permanent link">¶</a></h3>
+<ul>
+<li>在 <code>head.S</code> 将 <code>init_task</code> 的地址加载到 <code>tp</code> 寄存器中</li>
+<li>在 <code>proc.c</code> 设置 <code>init_task</code> 中设置合适字段（读到这里好像只能设置 <code>stack</code>）</li>
+</ul>
+<p>TODO</p>
+<h3 id="task-3重构-trap-handler">Task 3：重构 Trap Handler<a class="headerlink" href="#task-3重构-trap-handler" title="Permanent link">¶</a></h3>
+<p>请同学们根据本 Part 学习到的知识，重构 Lab1 的 Trap 处理代码，使其在第一个时钟中断处理完成后从自己切换到自己。要点如下：</p>
+<ul>
+<li>在中断处理完成后允许抢占</li>
+<li>在 <code>trap_handler()</code></li>
+</ul>
+<p>TODO</p>
+<h2 id="part-3进程生命周期">Part 3：进程生命周期<a class="headerlink" href="#part-3进程生命周期" title="Permanent link">¶</a></h2>
+<p>本节我们实现 kthread 的创建、运行和退出，完成进程的生命周期管理。</p>
+<h3 id="进程复制与加载">进程复制与加载<a class="headerlink" href="#进程复制与加载" title="Permanent link">¶</a></h3>
+<p>Windows 使用 <a href="https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessa?redirectedfrom=MSDN"><code>CreateProcess()</code></a> <strong>创建进程</strong>，这个接口庞大且僵化，还有好几个衍生版本：</p>
+<div class="language-cpp highlight"><span class="filename">processthreadsapi.h</span><pre><span></span><code><span id="__span-22-1"><a href="#__codelineno-22-1" id="__codelineno-22-1" name="__codelineno-22-1"></a><span class="n">BOOL</span><span class="w"> </span><span class="nf">CreateProcessA</span><span class="p">(</span>
+</span><span id="__span-22-2"><a href="#__codelineno-22-2" id="__codelineno-22-2" name="__codelineno-22-2"></a><span class="w">  </span><span class="p">[</span><span class="n">in</span><span class="p">,</span><span class="w"> </span><span class="n">optional</span><span class="p">]</span><span class="w">      </span><span class="n">LPCSTR</span><span class="w">                </span><span class="n">lpApplicationName</span><span class="p">,</span>
+</span><span id="__span-22-3"><a href="#__codelineno-22-3" id="__codelineno-22-3" name="__codelineno-22-3"></a><span class="w">  </span><span class="p">[</span><span class="n">in</span><span class="p">,</span><span class="w"> </span><span class="n">out</span><span class="p">,</span><span class="w"> </span><span class="n">optional</span><span class="p">]</span><span class="w"> </span><span class="n">LPSTR</span><span class="w">                 </span><span class="n">lpCommandLine</span><span class="p">,</span>
+</span><span id="__span-22-4"><a href="#__codelineno-22-4" id="__codelineno-22-4" name="__codelineno-22-4"></a><span class="w">  </span><span class="p">[</span><span class="n">in</span><span class="p">,</span><span class="w"> </span><span class="n">optional</span><span class="p">]</span><span class="w">      </span><span class="n">LPSECURITY_ATTRIBUTES</span><span class="w"> </span><span class="n">lpProcessAttributes</span><span class="p">,</span>
+</span><span id="__span-22-5"><a href="#__codelineno-22-5" id="__codelineno-22-5" name="__codelineno-22-5"></a><span class="w">  </span><span class="p">[</span><span class="n">in</span><span class="p">,</span><span class="w"> </span><span class="n">optional</span><span class="p">]</span><span class="w">      </span><span class="n">LPSECURITY_ATTRIBUTES</span><span class="w"> </span><span class="n">lpThreadAttributes</span><span class="p">,</span>
+</span><span id="__span-22-6"><a href="#__codelineno-22-6" id="__codelineno-22-6" name="__codelineno-22-6"></a><span class="w">  </span><span class="p">[</span><span class="n">in</span><span class="p">]</span><span class="w">                </span><span class="n">BOOL</span><span class="w">                  </span><span class="n">bInheritHandles</span><span class="p">,</span>
+</span><span id="__span-22-7"><a href="#__codelineno-22-7" id="__codelineno-22-7" name="__codelineno-22-7"></a><span class="w">  </span><span class="p">[</span><span class="n">in</span><span class="p">]</span><span class="w">                </span><span class="n">DWORD</span><span class="w">                 </span><span class="n">dwCreationFlags</span><span class="p">,</span>
+</span><span id="__span-22-8"><a href="#__codelineno-22-8" id="__codelineno-22-8" name="__codelineno-22-8"></a><span class="w">  </span><span class="p">[</span><span class="n">in</span><span class="p">,</span><span class="w"> </span><span class="n">optional</span><span class="p">]</span><span class="w">      </span><span class="n">LPVOID</span><span class="w">                </span><span class="n">lpEnvironment</span><span class="p">,</span>
+</span><span id="__span-22-9"><a href="#__codelineno-22-9" id="__codelineno-22-9" name="__codelineno-22-9"></a><span class="w">  </span><span class="p">[</span><span class="n">in</span><span class="p">,</span><span class="w"> </span><span class="n">optional</span><span class="p">]</span><span class="w">      </span><span class="n">LPCSTR</span><span class="w">                </span><span class="n">lpCurrentDirectory</span><span class="p">,</span>
+</span><span id="__span-22-10"><a href="#__codelineno-22-10" id="__codelineno-22-10" name="__codelineno-22-10"></a><span class="w">  </span><span class="p">[</span><span class="n">in</span><span class="p">]</span><span class="w">                </span><span class="n">LPSTARTUPINFOA</span><span class="w">        </span><span class="n">lpStartupInfo</span><span class="p">,</span>
+</span><span id="__span-22-11"><a href="#__codelineno-22-11" id="__codelineno-22-11" name="__codelineno-22-11"></a><span class="w">  </span><span class="p">[</span><span class="n">out</span><span class="p">]</span><span class="w">               </span><span class="n">LPPROCESS_INFORMATION</span><span class="w"> </span><span class="n">lpProcessInformation</span>
+</span><span id="__span-22-12"><a href="#__codelineno-22-12" id="__codelineno-22-12" name="__codelineno-22-12"></a><span class="p">);</span>
+</span></code></pre></div>
+<p>而 Unix 进程模型将其分为两步：</p>
+<ol>
+<li><code>fork()</code>：<strong>复制</strong>当前进程，创建一个新进程</li>
+<li><code>exec()</code>：在当前进程的上下文中<strong>加载</strong>并执行一个新的程序</li>
+</ol>
+<p>在 <code>fork()</code> 后 <code>exec()</code> 前，可以自由配置新的进程。当内核引入新的功能时，也无需修改 <code>fork</code>/<code>exec</code> 的接口。这样<strong>复制+加载</strong>的设计比<strong>直接创建</strong>更灵活，体现了<strong>组合优于复杂接口</strong>的 Unix 哲学。</p>
+<p><code>fork()</code> 和 <code>exec()</code> 是提供给用户态程序的系统调用接口，将在 Lab4 进行封装。本次实验在内核态中实现相应的底层功能：</p>
+<ul>
+<li><code>task_init()</code>：为第一个 Task（即 <code>start_kernel()</code>）<strong>初始化</strong>相关资源</li>
+<li><code>copy_process()</code>：<strong>拷贝</strong>当前 Task</li>
+<li><code>kernel_thread()</code>：修改前者创建的 Task，在其中<strong>运行新的函数</strong></li>
+<li><code>switch_to()</code>：<strong>切换</strong>到另一个 Task</li>
+<li><code>do_exit()</code>：在 Task 结束时调用，<strong>释放</strong>相关资源</li>
+</ul>
+<h3 id="task-4实现进程复制">Task 4：实现进程复制<a class="headerlink" href="#task-4实现进程复制" title="Permanent link">¶</a></h3>
+<p>TODO</p>
+<h3 id="进程退出与销毁">进程退出与销毁<a class="headerlink" href="#进程退出与销毁" title="Permanent link">¶</a></h3>
+<p>TODO</p>
+<h3 id="task-5实现-kthread-与进程退出">Task 5：实现 <code>kthread()</code> 与进程退出<a class="headerlink" href="#task-5实现-kthread-与进程退出" title="Permanent link">¶</a></h3>
+<p><code>kthread()</code> 本质上是内核线程的一个 wrapper，目的就是为了帮所有内核线程结束时调用 <code>do_exit()</code>，而不用在所有函数末尾都加上 <code>do_exit()</code>。</p>
+<p>TODO</p>
+<h2 id="part-4调度器">Part 4：调度器<a class="headerlink" href="#part-4调度器" title="Permanent link">¶</a></h2>
+<p>到本节，我们终于可以把「进程切换（switch）」这个词升级为「调度（schedule）」了，因为我们有了调度算法，由它替我们选择要切换的进程。</p>
+<h3 id="优先级调度">优先级调度<a class="headerlink" href="#优先级调度" title="Permanent link">¶</a></h3>
+<p>TODO</p>
+<h3 id="task-6实现优先级调度">Task 6：实现优先级调度<a class="headerlink" href="#task-6实现优先级调度" title="Permanent link">¶</a></h3>
+<p>TODO</p>
+<aside class="md-source-file">
+<span class="md-source-file__fact">
+<span class="md-icon" title="Last update">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
+</span>
+<span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="2025年10月10日 03:21:30 UTC"><span class="timeago" datetime="2025-10-10T03:21:30+00:00" locale="zh"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="2025年10月10日 03:21:30 UTC">2025-10-10</span>
+</span>
+<span class="md-source-file__fact">
+<span class="md-icon" title="Created">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"></path></svg>
+</span>
+<span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="2025年10月7日 10:26:33 UTC"><span class="timeago" datetime="2025-10-07T10:26:33+00:00" locale="zh"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="2025年10月7日 10:26:33 UTC">2025-10-07</span>
+</span>
+<span class="md-source-file__fact">
+<span class="md-icon" title="Contributors">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"></path></svg>
+</span>
+<span>GitHub</span>
+<nav>
+<a class="md-author" href="https://github.com/bowling233" title="@bowling233">
+<img alt="bowling233" src="https://avatars.githubusercontent.com/u/35755846?v=4&amp;size=72"/>
+</a>
+</nav>
+</span>
+</aside>
+</article>
+</div>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+</div>
+<button class="md-top md-icon" data-md-component="top" hidden="" type="button">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+</main>
+<footer class="md-footer">
+<nav aria-label="Footer" class="md-footer__inner md-grid">
+<a aria-label="Previous: Lab 1：内核启动与时钟中断" class="md-footer__link md-footer__link--prev" href="../lab1/">
+<div class="md-footer__button md-icon">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</div>
+<div class="md-footer__title">
+<span class="md-footer__direction">
+                Previous
+              </span>
+<div class="md-ellipsis">
+                Lab 1：内核启动与时钟中断
+              </div>
+</div>
+</a>
+<a aria-label="Next: 附录 1：Spike 工具链" class="md-footer__link md-footer__link--next" href="../z1-spike/">
+<div class="md-footer__title">
+<span class="md-footer__direction">
+                Next
+              </span>
+<div class="md-ellipsis">
+                附录 1：Spike 工具链
+              </div>
+</div>
+<div class="md-footer__button md-icon">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"></path></svg>
+</div>
+</a>
+</nav>
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+<div class="md-copyright__highlight">
+      浙江大学计算机科学与技术学院
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"base": "..", "features": ["content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer", "navigation.sections", "navigation.expand", "navigation.indexes", "navigation.tracking", "navigation.path", "navigation.top", "toc.follow", "content.action.edit", "search.suggest", "search.highlight", "search.share"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+<script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+<script src="../js/timeago.min.js"></script>
+<script src="../js/timeago_mkdocs_material.js"></script>
+<script src="../javascripts/mathjax.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/polyfill/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax/es5/tex-mml-chtml.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tablesort/dist/tablesort.min.js"></script>
+<script src="../javascripts/tablesort.js"></script>
+<script src="../javascripts/mermaid.mjs" type="module"></script>
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script><script src="https://viewer.diagrams.net/js/viewer-static.min.js"></script></body></html>
