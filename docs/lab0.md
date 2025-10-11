@@ -261,12 +261,17 @@ index.html           100% |********************************|  2381  0:00:00 ETA
 接下来学习 QEMU 操作：
 
 - 现在与你交互的是 [QEMU 自带的终端复用器（Terminal Multiplexer）](https://www.qemu.org/docs/master/system/mux-chardev.html)
+
     - 它连接着 QEMU Monitor 和虚拟机的控制台（Console），默认情况下连接后者。
     - ++ctrl+a++ 再按 ++c++ 可以在两者间切换。
     - ++ctrl+a++ 再按 ++h++ 可以查看帮助。
     - ++ctrl+a++ 再按 ++x++ 可以退出 QEMU。
 
     !!! tip "像这里的 ++ctrl+a++ 这样的前导组合键在终端复用器（如 tmux）中被称为逃逸键（escape key）。初始状态下，其他所有按键都会被直接传递给当前连接的终端。当你按下逃逸键时，终端复用器会进入「其自身的」命令模式，等待你输入后续的命令键。"
+
+    !!! note "要点：终端复用器"
+
+        请同学们重点理解终端复用器这一概念。在之后的实验中，你可能遇到 QEMU 中虚拟机卡住控制台无输出、虚拟机死循环控制台疯狂输出等情况，但这都是虚拟机控制台的问题，并不影响终端复用器的使用。**只要你启动了 QEMU，就可以通过终端复用器切换到 QEMU Monitor，并与 QEMU Monitor 交互。**
 
 - [QEMU Monitor](https://qemu-project.gitlab.io/qemu/system/monitor.html) 可以控制、查看、调试虚拟机。
 
