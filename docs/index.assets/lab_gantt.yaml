@@ -8,7 +8,7 @@
   activities:
   - title: 代码、报告
     start: 2025-09-25
-    end: 2025-10-14
+    end: 2025-10-13 23:59
   - title: 验收
     start: 2025-09-25
     end: 2025-10-21
@@ -16,10 +16,10 @@
 - title: Lab2 - 抢占式内核线程调度（15%）
   activities:
   - title: 代码、报告
-    start: 2025-10-7
-    end: 2025-11-04
+    start: 2025-10-12
+    end: 2025-11-04 23:59
   - title: 验收
-    start: 2025-10-7
+    start: 2025-10-12
     end: 2025-11-11
 
 - title: Lab3 - 虚拟内存（15%）

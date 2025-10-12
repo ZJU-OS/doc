@@ -129,7 +129,7 @@ OS 实验主要考察工程实践能力，核心要点是**按照 RISC-V 指令�
 
 其他：
 
-- [（NJU）操作系统：设计与实现 (2024 春季学期)](https://jyywiki.cn/OS/2024/)
+- [(NJU) 操作系统：设计与实现 (2024 春季学期)](https://jyywiki.cn/OS/2024/)
 - [(THU) THU CS Lab](https://github.com/thu-cs-lab)
 - [(USTC) Vlab 实验中心](https://soc.ustc.edu.cn/)
 - [rCore-Tutorial-Book 文档](https://rcore-os.cn/rCore-Tutorial-Book-v3/)
@@ -150,6 +150,14 @@ OS 实验主要考察工程实践能力，核心要点是**按照 RISC-V 指令�
 - 学生统一使用 ZJU Git 上分配的仓库进行实验
 - 使用容器化的实验环境
 - 使用自动化评测
+
+## 本地构建
+
+本仓库使用 `uv` 管理 Python 依赖，安装 `uv` 后可以运行下面的命令在本地渲染文档：
+
+```bash
+uv run mkdocs serve
+```
 
 ## 致谢
 

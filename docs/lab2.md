@@ -2,7 +2,8 @@
 
 !!! danger "DDL"
 
-    本实验文档正在编写中，尚未正式发布。
+    - 代码、报告：2025-11-04 23:59
+    - 验收：2025-11-11 实验课
 
 ## 实验简介
 
@@ -71,7 +72,7 @@ git fetch upstream
 git merge upstream/lab2
 ```
 
-合并说明：
+下面的合并说明供同学们解决合并冲突时参考：
 
 - 新增实验相关：
     - 内存管理代码 `mm.h`，在 Part1.2 介绍
@@ -80,6 +81,7 @@ git merge upstream/lab2
     - 进程管理相关实验代码 `proc.h`，在 Part1.5 介绍
     - 内核线程代码 `kthread.h`，在 Part1.6 介绍
     - 调度器代码 `sched.h`，在 Part4 介绍
+    - 几个测试样例 `test.h`、`test_*.c` 在对应的 Task 介绍
 - 新增其他：
     - 日志系统，见 `log.h`
         - 自动识别并打印日志位置的**文件名和行号**
@@ -88,6 +90,7 @@ git merge upstream/lab2
         - **建议同学们多用这一日志系统而不是 `printk`**
 - 变更：
     - CSR 相关内容从 `sbi.h` 移动到 `csr.h`
+    - 时钟中断的间隔与调度算法有关，从 1s 改为 `kernel/arch/riscv/include/sched.h` 中定义的 `TIMER_INTERVAL`
     - `arch/riscv/kernel/include` 中的所有头文件现在都添加了 Doxygen 风格的**详细的 API、数据结构、常量的注释，请同学们积极阅读和使用**，文档不会再赘述。
 
 ## Part 1：内存管理
@@ -319,7 +322,7 @@ free_pages(a);               // 释放之前分配的一页
 
 `kernel/arch/riscv/include/cache.h` 和 `kernel/arch/riscv/include/cache.c` 实现了 Slab 分配器，要求同学们阅读代码并理解其工作原理。
 
-!!! example "动手做"
+!!! example "动手做：理解空闲链表"
 
     阅读 `cache.h` 和 `cache.c`，理解空闲链表缓存的实现。
 
@@ -462,7 +465,7 @@ asmlinkage void ret_from_fork_kernel(void *fn_arg, int (*fn)(void *), struct pt_
     - 因为切换不涉及 `SIE`，新的进程继续运行在中断禁用的状态，无法响应新的中断。
     - 如果非要打开 `SIE`，那么 CPU 马上会再次触发该 Trap，再次进入 `_traps()`，重复循环下去导致栈 `sp` 溢出。
 
-        > 你是否想起这一情况与 Lab1 「动手做」探究的为什么能进入 `printk()` 类似。`printk()` 的情况比较幸运，`sp` 最初位于 OpenSBI 保护的地址，爆栈也没有破坏 OpenSBI 的代码和数据，最终走到了 `0x7???????` 之类的位置（并未探究这是什么地方，反正既不是内核也不是 OpenSBI）。但是当我们将 `sp` 设置为内核栈后，爆栈向下增长将直接破坏内核数据（data 段）和代码（text 段），导致系统崩溃。
+        > 你是否想起这一情况与 Lab1「动手做」探究的为什么能进入 `printk()` 类似。`printk()` 的情况比较幸运，`sp` 最初位于 OpenSBI 保护的地址，爆栈也没有破坏 OpenSBI 的代码和数据，最终走到了 `0x7???????` 之类的位置（并未探究这是什么地方，反正既不是内核也不是 OpenSBI）。但是当我们将 `sp` 设置为内核栈后，爆栈向下增长将直接破坏内核数据（data 段）和代码（text 段），导致系统崩溃。
 
     !!! tip
 
@@ -623,7 +626,7 @@ BOOL CreateProcessA(
 1. `fork()`：**复制**当前进程，创建一个新进程
 2. `exec()`：在当前进程的上下文中**加载**并执行一个新的程序
 
-在 `fork()` 后 `exec()` 前，可以自由配置新的进程。当内核引入新的功能时，也无需修改 `fork`/`exec` 的接口。这样**复制+加载**的设计比**直接创建**更灵活，体现了**组合优于复杂接口**的 Unix 哲学。
+在 `fork()` 后 `exec()` 前，可以自由配置新的进程。当内核引入新的功能时，也无需修改 `fork`/`exec` 的接口。这样**复制 + 加载**的设计比**直接创建**更灵活，体现了**组合优于复杂接口**的 Unix 哲学。
 
 `fork()` 和 `exec()` 是提供给用户态程序的系统调用接口，将在 Lab4 进行封装。本次实验在内核态中实现相应的底层功能：
 
@@ -681,9 +684,30 @@ BOOL CreateProcessA(
 
     一个例外是 `kthreadd` 线程（在刚刚的 Task 中见过），**它是第一个内核线程，负责创建其他内核线程**。**它永远不会退出**，因此不需要 `kthread()` 包装。
 
-### Task 4：实现进程退出与销毁
+由于 `do_exit()` 依赖于调度器，这部分的任务留到 Part 4 一起完成。
 
-请补全 `kernel/arch/riscv/kernel/proc.c` 文件中的 `do_exit()` 和 `release_task()` 函数，实现内核线程的退出与销毁。具体要求已经在上文中描述。
+## Part 4：调度器
+
+到本节，我们终于可以把**进程切换**这个词升级为**调度**了。我们将研究调度算法，由它替选择要切换的进程。
+
+### 时间片轮转调度
+
+时间片轮转的定义已经在理论课上讲过了，这里把 PPT 内容再贴一遍：
+
+> - 基本思路：通过时间片轮转，提高进程并发性和响应时间特性，从而提高资源利用率。
+>
+> - RR 算法：
+>
+>     - 将系统中所有的就绪进程按照 FCFS 原则，排成一个队列。
+>     - 每次调度时将 CPU 分派给队首进程，让其执行一个时间片 (time slice) 。
+>     - 在一个时间片结束时，暂停当前进程的执行，将其送到就绪队列的末尾，并通过上下文切换执行就绪队列的队首进程。
+>     - 进程可以未使用完一个时间片，就出让 CPU（如阻塞）。
+
+### Task 4：实现时间片轮转调度和抢占
+
+- 请补全 `kernel/arch/riscv/kernel/sched.c` 文件中的 `schedule()` 函数，实现时间片轮转调度算法。
+- 请补全 `kernel/arch/riscv/kernel/proc.c` 文件中的 `do_exit()` 和 `release_task()` 函数，实现内核线程的退出与销毁。
+- 在 `trap_handler()` 的末尾调用 `schedule()`，从而启用内核抢占，彻底完成本次实验。
 
 !!! success "完成条件"
 
@@ -691,21 +715,42 @@ BOOL CreateProcessA(
 
     该测试会创建一个仅有一条 `printk()` 语句的内核线程，检查其退出和资源释放是否正确。
 
-## Part 4：调度器
+    该测试会在 `schedule()` 中打断点，检查最终选择的 `next_task` 是否符合上述时间片轮转调度算法计算的结果。
 
-到本节，我们终于可以把**进程切换**这个词升级为**调度**了。我们将研究调度算法，由它替选择要切换的进程。
+!!! example "动手做：计算响应比"
 
-### 优先级调度
+    除了基本的 RR 调度，实验框架还模仿了 Linux 的线程管理机制，引入了 **异步内核线程创建**。
 
-TODO
+    具体流程如下：
 
-### Task 5：实现优先级调度
+    - 设置一个队列，用于存放待创建的内核线程请求；
+    - `kthreadd` 线程不断从该队列中取出请求，创建其他内核线程；
+    - 每次创建完成后，`kthreadd` 会**立即让出 CPU**（用完时间片），因此它几乎不占用调度时间；
+    - `kthread_create()` 用于提交创建请求，它会**立即返回**，不会等待线程真正启动（这点与 Linux 不同）。
 
-TODO
+    框架提供的 `test_sched.c` 模拟了理论课中的调度考题：
 
-### 高级调度算法
+    | 进程 | 请求创建时间 | 运行时间 |
+    | ---- | ------------ | -------- |
+    | 1 | 0 | 10 |
+    | 2 | 1 | 1 |
+    | 3 | 4 | 2 |
+    | 4 | 5 | 1 |
+    | 5 | 8 | 5 |
 
-其实，实验框架模仿 Linux 做了 kthread 的异步创建，即内核线程不是直接创建，而是由 `kthreadd` 线程轮询创建队列来创建。然而，本实验实现的简单优先级调度算法很容易造成饥饿（Starvation），举例：
+    这里的“请求创建时间”指 `kthread_create()` 被调用的时刻，**并不代表线程立即进入就绪队列**。
+
+    当你完成所有任务后，运行内核，观察该测例的输出结果，**计算 5 个进程的平均周转时间、平均等待时间和响应比**。
+
+!!! example "动手做：解释时钟对调度结果的影响"
+
+    需要说明的是，同学们应该在非调试情况下运行内核。如果开启调试，可能会导致调度结果不符合预期。这是因为 GDB 在单步执行或频繁检查寄存器、内存状态时，会显著拖慢模拟器运行，导致所有指令变慢，用体系结构的术语说就是 IPC 变低了。
+
+    这些情况都可能导致涉及时间计算的调度算法的结果发生变化。**尝试解释为什么 RR 调度的结果可能发生变化**。
+
+## 结语：Lab2 和 Linux 调度器的历史
+
+其实，实验框架最开始实现的是优先级调度，但是优先级调度算法很容易造成饥饿（Starvation），与 `kthreadd` 的异步创建机制冲突。举例：
 
 - 新的创建请求放入队列
 - `kthreadd` 线程从队列中取出请求，创建新线程
@@ -713,21 +758,18 @@ TODO
 - 在优先级相同的情况下，`schedule()` 的调度算法**始终选择 PID 较小的进程**（因为是从进程链表头开始遍历的）
 - 新线程永远无法被调度运行
 
-因此实现 `kthreadd` 并没有什么意义，最终还是在各处手动进行了优先级设置和主动调度。要想让 `kthreadd` 发挥作用，需要更高级的调度算法，比如：
+使用理论课上讲的老化（动态优先级）可以解决饥饿问题，但不公平（Fairness）的问题仍然十分严重，难以平衡各个进程的响应时间。比如 `kthreadd` 可能需要很长的累积等待时间才能被调度运行，严重影响内核进程异步创建的能力。最终实验框架选用了 RR 调度，**至少能平衡各个进程的响应时间**。但由于没有实现阻塞和唤醒机制，RR 调度的优势也无法体现出来。
 
-- 理论课上讲的**多级反馈队列调度（Multi-Level Feedback Queue, MLFQ）**。
-- Linux 早期使用 [$O(1)$ 调度器](https://litux.nl/mirror/kerneldevelopment/0672327201/ch04lev1sec2.html)，后来改为**[完全公平调度器（Completely Fair Scheduler, CFS）](https://docs.kernel.org/scheduler/sched-design-CFS.html)**。
+总的来说，Lab2 的内核抢占和进程管理已经成功改革到 Linux 2.6 时代，但调度算法还没跟上，所以同学们做 Lab 时可能会觉得有些地方的实现不够合理，欢迎你来找助教讨论。
 
-这些高级调度算法就不在本实验中实现了，仅要求同学们简单构思一下 MLFQ 的实现。MLFQ 在理论课上已经讲过了，细节请回去看课件。
+要想让 `kthreadd` 真正发挥作用，需要实现与 Linux 的**[完全公平调度器（Completely Fair Scheduler, CFS）](https://docs.kernel.org/scheduler/sched-design-CFS.html)**类似的调度算法。感兴趣的同学可以自行阅读相关资料，它最终应该会在 Bonus B 中实现。
 
-!!! example "动手做"
+最后简单介绍一下 [Linux 的调度算法演进史](https://codemia.io/blog/path/The-Evolution-of-Linux-CPU-Schedulers-From-O1-to-CFS-to-UserSpace-Scheduling)：
 
-    请你思考 MLFQ 调度器应该如何实现：
-
-    - 你会如何设计**相关数据结构**？
-
-        比如 `struct sched_entity` 应该包含哪些内容？需要添加其他数据结构吗？
-
-    - 你会如何实现**调度逻辑**？
-
-        简单描述你会怎么实现 `schedule()` 函数，可以用自然语言或伪代码，不用写 C。
+| 版本 | 调度算法 | 参考链接 |
+| ---- | -------- | -------- |
+| 2.6 前 | $O(n)$ 调度器（其他班级实现的） | [sched.c - kernel/sched.c - Linux source code 0.11 - Bootlin Elixir Cross Referencer](https://elixir.bootlin.com/linux/0.11/source/kernel/sched.c#L122) |
+| 2.6.0-2.6.22 | $O(1)$ 调度器 | [The Linux Scheduling Algorithm - Linux Kernel Development Second Edition](https://litux.nl/mirror/kerneldevelopment/0672327201/ch04lev1sec2.html) |
+| 2.6.23 - 6.6 | CFS 调度器 | [CFS Scheduler — The Linux Kernel documentation](https://docs.kernel.org/scheduler/sched-design-CFS.html) |
+| 6.6 - 今 | EEVDF 调度器 | [EEVDF Scheduler — The Linux Kernel documentation](https://docs.kernel.org/scheduler/sched-eevdf.html) |
+| 开发中 | `sched_ext` 通过 BPF 程序定制任意调度算法 | [Extensible Scheduler Class — The Linux Kernel documentation](https://docs.kernel.org/scheduler/sched-ext.html) |

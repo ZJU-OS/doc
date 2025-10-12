@@ -93,17 +93,8 @@ git difftool main --
 
 ### Lab2
 
-- 内存：增加难度，引入 `list_head` 供进程数据结构使用
-- 标准化内核线程，引入 `kernel_thread` 和 `user_mode_thread`
+遗留待完善：
 
-    ```c
-    kernel_thread->kernel_clone->copy_process
-    user_mode_thread->kernel_clone->copy_process
-    ```
-
-    核心是 copy_process，两者都会调用
-
-    - dup_task_struct
-    - copy_thread
-
-- 进程生命周期管理：实现 `do_exit()`，释放资源
+- 将调度算法升级到 CFS
+- 测例计时没区分进程时间和内核时间（就是 schedule 的开销）
+- 进程阻塞和唤醒机制
