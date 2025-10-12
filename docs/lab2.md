@@ -1,4 +1,4 @@
-# Lab 2：单核内核线程调度
+# Lab 2：抢占式内核线程调度
 
 !!! danger "DDL"
 
@@ -27,18 +27,18 @@
 
     现在你已经理解在实验中这些术语的区分并没有那么严格，接下来阅读实验内容时就不用扣字眼了😉。
 
-在 Lab1 中，我们已经让内核能够启动并处理时钟中断。但是如果没有进一步的机制，操作系统仍然只能在 CPU 上执行单个任务（即 `start_kernel` 函数）。本次实验的目标是：**实现单核内核线程调度，让多个任务能够在一个 CPU 上通过时间复用的方式交替运行。**
+在 Lab1 中，我们已经让内核能够启动并处理时钟中断。但是如果没有进一步的机制，操作系统仍然只能在 CPU 上执行单个任务（即 `start_kernel` 函数）。本次实验的目标是：**实现抢占式内核线程调度，让多个任务能够在一个 CPU 上通过时间复用的方式交替运行。**
 
 要完成这一目标，我们需要逐步解决以下几个问题：
 
 1. **如何在内核中管理物理内存？**（理论课第八章内容 - 主存）
 
-    在后续实验里，我们要为进程、线程分配栈和控制块。这些数据结构必须存放在内存里。但是操作系统不能直接调用 `malloc` 等标准库函数，那么问题来了：
+    在后续实验里，我们需要动态分配各类数据结构。但是操作系统无法使用 `malloc` 等标准库函数，那么问题来了：
 
     - **操作系统如何在裸机环境下动态分配内存？**
     - **为什么我们不能直接线性地“挖一块”内存？碎片化如何解决？**
 
-    实验框架提供了一个简化版 **Buddy System 物理内存分配器**。同学们需要理解它的基本原理，并学会通过接口分配和释放物理页，为后续任务管理打下基础。
+    实验框架提供了一个简化版 **Buddy System 物理内存分配器**。同学们需要理解它的基本原理，并学会通过接口分配和释放物理页。
 
     Buddy System 仅能实现物理页分配，**无法满足对象粒度的分配需求**。因此，我们还需要实现一个**空闲链表缓存（free list cache）**，用于高效地分配内核对象。
 
@@ -48,10 +48,9 @@
 
     - **上下文具体包含哪些内容？**
     - **RISC-V 调用约定和中断机制如何影响上下文切换？**
+    - **如何实现抢占？**
 
-    这一步，我们需要为每个 Task 设计一个数据结构（即理论课介绍的 PCB，Process Control Block），用于保存任务的上下文和其他属性。
-
-    此外，我们还需要实现进程的创建和销毁机制，从而让内核能够动态地管理多个任务。
+    解决完上下文切换的基本问题后，我们需要为每个 Task 设计一个数据结构（即理论课介绍的 PCB，Process Control Block），用于保存上下文和其他属性。并且还需要实现进程的创建和销毁机制，从而让内核能够动态地管理多个任务。
 
 3. **调度器应该如何工作？**（理论课第五章内容 - 调度算法）
 
@@ -74,8 +73,22 @@ git merge upstream/lab2
 
 合并说明：
 
-- 新增内存管理代码，见 `mm.h`
-- 新增进程管理相关实验代码，见 `proc.h`
+- 新增实验相关：
+    - 内存管理代码 `mm.h`，在 Part1.2 介绍
+    - 链表代码 `list.h`，在 Part1.3 介绍
+    - 空闲链表缓存代码 `cache.h`，在 Part1.4 介绍
+    - 进程管理相关实验代码 `proc.h`，在 Part1.5 介绍
+    - 内核线程代码 `kthread.h`，在 Part1.6 介绍
+    - 调度器代码 `sched.h`，在 Part4 介绍
+- 新增其他：
+    - 日志系统，见 `log.h`
+        - 自动识别并打印日志位置的**文件名和行号**
+        - 支持**日志级别**（DEBUG、INFO、WARN、ERROR），可以通过修改 `log.h` 的 `LOG_LEVEL` 宏来控制输出的详细程度
+        - **框架已经添加了部分调试日志**，同学们可以将 `LOG_LEVEL` 设置到 `LOG_LEVEL_DEBUG` 来查看
+        - **建议同学们多用这一日志系统而不是 `printk`**
+- 变更：
+    - CSR 相关内容从 `sbi.h` 移动到 `csr.h`
+    - `arch/riscv/kernel/include` 中的所有头文件现在都添加了 Doxygen 风格的**详细的 API、数据结构、常量的注释，请同学们积极阅读和使用**，文档不会再赘述。
 
 ## Part 1：内存管理
 
@@ -116,7 +129,7 @@ git merge upstream/lab2
 
         !!! note "要点：总线与内存映射 I/O"
 
-            在计科的硬件课程中，大家可能还没有系统学习过**总线 (Bus)** 的概念（图灵班的计算机系统贯通课已经在实验中加入了 AXI 总线）。在这里我们只需要掌握最基本的理解：
+            在计科的硬件课程中，大家可能还没有系统学习过**总线 (Bus)** 的概念。在这里我们只需要掌握最基本的理解：
 
             - **总线是一种统一的通信通道**，CPU、内存、外设都通过总线交互数据。
             - 在现代计算机中，CPU 把一部分地址空间“划给”外设。当我们用普通的 `load/store` 指令访问这些地址时，看似在访问内存，实际上是通过总线把数据读写到某个外设寄存器上。
@@ -174,34 +187,7 @@ git merge upstream/lab2
 
 在实验框架里，我们已经为大家实现了一个简化版的 **Buddy System 物理内存分配器**（位于 `mm.c` / `mm.h`）。你无需从零开始写算法，只需要掌握它的使用方式。
 
-常用接口如下：
-
-- **初始化**
-
-    ```c
-    void mm_init(void);
-    ```
-
-    在系统启动时调用，完成 buddy allocator 的初始化工作。
-
-- **分配物理页**
-
-    ```c
-    void *alloc_page(void);          // 分配 1 页
-    void *alloc_pages(size_t n);     // 分配 n 页（n 向上取整为 2 的幂）
-    ```
-
-    返回值是一个 **物理地址**，指向分配到的页首地址。
-
-- **释放物理页**
-
-    ```c
-    void free_pages(void *pa);
-    ```
-
-    参数 `pa` 是一个物理地址，必须是 `alloc_page(s)` 的返回值，否则可能破坏 buddy 系统的状态。
-
-在实验里，你只需要通过这些接口申请或释放物理页，而不必关心内部具体是如何实现的。
+请阅读 `kernel/arch/riscv/include/list.h`，了解 Buddy System 提供的接口。在实验里，你只需要通过这些接口申请或释放物理页，而不必关心内部具体是如何实现的。
 
 例如：
 
@@ -212,6 +198,11 @@ free_pages(a);               // 释放之前分配的一页
 ```
 
 通过这一套接口，我们的内核就能在后续实验（如进程调度、内存管理、虚拟内存）中，稳定地使用物理页作为底层资源。
+
+!!! note "要点：Buddy System"
+
+    - Buddy System 按 2 的幂次方划分内存块，方便合并和回收，减少碎片。
+    - 实验框架已经实现了简化版的 Buddy System，你只需通过 `alloc_page(s)` 和 `free_pages()` 接口来分配和释放物理页。
 
 ### 侵入式双向循环链表
 
@@ -294,23 +285,31 @@ free_pages(a);               // 释放之前分配的一页
     </figcaption>
 </figure>
 
+实现链表还给我们附带了一个惊喜：**实现了队列**。同学们在数据结构课上已经学过，**双向循环链表实现了双端队列（deque）**，它支持在头尾两端高效地插入和删除节点。于是我们有实现多级反馈队列调度器所需的工具了。
+
+!!! note "要点：侵入式双向循环链表"
+
+    - 侵入式链表将链表节点嵌入数据结构中，支持泛型接口，代码复用性强。
+    - 通过 `container_of` 宏，可以从链表节点指针计算出包含它的结构体指针。
+
 ### Task 1：实现双向链表
 
-你应该早在大一的 C 语言课上就能秒杀双向链表了😉。请完成下列任务：
+你应该早在大一的 C 语言课上就能秒杀双向链表了 😉。请补全 `kernel/arch/riscv/include/list.h`：
 
-- 补全 `list_empty()`。提示：观察 `LIST_HEAD` 宏，你会发现这是一个**带哨兵**的双向链表。
+- 提示：观察 `LIST_HEAD` 宏，你会发现这应该是一个**带哨兵**的双向链表。思考如果不带哨兵，它应当该如何实现？
+- 补全 `list_empty()`。
 - 补全 `list_add()`、`list_add_tail()` 和 `list_del()`。提示：一个优雅的做法是令 `list_add()` 和 `list_add_tail()` 都调用一个更底层的 `__list_add()`。
 - 补全 `list_for_each` 宏。
-
-`main.c` 中的 `test_list()` 函数用于测试你的链表实现。
 
 !!! success "完成条件"
 
     - 通过评测框架的 `lab2 task1` 测试。
 
+    `kernel/arch/riscv/kernel/test_list.c` 中的 `test_list()` 函数用于测试你的链表实现。
+
 ### 空闲链表缓存
 
-在上一节中，我们学习了如何实现**侵入式双向循环链表**。现在，我们将用它来实现一个内核中非常常见的机制——**对象缓存（object cache）**。
+本节利用链表实现一个内核中非常常见的机制——**对象缓存（object cache）**。
 
 在内核中，许多内核对象（如 `task_struct`、`inode`、`vm_area_struct` 等）会被**频繁创建和销毁**。如果动态创建都调用通用的内存分配器（如 Buddy System），会对性能产生较大影响，且容易引起内存碎片。
 
@@ -320,13 +319,12 @@ free_pages(a);               // 释放之前分配的一页
 
 - **`kmem_cache` 结构**：为每种类型的对象建立的缓存池
 
-    它记录了对象大小、对齐方式以及一个空闲链表：
+    它记录了对象大小以及一个空闲链表：
 
     ```c
     struct kmem_cache {
         const char *name;           // 缓存名称
         size_t obj_size;            // 对象大小
-        size_t align;               // 对齐要求
         struct list_head list;      // 链入全局缓存链表
         struct list_head free_objects; // 空闲对象链表
     };
@@ -340,7 +338,7 @@ free_pages(a);               // 释放之前分配的一页
 
     ```c
     struct kmem_cache *task_cache =
-        kmem_cache_create("task_struct", sizeof(struct task_struct), 8);
+        kmem_cache_create("task_struct", sizeof(struct task_struct));
     ```
 
     系统会从 `free_caches` 中取出一个空闲条目，初始化为新的缓存描述符。
@@ -377,13 +375,18 @@ free_pages(a);               // 释放之前分配的一页
 
 ### 进程切换：非抢占情况
 
-让我们从最简单的不考虑 Trap 的情况开始。这种情况下没有时钟中断，进程切换仅能依靠进程主动调用 `__switch_to()` 完成。
+让我们从最简单的不考虑 Trap 的情况开始。这种情况下没有时钟中断，进程切换仅能依靠进程主动调用 `__switch_to()` 完成，内核是非抢占式的。
 
 设想这样一个场景：CPU 上正在运行 Task1，Task1 想调用 `__switch_to()` 切换到 Task2，然后 Task2 运行一段时间后再切换回来继续执行 Task1。`__switch_to()` 应该怎么设计？
 
 Lab 1 Trap 处理的场景与此类似：可以将 `_traps()` 看作 `__switch_to()`，将 `trap_handler()` 看作 Task2。`trap_handler()` 执行完毕后，恢复 Trap 上下文就相当于 Task2 切换回 Task1。**但进程切换与 Trap 有一个重要区别：Trap 可以发生在任何时候**，因此 Trap 上下文是所有寄存器的状态；而 `__switch_to()` 是一个函数，**它的调用者一定是遵守 RISC-V 调用约定的**，因此不需要保存所有寄存器。示意图如下：
 
-![switch.drawio](lab2.assets/switch.drawio)
+<figure markdown="span">
+    ![switch.drawio](lab2.assets/switch.drawio)
+    <figcaption>
+    `__switch_to()` 的调用和返回路径
+    </figcaption>
+</figure>
 
 理解了这些，我们容易设计出 `__switch_to()` 需要保存的进程上下文：
 
@@ -400,42 +403,31 @@ struct thread_struct {
 };
 ```
 
-那么这个结构体应该存放在哪里呢？暂且按下不表，留到设计进程数据结构时再说。反正不能像 Trap 上下文那样放在栈 `sp` 上，否则会出现下面的情况：
-
-<figure markdown="span">
-    ![no_stack.drawio](lab2.assets/no_stack.drawio)
-    <figcaption>
-    进程上下文不能放在栈上
-    </figcaption>
-</figure>
-
-于是我们实现了 `__switch_to()`：
+那么这个结构体应该存放在哪里呢？具体存放的位置暂且按下不表，留到设计进程数据结构时再说。先假设调用 `__switch_to()` 时 `a0` 和 `a1` 分别指向 Task1 和 Task2 的 `thread_struct` 结构体，那么 `__switch_to()` 的实现就很简单了：
 
 ```asm title="第一版 __switch_to"
     .globl __switch_to
 __switch_to:
-    la t0, /* 存放 Task1 上下文的地址 */
-    sd ra, 0(t0)          // 保存 Task1 上下文
+    sd ra, 0(a0)          // 保存 Task1 上下文
     sd sp, 8(t0)
     sd s0, 16(t0)
     ...
 
-    la t0, /* 存放 Task2 上下文的地址 */
-    ld ra, 0(t0)          // 恢复 Task2 上下文
-    ld sp, 8(t0)
-    ld s0, 16(t0)
+    ld ra, 0(a1)          // 恢复 Task2 上下文
+    ld sp, 8(a1)
+    ld s0, 16(a1)
     ...
     ret                    // 返回到 Task2
 ```
 
 > 我们还能再换个角度：站在 Task1 的角度看，调用 `__switch_to()` **就像调用了一个空函数**。它遵守 RISC-V 调用约定，但什么都没做，原路返回了。
 
-但嗅觉敏锐的同学会发现问题：切换的目标 Task 2 的上下文从哪里来？在目前不考虑 Trap 的场景，只有两种可能：
+但切换的目标 Task 2 的上下文从哪里来？在目前不考虑 Trap 的场景，只有两种可能：
 
 1. Task 2 之前运行过，但主动调用 `__switch_to()` 切换到别的进程。这种情况**保存过进程上下文**，能够顺利恢复。
 2. Task 2 是新创建的进程，尚未运行过。这种情况需要我们**设计一个初始的进程上下文**。
 
-初始进程上下文的设计想想也很简单：`ra` 指向进程的第一条指令就行了。如果要考虑向进程传递参数，可以利用 `s0-s11` 这些寄存器，然后设置一个蹦床函数（trampoline）来将其移动到 `a0-a7` 作为参数。事实上 Linux 就是这么实现 kthread 的初始上下文的，这个蹦床函数如下所示：
+初始进程上下文的设计也很简单：令 `ra` 指向进程的第一条指令，`__switch_to()` 就会跳过去开始执行。如果要考虑向进程传递参数，可以利用 `s0-s11` 这些寄存器，然后设置一个蹦床函数（trampoline）来将其移动到 `a0-a7` 作为参数。事实上 Linux 就是这么实现 kthread 的初始上下文的，这个蹦床函数如下所示：
 
 ```asm title="(Linux)arch/riscv/kernel/entry.S"
 SYM_CODE_START(ret_from_fork_kernel_asm)
@@ -457,58 +449,70 @@ asmlinkage void ret_from_fork_kernel(void *fn_arg, int (*fn)(void *), struct pt_
 }
 ```
 
-从代码中可以看出，Linux 将 kthread 要运行的函数 `fn` 放在了初始进程上下文的 `s0` 寄存器中，将参数 `fn_arg` 放在了 `s1` 寄存器中。蹦床函数 `ret_from_fork_kernel_asm` 将它们分别移动到 `a1` 和 `a0`，然后调用 `ret_from_fork_kernel` 去具体执行。简化一下就是这样：
-
-```asm
-move a0, s1  // fn_arg
-move a1, s0  // fn
-call a1      // 调用 fn(fn_arg)
-```
+从代码中可以看出，Linux 将 kthread 要运行的函数 `fn` 放在了初始进程上下文的 `s0` 寄存器中，将参数 `fn_arg` 放在了 `s1` 寄存器中。蹦床函数 `ret_from_fork_kernel_asm` 将它们分别移动到 `a1` 和 `a0`，然后调用 `ret_from_fork_kernel` 去具体执行。
 
 ### 进程切换：抢占与 Trap 处理
 
-当我们希望实现[内核抢占（Kernel preemption）](https://kernelnewbies.org/FAQ/Preemption)，综合考虑时钟中断、系统调用等 Trap 情况时，进程切换就变得复杂起来。
+当我们希望实现[内核抢占（Kernel preemption）](https://kernelnewbies.org/FAQ/Preemption)时，情况就变得复杂了起来，需要综合考虑时钟中断、系统调用等 Trap 情况。
 
-#### 内核中不能被抢占的部分
+#### 切换、调度、Trap 与抢占的关系
 
-首先，我们要明确内核中不能被抢占的部分。抢占一定是通过（时钟）中断触发的，此外没有其他途径，因此**不能抢占 = 禁用中断**。回忆 RISC-V 中断机制，进入 Trap 处理时，CPU 会自动执行下面的操作禁用中断：
+先理清几个概念：
+
+- **进程切换（context switch）**：
+
+    由上文讨论的 `__switch_to()` 执行，完成进程上下文切换
+
+- **调度（schedule）**：
+
+    由将在 Part 4 介绍的 `schedule()` 执行，使用调度算法选择要切换到的进程，并调用 `__switch_to()` 完成切换
+
+- **Trap**：
+
+    CPU 异常和中断引发，可能发生在任何时候，由 `_traps()` 处理，负责保存和恢复 Trap 上下文
+
+- **抢占**：
+
+    在进程不主动执行切换或调度的情况下，能够打断当前进程的执行触发**调度**，从而实现时间复用
+
+这几个概念的联系是：**抢占**是通过在 **Trap** 退出路径上视情况**调度**实现的。接下来的几节我们将分析这一关系。
+
+#### 内核中不能被 Trap 的部分
+
+首先，我们要明确内核中不能被 Trap 的部分。回忆 RISC-V 中断机制，进入 Trap 处理时，CPU 会自动执行下面的操作禁用中断：
 
 - `sstatus.SPIE = sstatus.SIE`
 - `sstatus.SIE = 0`
 
-除了 Trap 处理，暂时我们没有想到其他不能被抢占的部分。
+此外，我们设计 `_traps()` 时会确保不触发异常。**所以，Trap 处理过程是不会被 Trap 的。**
 
-#### `_trap()` 中可以抢占的部分
+其他部分似乎都可以被 Trap，毕竟我们设计 `_traps()` 时就考虑到它随时可能发生，会将所有整数寄存器保存到 Trap 上下文中。
 
-接下来思考：整个 `_traps()` 都不能被抢占吗？一定要等到它 `sret` 恢复 `SIE` 吗？
+#### 抢占的时机
 
-- 不是的，Trap 的处理过程本质上是从 `xIP.i` 置 1、中断 Pending 开始，到该 Pending 位被置 0 为止。
+要实现抢占，只能寄希望于（时钟）中断打断 Task1 的执行，才有机会切换到 Task2。接下来我们用**排除法和反证法**寻找这个机会在哪里：
 
-    以 Lab1 涉及的 Trap 情况为例：时钟中断的处理从 SEE 发现 `stimecmp > stime` 将 `STIP` 置 1 开始，到 `sbi_set_timer()` 将 `STIP` 置 0 结束。软件中断的处理从 `SSIP` 置 1 开始，到 `clear_ssip()` 将 `SSIP` 置 0 结束。
+- **Trap 上下文恢复过程**显然不能切换，否则就破坏 Trap 上下文了。
+- **Trap 上下文恢复完成**（离开 `_traps()`）后，就回到 Task 1 没机会切换进程了。
+- **Trap 处理过程（`trap_handler()`）**不能 `__switch_to()`，因为中断还没处理完。
 
-- 一旦 Pending 位被置 0（Trap 处理完成），就可以打开 `sstatus.SIE` 处理新的 Trap，并不需要等到 `sret` 恢复 `SIE`。
+    Trap 的处理过程指的是从 `xIP.i` 置 1、中断 Pending 开始，到该 Pending 位被置 0 为止。以 Lab1 涉及的 Trap 情况为例：
 
-    如果 Trap 处理未完成，能打开 `sstatus.SIE` 吗？一旦打开，CPU 马上会再次触发该 Trap，再次进入 `_traps()`，重复循环下去导致栈 `sp` 溢出。
+    - 时钟中断的处理从 SEE 发现 `stimecmp > stime` 然后将 `STIP` 置 1 开始，到 `sbi_set_timer()` 将 `STIP` 置 0 结束
+    - 软件中断的处理从 `SSIP` 置 1 开始，到 `clear_ssip()` 将 `SSIP` 置 0 结束。
 
-    > 你是否想起这一情况与 Lab1 「动手做」探究的为什么能进入 `printk()` 类似。`printk()` 的情况比较幸运，`sp` 最初位于 OpenSBI 保护的地址，爆栈也没有破坏 OpenSBI 的代码和数据，最终走到了 `0x7???????` 之类的位置（并未探究这是什么地方，反正既不是内核也不是 OpenSBI）。但是当我们将 `sp` 设置为内核栈后，爆栈向下增长将直接破坏内核数据（data 段）和代码（text 段），导致系统崩溃。
+    如果 Trap 处理未完成就切换：
 
-    在 Trap 处理完成后立刻打开 `SIE`，会导致 `_traps()` 的嵌套调用，最终它们能正确返回吗？
+    - 因为切换不涉及 `SIE`，新的进程继续运行在中断禁用的状态，无法响应新的中断。
+    - 如果非要打开 `SIE`，那么 CPU 马上会再次触发该 Trap，再次进入 `_traps()`，重复循环下去导致栈 `sp` 溢出。
 
-    - 答案是肯定的，就如上一节所讨论的，设计 `_traps()` 时我们考虑到它会在任何时候被调用，因此 Trap 上下文包括了所有整数寄存器和 sepc。设刚刚处理完的中断为 A，新的中断为 B，B 在 A 处理完到 `sret` 的过程中触发，A 此时的状态将被保存到栈上，B 处理完毕后从栈上恢复 A 的状态，继续执行 A 的 `sret`，一切正常。
-    - 唯一的问题是 Trap 处理程序不能太长，否则开启 `SIE` 时总是又触发时钟中断 Trap，又会导致栈溢出。在 Linux 中，为了保证 Trap 的快速响应，仅会在 Trap 处理程序中做必要的工作，其余工作放入任务队列延后处理。
+        > 你是否想起这一情况与 Lab1 「动手做」探究的为什么能进入 `printk()` 类似。`printk()` 的情况比较幸运，`sp` 最初位于 OpenSBI 保护的地址，爆栈也没有破坏 OpenSBI 的代码和数据，最终走到了 `0x7???????` 之类的位置（并未探究这是什么地方，反正既不是内核也不是 OpenSBI）。但是当我们将 `sp` 设置为内核栈后，爆栈向下增长将直接破坏内核数据（data 段）和代码（text 段），导致系统崩溃。
 
-    > 细心的同学可能会追问 `scause`、`stval` 等其他 CSR 寄存器为什么不视为 Trap 上下文。它们的作用就是辅助中断处理，而中断处理过程是不能抢占的，它们不会丢失。处理完了它们的值就不重要了，仅剩 `sepc` 用于恢复到中断前的位置。
+    !!! tip
 
-没有理解上面两段论述的同学，请仔细阅读 RISC-V 特权级手册 3.1.9. Machine Interrupt (mip and mie) Registers 部分，彻底理解中断触发和清除的机制。
+        没有理解上面论述的同学，请仔细阅读 RISC-V 特权级手册 3.1.9. Machine Interrupt (mip and mie) Registers 部分，彻底理解中断触发和清除的机制。
 
-#### 时钟中断与进程切换时机
-
-最后，我们考虑时钟中断触发的进程切换（`__switch_to()`）应该在什么时候发生。显然它应该在 `SIE` 开启之后，Trap 上下文恢复之前。这一步可以用排除法来思考：
-
-- Trap 处理过程不能被打断，当然也不能 `__switch_to()`。
-- 如果在 `SIE` 开启之前切换，进程上下文的切换并不会修改 `sstatus`，新的进程就继续运行在中断禁用的状态，无法响应新的中断。
-- 如果在 Trap 上下文恢复过程中切换进程，就破坏 Trap 上下文了。
-- Trap 上下文恢复完成后，就没机会切换进程了。
+通过上面的讨论，我们只能将 `__switch_to()` 安排在 `trap_handler()` 的末尾。
 
 #### 进程切换是否能被抢占
 
@@ -531,7 +535,7 @@ call a1      // 调用 fn(fn_arg)
         </figcaption>
     </figure>
 
-    因此 `__switch_to()` 不能被抢占，进入 `__switch_to()` 时应当禁用中断。
+    因此 `__switch_to()` 不能被抢占，进入 `__switch_to()` 时必须禁用中断。
 
     > 如果整个 `_traps()` 不会触发 `__switch_to()`，那么 `__switch_to()` 应当是可以抢占的。但如果 `_traps()` 不触发进程切换，时钟中断还有意义吗？还能实现抢占吗？这一点留给有兴趣的同学思考，助教也没有深入思考过，欢迎讨论。
 
@@ -542,13 +546,40 @@ call a1      // 调用 fn(fn_arg)
 !!! info "更多资料"
 
     - [linux kernel - What happens to preempted interrupt handler? - Stack Overflow](https://stackoverflow.com/questions/11779397/what-happens-to-preempted-interrupt-handler)
+    - [FAQ/Preemption - Linux Kernel Newbies](https://kernelnewbies.org/FAQ/Preemption)
+
+#### 讨论所有切换情况
+
+现在我们实现了抢占，再算上前文非抢占情况讨论的主动切换、初始上下文，一共有 $2 \times 3 = 6$ 种切换情况：
+
+| 情况 | Task 1 状态 | Task 2 状态 | 用 `__switch_to()` 切换后 Task 2 会怎么样运行 |
+| - | - | - | - |
+| 1 | 抢占 | 抢占 | 通过 `_traps()` 返回，其中 `sret` 重新开启中断 |
+| 2 | 抢占 | 主动切换 | 返回路径上没有其他地方开启中断 |
+| 3 | 抢占 | 初始上下文 | 返回路径上没有其他地方开启中断 |
+| 4 | 主动切换 | 抢占 | 通过 `_traps()` 返回，其中 `sret` 重新开启中断 |
+| 5 | 主动切换 | 主动切换 | 返回路径上没有其他地方开启中断 |
+| 6 | 主动切换 | 初始上下文 | 返回路径上没有其他地方开启中断 |
+
+上一节确定了进入 `__switch_to()` 时必须禁用中断，但又会导致情况 2-3、5-6 中 Task 2 运行时中断被禁用，无法响应时钟中断，进而无法抢占。**这显然不是我们想要的结果**。
+
+于是我们继续修补：
+
+- 离开 `__switch_to()` 时总是开启中断，解决了情况 2、5。
+- 初始上下文的蹦床函数中开启中断，解决了情况 3、6。
+
+至此，我们彻底完成了内核抢占情况下进程切换的设计。这一部分思维量较大，建议同学们现在阅读代码理解：
+
+- `kernel/arch/riscv/kernel/proc.c` 中的 `switch_to()` 实现
+- `kernel/arch/riscv/kernel/entry.S` 中的 `__switch_to()` 和 `__kthread()` 实现
 
 ### 进程数据结构和内存布局
 
 理解完进程切换机制，我们终于可以开始设计进程的数据结构了。我们需要存储的信息包括：
 
-- 进程的上下文 `struct thread_struct`
-- 进程的栈 `void *stack`
+- `uint64_t pid` 进程 ID
+- `struct thread_struct thread` 进程的上下文
+- `void *stack` 进程的栈
 
     如果不给每个进程独立的栈，则会产生下图所示的局面：
 
@@ -559,10 +590,10 @@ call a1      // 调用 fn(fn_arg)
         </figcaption>
     </figure>
 
-    细心的同学会注意到，这样的设计也让不同进程的 Trap 上下文分离了，存储在各自的栈上。预告一下，在后续的 Lab 中我们会继续完善 Trap 处理，让它不再复用 `sp` 保存上下文。
+    细心的同学会注意到，这样的设计也让不同进程的 Trap 上下文分离了，存储在各自的栈上。
 
-- 进程 ID、状态、优先级等调度相关的信息，供 Part 4 实现的调度器使用
-- 所有进程数据结构都组织成一个双向循环链表，方便调度器遍历
+- `struct sched_entity se` Part 4 实现的调度器使用
+- `struct list_head list` 所有进程数据结构都组织成一个双向循环链表，方便调度器遍历
 
 于是我们设计出了 `struct task_struct` 结构体来保存这些信息：
 
@@ -586,23 +617,27 @@ struct task_struct {
     </figcaption>
 </figure>
 
-此外，我们令 `tp`（RISC-V 调用约定称为 Thread Pointer）寄存器始终指向当前 CPU 上运行的进程的 `task_struct` 结构体，这样内核就能轻松地通过 `tp` 访问当前进程的信息。
+此外，我们令 `tp`（RISC-V 调用约定称为 Thread Pointer）寄存器始终指向当前 CPU 上运行的进程的 `task_struct` 结构体，这样内核就能轻松地通过 `tp` 访问当前进程的信息。我们运用 Lab1 中内联汇编的知识，将该寄存器绑定到变量 `current` 方便在 C 代码中使用：
+
+```c title="kernel/arch/riscv/include/proc.h"
+register struct task_struct *current asm("tp");
+```
 
 ### Task 2：设置初始进程
 
-- 在 `head.S` 将 `init_task` 的地址加载到 `tp` 寄存器中
-- 在 `proc.c` 设置 `init_task` 中设置合适字段（读到这里好像只能设置 `stack`）
+请补全 `kernel/arch/riscv/kernel/proc.c` 文件中的 `task_init()` 函数，实现初始化第一个内核进程（init 进程）的功能。具体要求如下：
 
-TODO
+- 使用 `kmem_cache_create()` 创建 `task_struct` 对象缓存池，并分配一个新的 `task_struct` 结构体作为初始进程。
+- 初始化该进程的各项字段，包括 `pid`、`stack`、`state`、`se`（调度实体）等。
+- 将该进程设置为当前运行进程，并将其加入进程链表（`task_list`）。
 
-### Task 3：重构 Trap Handler
+完成后，`start_kernel` 将作为第一个 Task，进而能够通过它切换到其他进程，为后续进程管理和调度打下基础。
 
-请同学们根据本 Part 学习到的知识，重构 Lab1 的 Trap 处理代码，使其在第一个时钟中断处理完成后从自己切换到自己。要点如下：
+!!! success "完成条件"
 
-- 在中断处理完成后允许抢占
-- 在 `trap_handler()`
+    - 通过评测框架的 `lab2 task2` 测试。
 
-TODO
+    本测试会在进入 `start_kernel()` 时检查 `tp` 及其指向的 `task_struct` 结构体是否正确初始化。
 
 ## Part 3：进程生命周期
 
@@ -636,34 +671,97 @@ BOOL CreateProcessA(
 
 `fork()` 和 `exec()` 是提供给用户态程序的系统调用接口，将在 Lab4 进行封装。本次实验在内核态中实现相应的底层功能：
 
-- `task_init()`：为第一个 Task（即 `start_kernel()`）**初始化**相关资源
 - `copy_process()`：**拷贝**当前 Task
 - `kernel_thread()`：修改前者创建的 Task，在其中**运行新的函数**
-- `switch_to()`：**切换**到另一个 Task
-- `do_exit()`：在 Task 结束时调用，**释放**相关资源
 
-### Task 4：实现进程复制
+### Task 3：实现进程复制与加载
 
-TODO
+请补全 `kernel/arch/riscv/kernel/proc.c` 文件中的 `copy_process()` 和 `kernel_thread()` 函数，实现内核线程的创建流程：
+
+- `copy_process(struct task_struct *old)`：复制当前进程的数据结构，分配新的内核栈，分配唯一的进程号，并初始化调度相关字段，将新进程加入进程链表。
+- `kernel_thread(int (*fn)(void *), void *arg)`：
+    - 回忆 Part2 非抢占情况，我们讨论了如何设计初始进程上下文，通过 `struct thread_struct` 向蹦床函数传递要运行的函数和参数。
+    - 和 Linux 一样，我们规定**内核线程执行的函数的接口**如下所示：
+
+        ```c
+        int fn(void *arg);
+        ```
+
+        基于此规定，框架已经实现了用于内核线程的蹦床函数 `__kthread()`，请你理解它的工作原理。
+
+    - 请你在 `kernel_thread()` 中调用 `copy_process()` 创建新进程，并根据对 `__kthread()` 的理解设置新进程的初始上下文。
+
+补全后，内核将能够通过 `kernel_thread()` 创建新的内核线程，并正确初始化其执行环境。
+
+!!! success "完成条件"
+
+    - 通过评测框架的 `lab2 task3` 测试。
+
+    本测试会检查 `start_kernel` 中调用 `kernel_thread(kthreadd, NULL)` 创建的进程上下文是否正确。
 
 ### 进程退出与销毁
 
-TODO
+当一个内核线程结束任务、退出执行，与其相关的资源需要被销毁，这包括 `struct task_struct` 结构体及其通过指针引用的成员（如内核栈）等。
 
-### Task 5：实现 `kthread()` 与进程退出
+**进程没有办法析构自己**，这一逻辑很容易理解。如果进程析构自身，那么析构工作也是进程运行的一部分。只要进程仍在运行状态，释放相关资源就可能导致悬空指针等问题。因此可以将进程的析构设计为退出和销毁两个阶段：
 
-`kthread()` 本质上是内核线程的一个 wrapper，目的就是为了帮所有内核线程结束时调用 `do_exit()`，而不用在所有函数末尾都加上 `do_exit()`。
+- `do_exit()`：进程完成所有任务后调用该函数，将自身状态置为 `TASK_DEAD`，然后主动发起调度，此后它再也不会被调度运行，可以安全释放
+- `release_task()`：调度离开上一步的进程后，随时可以释放其资源
 
-TODO
+此外，我们还会实现一个辅助函数：
+
+- `kthread()`：内核线程的 **Wrapper**，只是为了帮助在每个内核线程结束后调用 `do_exit()`，这样就不用让所有工作函数都显式调用 `do_exit()` 了。
+
+    ```c
+    noreturn int kthread(void *arg)
+    {
+        struct kthread_create_info *info = arg;
+        int (*threadfn)(void *) = info->threadfn;
+        void *data = info->data;
+        int ret = threadfn(data);
+        do_exit(ret);
+    }
+    ```
+
+    一个例外是 `kthreadd` 线程（在刚刚的 Task 中见过），**它是第一个内核线程，负责创建其他内核线程**。**它永远不会退出**，因此不需要 `kthread()` 包装。
+
+### Task 4：实现进程退出与销毁
+
+请补全 `kernel/arch/riscv/kernel/proc.c` 文件中的 `do_exit()` 和 `release_task()` 函数，实现内核线程的退出与销毁。具体要求已经在上文中描述。
+
+!!! success "完成条件"
+
+    - 通过评测框架的 `lab2 task4` 测试。
+
+    该测试会创建一个仅有一条 `printk()` 语句的内核线程，检查其退出和资源释放是否正确。
 
 ## Part 4：调度器
 
-到本节，我们终于可以把「进程切换（switch）」这个词升级为「调度（schedule）」了，因为我们有了调度算法，由它替我们选择要切换的进程。
+到本节，我们终于可以把**进程切换**这个词升级为**调度**了。我们将研究调度算法，由它替选择要切换的进程。
 
 ### 优先级调度
 
 TODO
 
-### Task 6：实现优先级调度
+### Task 5：实现优先级调度
 
 TODO
+
+### 扩展阅读：CFS 调度
+
+其实，实验框架模仿 Linux 做了 kthread 的异步创建，即内核线程不是直接创建，而是由 `kthreadd` 线程轮询创建队列来创建。然而，本实验实现的简单优先级调度算法很容易造成饥饿（Starvation），举例：
+
+- 新的创建请求放入队列
+- `kthreadd` 线程从队列中取出请求，创建新线程
+- 默认情况下新线程与 `kthreadd` 线程优先级相同，但 PID 较大
+- 在优先级相同的情况下，`schedule()` 的调度算法始终选择 PID 较小的进程
+- 新线程永远无法被调度运行
+
+因此这一实现并没有什么意义，最终还是在各处手动进行了优先级设置和主动调度。
+
+要想让 `kthreadd` 发挥作用，需要更高级的调度算法，比如：
+
+- 理论课上讲的**多级反馈队列调度（Multi-Level Feedback Queue, MLFQ）**。
+- Linux 早期使用 [$O(1)$ 调度器](https://litux.nl/mirror/kerneldevelopment/0672327201/ch04lev1sec2.html)，后来改为**[完全公平调度器（Completely Fair Scheduler, CFS）](https://docs.kernel.org/scheduler/sched-design-CFS.html)**。
+
+感兴趣的同学可以自行探究。

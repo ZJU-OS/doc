@@ -13,7 +13,7 @@
     start: 2025-09-25
     end: 2025-10-21
 
-- title: Lab2 - 单核内核线程调度（15%）
+- title: Lab2 - 抢占式内核线程调度（15%）
   activities:
   - title: 代码、报告
     start: 2025-10-7

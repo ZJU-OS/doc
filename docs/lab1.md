@@ -12,7 +12,7 @@
 - 在实验导读和 Lab0 中，我们已经了解了启动过程：
 
     - OpenSBI 跳转到内核第一条指令处。
-    - `arch/riscv/boot.S` 是内核最开始执行的**汇编代码**。查看它，你会发现它最终执行了 `tail start_kernel` 跳转到位于 `arch/riscv/init/main.c` 的 **C 语言代码**。
+    - `arch/riscv/head.S` 是内核最开始执行的**汇编代码**。查看它，你会发现它最终执行了 `tail start_kernel` 跳转到位于 `arch/riscv/init/main.c` 的 **C 语言代码**。
 
     那么有如下问题：
 
@@ -1073,16 +1073,18 @@ sstatus sip sie stvec scause sepc stval
     - 将 `sstatus` 设置为合适的值，使能 S 模式中断
     - 将 `sip` 设置为合适的值，立刻触发一个软件中断
 
-- 在 `head.S` 中，写入合适的 CSR 寄存器，将中断处理程序设置为 `_trap`
-- 在 `entry.S` 中，补全 `_trap`
+- 在 `head.S` 中，写入合适的 CSR 寄存器，将中断处理程序设置为 `_traps`
+- 在 `entry.S` 中，补全 `_traps`
 - 在 `trap.c` 中，完成软件中断的处理
 
-请你思考以下问题，再补全 `_trap`：
+请你思考以下问题，再补全 `_traps`：
 
 - Trap 随时可能发生。因此，Trap Handler 的首要工作是保存现场，并在完成 Trap 处理后恢复现场，保证程序的执行不受影响。为此，有哪些内容需要保存？保存到哪里？
-- `_trap` 的第二个作用是跳转到 `trap.c` 中的 `trap_handler()` 函数，因为 C 语言编程更方便，我们当然想用 C 语言完成具体的 Trap 处理工作。你需要向 `trap_handler()` 传递哪些参数？
-- 在 QEMU Monitor 中使用合适的命令打印 `mtvec` 指向的内存地址处存放的数据。这是 OpenSBI 的 Trap Handler，请你概述它做了什么？
-- `_trap` 非得用汇编写吗？直接指向 `trap_handler()` 可以吗？
+
+    提示：可以参考一下 RISC-V 调用约定，它为了保存 caller 的上下文，是怎么做的？
+
+- `_traps` 的第二个作用是跳转到 `trap.c` 中的 `trap_handler()` 函数，因为 C 语言编程更方便，我们当然想用 C 语言完成具体的 Trap 处理工作。你需要向 `trap_handler()` 传递哪些参数？
+- `_traps` 非得用汇编写吗？直接指向 `trap_handler()` 可以吗？
 
 !!! success "完成条件"
 
