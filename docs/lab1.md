@@ -54,25 +54,13 @@
 
 ### 更新代码
 
-助教已经为所有学生创建了私有仓库 `git@git.zju.edu.cn:os/fa25/jijiangming/os-<你的学号>.git`。你可以：
+现在你位于 `lab0` 分支。你需要创建 `lab1` 分支，合并上游的代码：
 
-- 克隆一个新的仓库
-- 或者趁机练习一下 Git 操作：
-
-    - 调整和更新上游：
-
-        ```shell
-        git remote rename origin upstream
-        git remote add origin git@git.zju.edu.cn:os/fa25/jijiangming/os-<你的学号>.git
-        git fetch --all
-        ```
-
-    - 现在你位于 `lab0` 分支。你需要创建 `lab1` 分支，合并上游的代码：
-
-        ```shell
-        git checkout -b lab1
-        git merge upstream/lab1
-        ```
+```shell
+git checkout -b lab1
+git fetch upstream
+git merge upstream/lab1
+```
 
 合并说明：
 
@@ -1077,6 +1065,10 @@ sstatus sip sie stvec scause sepc stval
 - 在 `entry.S` 中，补全 `_traps`
 - 在 `trap.c` 中，完成软件中断的处理
 
+    注意，我们总是把具体的中断处理包装为一个函数，然后在 `trap_handler()` 的 `switch` 语句中调用。这是因为 C 语言不太好直接在 `switch` 语句里声明变量等，会引起定义域问题，所以总是用一个函数进行包装。
+
+    软件中断的处理函数是 `clear_ssip()`。
+
 请你思考以下问题，再补全 `_traps`：
 
 - Trap 随时可能发生。因此，Trap Handler 的首要工作是保存现场，并在完成 Trap 处理后恢复现场，保证程序的执行不受影响。为此，有哪些内容需要保存？保存到哪里？
@@ -1224,9 +1216,9 @@ QEMU 已经支持 SSTC 扩展，因此你可以通过直接写 `csrw smtimecmp, 
 
     因为没有重新设置 `stimecmp`，所以时钟中断会一直触发。你会看到控制台不停地打印。
 
-- 在 `trap_handler()` 中，添加时钟中断的处理：使用 `sbi_set_timer()` 设置下一次时钟中断到一秒后
+- 在 `trap_handler()` 中，添加时钟中断的处理
 
-    现在你会看到控制台每秒打印一次时钟中断。
+    在 `clock_set_next_event()` 中用 `sbi_set_timer()` 设置下一次时钟中断到一秒后，现在你会看到控制台每秒打印一次时钟中断。
 
 - 在 `clock.c` 中实现 POSIX 标准的 `clock()` 函数
 
