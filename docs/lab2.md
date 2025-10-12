@@ -587,14 +587,14 @@ register struct task_struct *current asm("tp");
 请补全 `kernel/arch/riscv/kernel/proc.c` 文件中的 `task_init()` 函数，实现初始化第一个内核进程（init 进程）的功能。具体要求如下：
 
 - 使用 `kmem_cache_create()` 创建 `task_struct` 对象缓存池，并分配一个新的 `task_struct` 结构体作为初始进程。
-- 初始化该进程的各项字段，包括 `pid`、`stack`、`state`、`se`（调度实体）等。
+- 初始化该进程的各项字段，包括 `pid`、`stack`、`state`、`se`（调度实体，见 Part4）等。
 - 将该进程设置为当前运行进程，并将其加入进程链表（`task_list`）。
 
 完成后，`start_kernel` 将作为第一个 Task，进而能够通过它切换到其他进程，为后续进程管理和调度打下基础。
 
 !!! success "完成条件"
 
-    - 通过评测框架的 `lab2 task2` 测试。
+    - 通过评测框架的 `lab2 task2` 测试。本 Task 涉及调度相关字段，同学们可能需要阅读 Part4 后再回来做才能通过测试。
 
     本测试会在进入 `start_kernel()` 时检查 `tp` 及其指向的 `task_struct` 结构体是否正确初始化。
 
@@ -637,7 +637,7 @@ BOOL CreateProcessA(
 
 请补全 `kernel/arch/riscv/kernel/proc.c` 文件中的 `copy_process()` 和 `kernel_thread()` 函数，实现内核线程的创建流程：
 
-- `copy_process(struct task_struct *old)`：复制当前进程的数据结构，分配新的内核栈，分配唯一的进程号，并初始化调度相关字段，将新进程加入进程链表。
+- `copy_process(struct task_struct *old)`：复制当前进程的数据结构，分配新的内核栈，分配唯一的进程号，并初始化调度相关字段（见 Part4），将新进程加入进程链表。
 - `kernel_thread(int (*fn)(void *), void *arg)`：
     - 回忆 Part2 非抢占情况，我们讨论了如何设计初始进程上下文，通过 `struct thread_struct` 向蹦床函数传递要运行的函数和参数。
     - 和 Linux 一样，我们规定**内核线程执行的函数的接口**如下所示：
@@ -654,7 +654,7 @@ BOOL CreateProcessA(
 
 !!! success "完成条件"
 
-    - 通过评测框架的 `lab2 task3` 测试。
+    - 通过评测框架的 `lab2 task3` 测试。与 Task2 一样，本 Task 涉及调度相关字段，同学们可能需要阅读 Part4 后再回来做才能通过测试。
 
     本测试会检查 `start_kernel` 中调用 `kernel_thread(kthreadd, NULL)` 创建的进程上下文是否正确。
 
@@ -692,7 +692,7 @@ BOOL CreateProcessA(
 
 ### 时间片轮转调度
 
-时间片轮转的定义已经在理论课上讲过了，这里把 PPT 内容再贴一遍：
+RR 调度算法已经在理论课上讲过了，这里把 PPT 内容再贴一遍：
 
 > - 基本思路：通过时间片轮转，提高进程并发性和响应时间特性，从而提高资源利用率。
 >
@@ -703,6 +703,15 @@ BOOL CreateProcessA(
 >     - 在一个时间片结束时，暂停当前进程的执行，将其送到就绪队列的末尾，并通过上下文切换执行就绪队列的队首进程。
 >     - 进程可以未使用完一个时间片，就出让 CPU（如阻塞）。
 
+考虑 `struct sched_entity` 的设计。对于 RR 调度来说，需要保存的信息就是进程的时间片（剩余多少时间）。此外下文提及的 `test_sched.c` 测例需要使用累计时间来安排进程的创建顺序，额外新增一个字段，但它并非调度算法所必需。
+
+```c title="kernel/arch/riscv/include/proc.h"
+struct sched_entity {
+    uint64_t runtime; /**< 时间片 */
+    uint64_t sum_exec_runtime; /**< 已执行时间 */
+};
+```
+
 ### Task 4：实现时间片轮转调度和抢占
 
 - 请补全 `kernel/arch/riscv/kernel/sched.c` 文件中的 `schedule()` 函数，实现时间片轮转调度算法。
@@ -712,10 +721,8 @@ BOOL CreateProcessA(
 !!! success "完成条件"
 
     - 通过评测框架的 `lab2 task4` 测试。
-
-    该测试会创建一个仅有一条 `printk()` 语句的内核线程，检查其退出和资源释放是否正确。
-
-    该测试会在 `schedule()` 中打断点，检查最终选择的 `next_task` 是否符合上述时间片轮转调度算法计算的结果。
+        - 该测试会检查进程退出和资源释放是否正确。
+        - 该测试会在 `schedule()` 中打断点，检查最终选择的 `next_task` 是否符合上述时间片轮转调度算法计算的结果。
 
 !!! example "动手做：计算响应比"
 
