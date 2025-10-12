@@ -191,7 +191,7 @@ git merge upstream/lab2
 
 例如：
 
-```c
+```c title="Buddy System 接口使用示例"
 void *a = alloc_page();      // 分配一页
 void *b = alloc_pages(8);    // 分配 8 页
 free_pages(a);               // 释放之前分配的一页
@@ -263,7 +263,7 @@ free_pages(a);               // 释放之前分配的一页
 
     这就需要使用编译器魔法了：`container_of` 宏。它的定义如下：
 
-    ```c
+    ```c title="kernel/arch/riscv/include/list.h"
     #define container_of(ptr, type, member) ({          \
         const typeof( ((type *)0)->member ) *__mptr = (ptr); \
         (type *)( (char *)__mptr - offsetof(type,member) );})
@@ -271,7 +271,7 @@ free_pages(a);               // 释放之前分配的一页
 
     编译器知道类型的大小，提供了 `typeof()` 和 `offestof()`。我们可以利用这些信息**移动成员变量的指针，计算出包含该成员变量的结构体的起始地址**。例如：
 
-    ```c
+    ```c title="container_of 使用示例"
     struct data_node_A a;
     struct list_head *p = &a.list;
     struct data_node_A *q = container_of(p, struct data_node_A, list);
@@ -313,55 +313,11 @@ free_pages(a);               // 释放之前分配的一页
 
 在内核中，许多内核对象（如 `task_struct`、`inode`、`vm_area_struct` 等）会被**频繁创建和销毁**。如果动态创建都调用通用的内存分配器（如 Buddy System），会对性能产生较大影响，且容易引起内存碎片。
 
-为了解决这些问题，Linux 内核引入了 **Slab 分配器**：它为每种类型的对象维护一个缓存池，将整页内存切分为多个固定大小的对象块，用链表管理这些空闲对象。
+为了解决这些问题，Linux 内核引入了 **Slab 分配器**：它为每种类型的对象维护一个缓存池，将整页内存切分为多个固定大小的对象块，用链表管理这些空闲对象。换句话说，Slab 缓存层（`kmem_cache`）相当于物理页分配器（`alloc_page()`）之上的对象粒度的再分配层。
 
 不过，Linux 的 Slab 实现更加复杂，感兴趣的同学可以阅读 [Slab Layer - Linux Kernel Development Second Edition](https://litux.nl/mirror/kerneldevelopment/0672327201/ch11lev1sec6.html)。在我们的教学实验中，只保留了它的**核心思想：用空闲链表（free list）预分配缓存对象。**
 
-- **`kmem_cache` 结构**：为每种类型的对象建立的缓存池
-
-    它记录了对象大小以及一个空闲链表：
-
-    ```c
-    struct kmem_cache {
-        const char *name;           // 缓存名称
-        size_t obj_size;            // 对象大小
-        struct list_head list;      // 链入全局缓存链表
-        struct list_head free_objects; // 空闲对象链表
-    };
-    ```
-
-    所有空闲的 `kmem_cache` 结构本身也组织为空闲列表 `free_caches`，由 `cache_init()` 在启动时初始化。
-
-- **创建缓存**：
-
-    当内核需要为某种类型创建对象缓存时：
-
-    ```c
-    struct kmem_cache *task_cache =
-        kmem_cache_create("task_struct", sizeof(struct task_struct));
-    ```
-
-    系统会从 `free_caches` 中取出一个空闲条目，初始化为新的缓存描述符。
-
-- **分配与释放对象**：
-
-    当我们需要真正分配一个对象时：
-
-    ```c
-    struct task_struct *t = kmem_cache_alloc(task_cache);
-    ```
-
-    执行流程如下：
-
-    1. 检查 `task_cache` 的空闲链表是否为空；
-    2. 如果为空，从 Buddy System 申请一页新的物理内存；
-        - 按对象大小（外加链表节点头）将该页切分为多个小对象；
-        - 将这些对象逐个加入 `cachep->free_objects` 链表；
-    3. 从链表头取出一个对象返回；
-
-    `kmem_cache_free(t)` 释放对象时，只需将其重新挂回空闲链表。
-
-换句话说，Slab 缓存层（`kmem_cache`）相当于物理页分配器（`alloc_page()`）之上的对象粒度的再分配层。
+`kernel/arch/riscv/include/cache.h` 和 `kernel/arch/riscv/include/cache.c` 实现了 Slab 分配器，要求同学们阅读代码并理解其工作原理。
 
 !!! example "动手做"
 
@@ -420,9 +376,9 @@ __switch_to:
     ret                    // 返回到 Task2
 ```
 
-> 我们还能再换个角度：站在 Task1 的角度看，调用 `__switch_to()` **就像调用了一个空函数**。它遵守 RISC-V 调用约定，但什么都没做，原路返回了。
+> 还能再换个角度：站在 Task1 的角度看，调用 `__switch_to()` **就像调用了一个空函数**。它遵守 RISC-V 调用约定，但什么都没做，原路返回了。
 
-但切换的目标 Task 2 的上下文从哪里来？在目前不考虑 Trap 的场景，只有两种可能：
+但切换的目标 Task 2 的上下文从哪里来？对于目前不考虑 Trap 的场景来说，只有两种可能：
 
 1. Task 2 之前运行过，但主动调用 `__switch_to()` 切换到别的进程。这种情况**保存过进程上下文**，能够顺利恢复。
 2. Task 2 是新创建的进程，尚未运行过。这种情况需要我们**设计一个初始的进程上下文**。
@@ -747,21 +703,31 @@ TODO
 
 TODO
 
-### 扩展阅读：CFS 调度
+### 高级调度算法
 
 其实，实验框架模仿 Linux 做了 kthread 的异步创建，即内核线程不是直接创建，而是由 `kthreadd` 线程轮询创建队列来创建。然而，本实验实现的简单优先级调度算法很容易造成饥饿（Starvation），举例：
 
 - 新的创建请求放入队列
 - `kthreadd` 线程从队列中取出请求，创建新线程
-- 默认情况下新线程与 `kthreadd` 线程优先级相同，但 PID 较大
-- 在优先级相同的情况下，`schedule()` 的调度算法始终选择 PID 较小的进程
+- 默认情况下新线程与 `kthreadd` 线程**优先级相同**，但 PID 较大
+- 在优先级相同的情况下，`schedule()` 的调度算法**始终选择 PID 较小的进程**（因为是从进程链表头开始遍历的）
 - 新线程永远无法被调度运行
 
-因此这一实现并没有什么意义，最终还是在各处手动进行了优先级设置和主动调度。
-
-要想让 `kthreadd` 发挥作用，需要更高级的调度算法，比如：
+因此实现 `kthreadd` 并没有什么意义，最终还是在各处手动进行了优先级设置和主动调度。要想让 `kthreadd` 发挥作用，需要更高级的调度算法，比如：
 
 - 理论课上讲的**多级反馈队列调度（Multi-Level Feedback Queue, MLFQ）**。
 - Linux 早期使用 [$O(1)$ 调度器](https://litux.nl/mirror/kerneldevelopment/0672327201/ch04lev1sec2.html)，后来改为**[完全公平调度器（Completely Fair Scheduler, CFS）](https://docs.kernel.org/scheduler/sched-design-CFS.html)**。
 
-感兴趣的同学可以自行探究。
+这些高级调度算法就不在本实验中实现了，仅要求同学们简单构思一下 MLFQ 的实现。MLFQ 在理论课上已经讲过了，细节请回去看课件。
+
+!!! example "动手做"
+
+    请你思考 MLFQ 调度器应该如何实现：
+
+    - 你会如何设计**相关数据结构**？
+
+        比如 `struct sched_entity` 应该包含哪些内容？需要添加其他数据结构吗？
+
+    - 你会如何实现**调度逻辑**？
+
+        简单描述你会怎么实现 `schedule()` 函数，可以用自然语言或伪代码，不用写 C。
