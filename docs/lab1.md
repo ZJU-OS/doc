@@ -62,18 +62,9 @@ git fetch upstream
 git merge upstream/lab1
 ```
 
-合并说明：
+下面的合并说明供同学们解决合并冲突时参考：
 
 - 新增 `kernel` 目录下的实验代码
-- 完善了环境支持（compose 文件、devcontainer 配置等）
-
-### 更新镜像
-
-助教对镜像进行了一些重要更新。最新的镜像 Digest 可以在 [Container registry · ZJU CS Lab / Tool  · GitLab](https://git.zju.edu.cn/zju-cs-lab/tool/container_registry/17) 查看。
-
-请运行 `docker images --digests` 命令，确认你拉取的镜像 Digest 与 ZJU Git Registry 上的 `latest` **或**对应架构的 Digest 一致。
-
-如果不正确，则运行 `make update` 更新镜像。
 
 ## Part 1：启动工作
 
@@ -90,7 +81,7 @@ git merge upstream/lab1
 
 [Compiler Explorer](https://godbolt.org/) 可以方便地探索不同编译器、不同版本、不同优化选项下的汇编代码。我们用它来看看，C 与 RISC-V 汇编是如何对应的：
 
-!!! tip "下面是一个可以交互的子页面，请点击[这个链接](<https://godbolt.org/e#g:!((g:!((g:!((h:codeEditor,i:(filename:'1',fontScale:14,fontUsePx:'0',j:1,lang:c%2B%2B,selection:(endColumn:2,endLineNumber:6,positionColumn:2,positionLineNumber:6,selectionStartColumn:2,selectionStartLineNumber:6,startColumn:2,startLineNumber:6),source:'int+func(int+a)%7Breturn+a%3B%7D%0A%0Aint+main()+%7B%0A++int+r+%3D+func(10)%3B%0A++return+r+%2B+1%3B%0A%7D'),l:'5',n:'0',o:'C%2B%2B+source+%231',t:'0')),k:50,l:'4',n:'0',o:'',s:0,t:'0'),(g:!((h:compiler,i:(compiler:rv64-gcctrunk,filters:(b:'0',binary:'1',binaryObject:'1',commentOnly:'0',debugCalls:'1',demangle:'0',directives:'0',execute:'1',intel:'0',libraryCode:'0',trim:'1',verboseDemangling:'0'),flagsViewOpen:'1',fontScale:14,fontUsePx:'0',j:1,lang:c%2B%2B,libs:!(),options:'',overrides:!(),selection:(endColumn:27,endLineNumber:7,positionColumn:27,positionLineNumber:7,selectionStartColumn:27,selectionStartLineNumber:7,startColumn:27,startLineNumber:7),source:1),l:'5',n:'0',o:'+RISC-V+(64-bits)+gcc+(trunk)+(Editor+%231)',t:'0')),k:50,l:'4',n:'0',o:'',s:0,t:'0')),l:'2',n:'0',o:'',t:'0')),version:4>)放大查看"
+!!! tip "下面是一个可以交互的子页面，请点击[这个链接](<https://godbolt.org/e#g:!((g:!((g:!((h:codeEditor,i:(filename:'1',fontScale:14,fontUsePx:'0',j:1,lang:c%2B%2B,selection:(endColumn:2,endLineNumber:6,positionColumn:2,positionLineNumber:6,selectionStartColumn:2,selectionStartLineNumber:6,startColumn:2,startLineNumber:6),source:'int+func(int+a)%7Breturn+a%3B%7D%0A%0Aint+main()+%7B%0A++int+r+%3D+func(10)%3B%0A++return+r+%2B+1%3B%0A%7D'),l:'5',n:'0',o:'C%2B%2B+source+%231',t:'0')),k:50,l:'4',n:'0',o:'',s:0,t:'0'),(g:!((h:compiler,i:(compiler:rv64-gcctrunk,filters:(b:'0',binary:'1',binaryObject:'1',commentOnly:'0',debugCalls:'1',demangle:'0',directives:'0',execute:'1',intel:'0',libraryCode:'0',trim:'1',verboseDemangling:'0'),flagsViewOpen:'1',fontScale:14,fontUsePx:'0',j:1,lang:c%2B%2B,libs:!(),options:'',overrides:!(),selection:(endColumn:27,endLineNumber:7,positionColumn:27,positionLineNumber:7,selectionStartColumn:27,selectionStartLineNumber:7,startColumn:27,startLineNumber:7),source:1),l:'5',n:'0',o:'+RISC-V+(64-bits)+gcc+(trunk)+(Editor+%231)',t:'0')),k:50,l:'4',n:'0',o:'',s:0,t:'0')),l:'2',n:'0',o:'',t:'0')),version:4>) 放大查看"
 
 <iframe width="800px" height="200px" src="https://godbolt.org/e#g:!((g:!((g:!((h:codeEditor,i:(filename:'1',fontScale:14,fontUsePx:'0',j:1,lang:c%2B%2B,selection:(endColumn:2,endLineNumber:6,positionColumn:2,positionLineNumber:6,selectionStartColumn:2,selectionStartLineNumber:6,startColumn:2,startLineNumber:6),source:'int+func(int+a)%7Breturn+a%3B%7D%0A%0Aint+main()+%7B%0A++int+r+%3D+func(10)%3B%0A++return+r+%2B+1%3B%0A%7D'),l:'5',n:'0',o:'C%2B%2B+source+%231',t:'0')),k:50,l:'4',n:'0',o:'',s:0,t:'0'),(g:!((h:compiler,i:(compiler:rv64-gcctrunk,filters:(b:'0',binary:'1',binaryObject:'1',commentOnly:'0',debugCalls:'1',demangle:'0',directives:'0',execute:'1',intel:'0',libraryCode:'0',trim:'1',verboseDemangling:'0'),flagsViewOpen:'1',fontScale:14,fontUsePx:'0',j:1,lang:c%2B%2B,libs:!(),options:'',overrides:!(),selection:(endColumn:27,endLineNumber:7,positionColumn:27,positionLineNumber:7,selectionStartColumn:27,selectionStartLineNumber:7,startColumn:27,startLineNumber:7),source:1),l:'5',n:'0',o:'+RISC-V+(64-bits)+gcc+(trunk)+(Editor+%231)',t:'0')),k:50,l:'4',n:'0',o:'',s:0,t:'0')),l:'2',n:'0',o:'',t:'0')),version:4"></iframe>
 
@@ -683,7 +674,7 @@ C++ 标准支持内联汇编，但 C 标准并不支持。GCC 提供了内联汇
 
         - **性能与安全**
 
-            - 使用早期 clobber (`&`) 或绑定输出-输入避免寄存器冲突。
+            - 使用早期 clobber (`&`) 或绑定输出 - 输入避免寄存器冲突。
             - 谨慎使用 `memory`，会导致寄存器刷新，影响性能。
             - 避免直接修改栈指针寄存器。
 
@@ -1044,7 +1035,7 @@ sstatus sip sie stvec scause sepc stval
             - C: Clear bits
             - WI/SI/CI: Immediate versions
 
-### Task3：Trap Handler
+### Task3: Trap Handler
 
 现在你已经全面了解了 RISC-V 的中断与异常机制以及 CSR 在其中扮演的重要角色。让我们用简单的 S 模式软件中断来实践这些知识。
 
@@ -1065,9 +1056,8 @@ sstatus sip sie stvec scause sepc stval
 - 在 `entry.S` 中，补全 `_traps`
 - 在 `trap.c` 中，完成软件中断的处理
 
-    注意，我们总是把具体的中断处理包装为一个函数，然后在 `trap_handler()` 的 `switch` 语句中调用。这是因为 C 语言不太好直接在 `switch` 语句里声明变量等，会引起定义域问题，所以总是用一个函数进行包装。
-
-    软件中断的处理函数是 `clear_ssip()`。
+    - 注意，我们总是把具体的中断处理包装为一个函数，然后在 `trap_handler()` 的 `switch` 语句中调用。这是因为 C 语言不太好直接在 `switch` 语句里声明变量等，会引起定义域问题，所以总是用一个函数进行包装。软件中断的处理函数是 `clear_ssip()`。
+    - 在 `trap.c` 的前半部分，框架已经帮同学们准备好了各种 `scause` 的宏定义，同学们可以直接使用。
 
 请你思考以下问题，再补全 `_traps`：
 
@@ -1189,7 +1179,7 @@ QEMU 已经支持 SSTC 扩展，因此你可以通过直接写 `csrw smtimecmp, 
 
 !!! info "更多资料"
 
-    - [riscv timer的基本逻辑 | Sherlock's blog](https://wangzhou.github.io/riscv-timer%E7%9A%84%E5%9F%BA%E6%9C%AC%E9%80%BB%E8%BE%91/)：对 RISC-V 规范、QEMU 和 Linux 内核的实现进行了整体分析。
+    - [riscv timer 的基本逻辑 | Sherlock's blog](https://wangzhou.github.io/riscv-timer%E7%9A%84%E5%9F%BA%E6%9C%AC%E9%80%BB%E8%BE%91/)：对 RISC-V 规范、QEMU 和 Linux 内核的实现进行了整体分析。
 
 ### Task4：开启并处理 S 模式时钟中断
 
