@@ -1,3 +1,4 @@
+# 注意，这个插件会绘制左闭右开区间，因此 end 日期要比实际截止日期晚一天
 - title: Lab0 - Linux 内核调试（5%）
   activities:
   - title: 验收
@@ -8,19 +9,19 @@
   activities:
   - title: 代码、报告
     start: 2025-09-25
-    end: 2025-10-13 23:59
+    end: 2025-10-14
   - title: 验收
     start: 2025-09-25
-    end: 2025-10-21
+    end: 2025-10-22
 
 - title: Lab2 - 抢占式内核线程调度（15%）
   activities:
   - title: 代码、报告
     start: 2025-10-12
-    end: 2025-11-04 23:59
+    end: 2025-11-05
   - title: 验收
     start: 2025-10-12
-    end: 2025-11-11
+    end: 2025-11-12
 
 - title: Lab3 - 虚拟内存（15%）
   activities:
@@ -29,7 +30,7 @@
     end: 2025-11-25
   - title: 验收
     start: 2025-10-21
-    end: 2025-11-25
+    end: 2025-11-26
 
 - title: Lab4 - 用户模式与系统调用（20%）
   activities:
@@ -38,7 +39,7 @@
     end: 2025-12-16
   - title: 验收
     start: 2025-11-04
-    end: 2025-12-16
+    end: 2025-12-17
 
 - title: Lab5 - 缺页异常与进程创建（30%）
   activities:
@@ -47,7 +48,7 @@
     end: 2025-12-30
   - title: 验收
     start: 2025-11-18
-    end: 2025-12-30
+    end: 2025-12-31
 
 - title: BonusA - 磁盘与文件系统（10%）
   activities:
@@ -56,7 +57,7 @@
     end: 2025-12-30
   - title: 验收
     start: 2025-11-04
-    end: 2025-12-30
+    end: 2025-12-31
 
 - title: BonusB - 多核处理器与调度算法（10%）
   activities:
@@ -65,4 +66,4 @@
     end: 2025-12-30
   - title: 验收
     start: 2025-11-04
-    end: 2025-12-30
+    end: 2025-12-31
