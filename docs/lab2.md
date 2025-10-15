@@ -545,9 +545,25 @@ asmlinkage void ret_from_fork_kernel(void *fn_arg, int (*fn)(void *), struct pt_
 - `kernel/arch/riscv/kernel/proc.c` 中的 `switch_to()` 实现
 - `kernel/arch/riscv/kernel/entry.S` 中的 `__switch_to()` 和 `__kthread()` 实现
 
-!!! warning "注意 `_traps()` 需要新增保存 `sstatus` 寄存器"
+!!! warning "检查 `_traps()`的实现"
 
-    这里同学们应该注意到，情况 1、4 经由 `_traps()` 返回使用 `sret` 开启中断，而 `sret` 是否开启中断要看 `sstatus.SPIE`。因此，`_traps()` 需要在 Lab1 保存 I 指令集寄存器的基础上，新增保存 `sstatus` 寄存器，请同学们记得修改。
+    在 Lab1 中，`_traps()` 必须要保存的仅有除 caller-saved 寄存器之外的所有整数寄存器。
+
+    但是看完上面的内容，同学们应该注意到，**现在 `_traps()` 执行过程也会被打断**，通过 `trap_handler()` 切换到其他进程。这时候，我们要思考**还**有哪些寄存器是必须要保存的。
+
+    请同学们思考后再打开下面的答案。
+
+    ??? note "答案"
+
+        - CSR 寄存器。因为 `__switch_to()` 会开启中断，下一次中断触发就会导致相关 CSR 寄存器被修改。所以需要保存下列寄存器：
+
+            ```text
+            sstatus sepc
+            ```
+
+            进一步地，请同学们思考为什么 `scause`、`stval` 不需要保存。
+
+        - 其他寄存器依然不需要保存，因为仍有 RISC-V 调用约定为我们保驾护航。
 
 !!! question "考点：进程切换与 Trap"
 
