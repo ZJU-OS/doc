@@ -791,6 +791,20 @@ struct sched_entity {
 - 请补全 `kernel/arch/riscv/kernel/proc.c` 文件中的 `do_exit()` 和 `release_task()` 函数，实现内核线程的退出与销毁。
 - 在 `trap_handler()` 的末尾调用 `schedule()`，从而启用内核抢占，彻底完成本次实验。
 
+!!! warning "链表操作的原子性"
+
+    同学们学习了进程同步（理论课第六章）后，应该能察觉到本实验链表cc：
+
+    - `kthreadd()` 和 `kthread_create()` 本质上是**生产者 - 消费者**关系，那么队列的操作需要用锁保护。
+    - `release_task()` 涉及**链表指针操作**，这些操作必须是一次性完成。如果被中断打断，可能会导致链表损坏。
+
+    但锁的实现并没有那么容易，所以本次实验临时使用**关中断**的方式来保证原子性。请同学们回去给链表操作中你认为需要保护的区域加上中断保护和开启，使用下面两个函数：
+
+    ```c title="csr.h"
+    void interrupt_enable(void);
+    void interrupt_disable(void);
+    ```
+
 !!! success "完成条件"
 
     - 通过评测框架的 `lab2 task4` 测试。
