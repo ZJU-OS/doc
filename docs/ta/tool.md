@@ -1,4 +1,4 @@
-# 助教工具手册
+# 辅助工具
 
 这是助教工具仓库 [ZJU-OS/tool](https://github.com/ZJU-OS/tool) 的文档。
 
