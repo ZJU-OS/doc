@@ -1174,8 +1174,7 @@ QEMU 已经支持 SSTC 扩展，因此你可以通过直接写 `csrw smtimecmp, 
 
     阅读 OpenSBI 源码，了解 OpenSBI 是如何实现 `sbi_set_timer()` 函数的：
 
-    - [`lib/sbi/sbi_ecall_time.c`](https://github.com/riscv-software-src/opensbi/blob/master/lib/sbi/sbi_ecall_time.c) 的 `sbi_ecall_set_timer()` 函数
-    - [`lib/sbi/sbi_timer.c`](https://github.com/riscv-software-src/opensbi/blob/master/lib/sbi/sbi_timer.c) 的 `sbi_timer_event_start()` 函数
+    - [`lib/sbi/sbi_ecall_time.c`](https://github.com/riscv-software-src/opensbi/blob/master/lib/sbi/sbi_ecall_time.c)
 
     请你指出：
 
