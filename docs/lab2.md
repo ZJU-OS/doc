@@ -725,7 +725,7 @@ register struct task_struct *current asm("tp");
 
 !!! success "完成条件"
 
-    - 通过评测框架的 `lab2 task2` 测试。本 Task 涉及调度相关字段，同学们可能需要阅读 Part4 后再回来做才能通过测试。
+    - 通过评测框架的 Lab2 Task2 测试。本 Task 涉及调度相关字段，同学们可能需要阅读 Part4 后再回来做才能通过测试。
 
     本测试会在进入 `start_kernel()` 时检查 `tp` 及其指向的 `task_struct` 结构体是否正确初始化。
 
@@ -885,10 +885,18 @@ struct sched_entity {
 
     具体流程如下：
 
+
     - 设置一个队列，用于存放待创建的内核线程请求；
     - `kthreadd` 线程不断从该队列中取出请求，创建其他内核线程；
     - 每次创建完成后，`kthreadd` 会**立即让出 CPU**（用完时间片），因此它几乎不占用调度时间；
     - `kthread_create()` 用于提交创建请求，它会**立即返回**，不会等待线程真正启动（这点与 Linux 不同）。
+
+    <figure markdown="span">
+        ![kthreadd.drawio](lab2.assets/kthreadd.drawio)
+        <figcaption>
+        异步内核线程创建示意图
+        </figcaption>
+    </figure>
 
     框架提供的 `test_sched.c` 模拟了理论课中的调度考题：
 

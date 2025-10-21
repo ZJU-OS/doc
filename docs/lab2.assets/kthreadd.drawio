@@ -1,0 +1,121 @@
+<mxfile host="65bd71144e">
+    <diagram id="4BaiarvQKWnb2h1ZtwT6" name="Page-1">
+        <mxGraphModel dx="2054" dy="631" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="3" value="kthreadd()&lt;div&gt;PID 1&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="495" width="180" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="kernel_thread()&lt;div&gt;立即创建&lt;/div&gt;" style="edgeStyle=none;html=1;fillColor=#f8cecc;strokeColor=#b85450;labelBackgroundColor=none;" parent="1" source="8" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="kthread_create()&lt;div&gt;请求创建&lt;/div&gt;" style="edgeStyle=none;html=1;fillColor=#d5e8d4;strokeColor=#82b366;labelBackgroundColor=none;" parent="1" source="8" target="33" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="200" y="611.4150943396227" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="8" value="init_task()&lt;div&gt;PID 0&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+                    <mxGeometry x="-90" y="625" width="180" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="16" value="" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="210" y="610" width="20" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="24" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;kthread_create()&lt;/span&gt;" style="edgeStyle=none;html=1;fillColor=#d5e8d4;strokeColor=#82b366;labelBackgroundColor=none;" parent="1" source="18" target="33" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="330" y="620" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="18" value="test_sched()&lt;div&gt;PID 2&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+                    <mxGeometry x="460" y="495" width="90" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="19" value="for 循环轮询队列" style="curved=1;endArrow=classic;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" edge="1">
+                    <mxGeometry y="-10" width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="240" y="540" as="sourcePoint"/>
+                        <mxPoint x="200" y="540" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="290" y="590"/>
+                            <mxPoint x="150" y="590"/>
+                        </Array>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="20" value="" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="620" width="20" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="23" value="process()&lt;div&gt;PID 3&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+                    <mxGeometry x="410" y="655" width="85" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="25" value="kernel_thread(kthread)&lt;div&gt;立即创建&lt;/div&gt;&lt;div&gt;由 kthread() wrap&lt;/div&gt;" style="endArrow=classic;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;labelBackgroundColor=none;" parent="1" source="3" target="18" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="280" y="550" as="sourcePoint"/>
+                        <mxPoint x="410" y="500" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="26" value="kernel_thread(kthread)" style="endArrow=classic;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;labelBackgroundColor=none;" parent="1" source="3" target="23" edge="1">
+                    <mxGeometry x="0.0551" y="-7" width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="280" y="550" as="sourcePoint"/>
+                        <mxPoint x="450" y="570" as="targetPoint"/>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="28" value="process()&lt;div&gt;PID 4&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+                    <mxGeometry x="410" y="685" width="85" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="29" value="process()&lt;div&gt;PID ...&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+                    <mxGeometry x="410" y="715" width="85" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="30" value="" style="edgeStyle=none;html=1;fillColor=#d5e8d4;strokeColor=#82b366;labelBackgroundColor=none;" parent="1" source="23" target="33" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="303" y="590" as="targetPoint"/>
+                        <mxPoint x="468" y="535" as="sourcePoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="31" value="" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="230" y="630" width="20" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="32" value="" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="640" width="20" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="33" value="kthread_create_list" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;verticalAlign=top;labelPosition=center;verticalLabelPosition=bottom;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="600" width="70" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="34" value="原生进程&lt;div&gt;需要自己 do_exit()&lt;/div&gt;" style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;labelPosition=right;verticalLabelPosition=middle;align=left;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="-80" y="495" width="20" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="35" value="kthreadd() 创建的&lt;div&gt;kthread() wrap 的进程&lt;/div&gt;" style="rounded=0;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;labelPosition=right;verticalLabelPosition=middle;align=left;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="-80" y="525" width="20" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="36" value="kthread_create_info" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;labelPosition=right;verticalLabelPosition=middle;align=left;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="-80" y="555" width="20" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="37" value="" style="endArrow=classic;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;labelBackgroundColor=none;" parent="1" source="3" target="28" edge="1">
+                    <mxGeometry x="0.0551" y="-7" width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="252" y="535" as="sourcePoint"/>
+                        <mxPoint x="441" y="665" as="targetPoint"/>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="38" value="" style="endArrow=classic;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;labelBackgroundColor=none;" parent="1" source="3" target="29" edge="1">
+                    <mxGeometry x="0.0551" y="-7" width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="262" y="545" as="sourcePoint"/>
+                        <mxPoint x="451" y="675" as="targetPoint"/>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="39" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;kthread_create()&lt;/span&gt;" style="edgeStyle=none;html=1;fillColor=#d5e8d4;strokeColor=#82b366;labelBackgroundColor=none;" parent="1" source="28" target="33" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="280" y="645" as="targetPoint"/>
+                        <mxPoint x="420" y="672" as="sourcePoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="40" value="" style="edgeStyle=none;html=1;fillColor=#d5e8d4;strokeColor=#82b366;labelBackgroundColor=none;" parent="1" source="29" target="33" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="655" as="targetPoint"/>
+                        <mxPoint x="430" y="682" as="sourcePoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
