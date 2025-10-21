@@ -260,11 +260,11 @@ free_pages(a);               // 释放之前分配的一页
 
     ```c title="普通链表"
     struct data_node_A {
-        int data;
+        int* data;
         struct data_node_A *next, *prev;
     } a, *list_A = NULL;
     struct data_node_B {
-        char data;
+        char* data;
         struct data_node_B *next, *prev;
     } x, *list_B = NULL;
     static inline void list_A_add(struct data_node_A *new, struct data_node_A *head);
@@ -311,6 +311,10 @@ free_pages(a);               // 释放之前分配的一页
 
     - 侵入式链表将链表节点嵌入数据结构中，支持泛型接口，代码复用性强。
     - 通过 `container_of` 宏，可以从链表节点指针计算出包含它的结构体指针。
+
+!!! info "更多资料"
+
+    - [Intrusive linked lists - Data structures in practice](https://www.data-structures-in-practice.com/intrusive-linked-lists/)
 
 ### Task 1：实现双向链表
 
