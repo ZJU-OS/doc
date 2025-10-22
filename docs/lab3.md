@@ -35,7 +35,7 @@
     </figcaption>
 </figure>
 
-- CPU 内部的 **MMU（Memory Management Unit）** 负责解析页表、执行地址转换和权限检查。我们的所有硬件都是 QEMU 模拟的，它也会实现 MMU 功能。
+- CPU 内部的 **MMU（Memory Management Unit）** 负责解析页表、执行地址转换和权限检查。我们的所有硬件都是 QEMU 模拟的，它也会实现 MMU 的功能。
 - 我们实现的操作系统需要负责**构建与维护页表**、**处理缺页异常**。
 
 本实验要实现 RISC-V 规范中的 **Sv39 多级页表机制**，你将完成以下关键步骤：
@@ -44,7 +44,7 @@
 2. **构建内核页表**：为内核镜像的各个段（`.text`、`.rodata`、`.data`、`.bss`）建立映射，并配置正确的访问权限；同时实现内核空间的直接映射区域。
 3. **切换至虚拟地址执行**：配置 `satp` 寄存器，执行 `sfence.vma`，完成从物理地址到虚拟地址的安全过渡。
 
-完成本实验后，你的操作系统将第一次具备**完整的地址空间抽象能力**。这意味着你的内核不再依赖物理世界的直接寻址，而开始以虚拟地址的视角运行。
+完成本实验后，你的操作系统将第一次具备**完整的地址空间抽象能力**，为 Lab4 实现用户态进程奠定基础。
 
 ## 实验要求
 
@@ -72,7 +72,7 @@ git merge upstream/lab3
 
 ## Part 1：从物理地址到虚拟地址
 
-### 链接器脚本、虚拟地址与加载地址
+### 虚拟与加载地址
 
 同学们合并 `vmlinux.lds` 的更改时，应该注意到其中发生了这样的变更：
 
@@ -109,13 +109,13 @@ index 6ede8c0..24c9f07 100644
          _srodata = .;
 ```
 
-合并后，请编译内核，并观察上述修改引起的变化：
+请编译内核，并观察上述修改引起的变化：
 
 - **修改**：`BASE_ADDR` 从物理地址 `0x80000000` 变为虚拟地址 `0xffffffd600000000`。
 
     **变化**：打开 `System.map`，看看内核符号们的地址发生了什么变化？
 
-    所有符号的地址都从原来的 `0x80000000` ~ `0x9fffffff` 变为 `0xffffffd600000000` ~ `0xffffffffffffffff`。精确地说，变化后的地址 = 原地址 + `0xffffffd600000000` - `0x80000000`。调试遇到困难时，要记得可以通过这一关系换算地址。
+    所有符号的地址都从原来的 `0x80000000` 开头变为 `0xffffffd600000000` 开头。Part 2 内存布局一节会解释为什么选择这个地址。
 
 - **修改**：各 Section 的地址发生了变化，相关的链接器脚本语法见 [3.6.8.2 Output Section LMA - LD](https://sourceware.org/binutils/docs/ld.html#Output-Section-LMA-1)。
 
@@ -264,7 +264,7 @@ ffffffd600200008: ffc10113           addi sp,sp,-4 # ffffffd600209000 <kthread_c
 
 > Note that writing satp does not imply any ordering constraints between page-table updates and subsequent address translations, nor does it imply any invalidation of address-translation caches. If the new address space’s page tables have been modified, or if an ASID is reused, it may be necessary to execute an SFENCE.VMA instruction (see Section 12.2.1) after, or in some cases before, writing satp.
 
-本节就来看看 `sfence.vma`。请同学们阅读特权级手册中的 [12.2.1. Supervisor Memory-Management Fence Instruction](https://zju-os.github.io/doc/spec/riscv-privileged.html#sfence.vma) 的**前两段内容（包括注释）**。阅读时，你需要回忆**《计算机组成》中学习的 TLB、《计算机体系结构》中学习的缓存一致性**等相关知识。
+本节就来看看 `sfence.vma`。请同学们阅读特权级手册的 [12.2.1. Supervisor Memory-Management Fence Instruction](https://zju-os.github.io/doc/spec/riscv-privileged.html#sfence.vma) 一节。阅读时，你需要回忆**《计算机组成》中学习的 TLB、《计算机体系结构》中学习的缓存一致性**等相关知识。
 
 导读：
 
@@ -275,6 +275,10 @@ ffffffd600200008: ffc10113           addi sp,sp,-4 # ffffffd600209000 <kthread_c
 - > The SFENCE.VMA is used to flush any local hardware caches related to address translation. It is specified as a fence rather than a TLB flush to provide cleaner semantics with respect to which instructions are affected by the flush operation and to support a wider variety of dynamic caching structures and memory-management schemes. SFENCE.VMA is also used by higher privilege levels to synchronize page table writes and the address translation hardware.
 
     这里解释了 `sfence.vma` 为什么被设计成内存屏障（fence）而不是简单的 TLB 刷新指令。《计算机体系结构》课上我们学习了 CPU 在 L1 会有 i Cache 和 d Cache，这同样涉及虚拟内存。`sfence.vma` 的语义更宽泛，能够**涵盖所有与地址转换相关的缓存结构**。
+
+- > Changes to the sstatus fields SUM and MXR take effect immediately, without the need to execute an SFENCE.VMA instruction. Changing satp.MODE from Bare to other modes and vice versa also takes effect immediately, without the need to execute an SFENCE.VMA instruction. Likewise, changes to satp.ASID take effect immediately.
+
+    这里说明了首次启用分页机制时，不需要 `sfence.vma`。但是，如果页表发生变化，或者 ASID 被重用，就需要执行 `sfence.vma`。
 
 - 该节剩余的部分涉及《计算机体系结构》中的内存一致性模型（RVWMO，对应体系结构课上学习的 Weak Ordering）。内存一致性在体系结构中也算比较难的内容，这里就不展开了。感兴趣的同学可以自行阅读，在报告中讲讲你读完后觉得 `sfence.vma` 有什么有意思的地方。这里提供一篇参考资料：[细说 RVWMO：RISC-V 指令集手册 Appendix A（一） - 知乎](https://zhuanlan.zhihu.com/p/677678235)。
 
@@ -397,7 +401,9 @@ Linux 选择了通过 Trap 实现，留给同学们探究。这里介绍一下�
 
     - `.text`：代码
     - `.rodata`：只读数据
-    - `.data` 与 `.bss`：读写数据
+    - `.data`、`.bss` 和**剩余的所有物理内存**：读写数据
+
+    注意最后一段映射要包括剩余的所有物理内存，它们要给 Buddy System 使用。
 
     要求该函数调用 `create_mapping()` 来完成具体的映射工作。
 
@@ -429,10 +435,73 @@ Linux 选择了通过 Trap 实现，留给同学们探究。这里介绍一下�
 
     - 通过 Lab3 Task2 测试。
 
-## 扩展阅读：QEMU 和 Linux 的页表相关实现
+## 扩展阅读：QEMU 的 TLB 实现
 
 本节我们研究一个问题：修改 `satp` 寄存器和 `sfence.vma` 这两个操作的先后顺序应该是怎样的？
 
-- [SFENCE.VMA Before or After SATP Write · Issue #226 · riscv/riscv-isa-manual](https://github.com/riscv/riscv-isa-manual/issues/226)
+我们知道 `sfence.vma` 的一大作用是刷新 TLB 和缓存，以避免使用旧的地址映射，应该在写入 `satp` 之后执行。但是如果去看 Linux 的 `arch/riscv/kernel/head.S`，会发现它是在写入 `satp` 之前执行的：
 
-TODO
+```assembly title="arch/riscv/kernel/head.S"
+    /*
+     * Load trampoline page directory, which will cause us to trap to
+     * stvec if VA != PA, or simply fall through if VA == PA.  We need a
+     * full fence here because setup_vm() just wrote these PTEs and we need
+     * to ensure the new translations are in use.
+     */
+    sfence.vma
+    csrw CSR_SATP, a0
+```
+
+这是因为 Linux 采用 Trap 的方式完成重定位。理由已经在注释中说明了，这里主要是用它的**内存屏障（fence）**语义，确保在写入 `satp` 之后硬件能立刻看到内存中的页表，从而立刻触发 Trap 跳转到重定位代码。而刷新 TLB 和缓存并不是主要目的，因为这里是第一次开启 MMU，前文引用的 RISC-V 规范已经说明了这种情况（Bare 到其他模式）不需要 `sfence.vma`。
+
+除去这一特殊情况，一般 `sfence.vma` 都会放置在 `satp` 写入之后。[SFENCE.VMA Before or After SATP Write · Issue #226 · riscv/riscv-isa-manual](https://github.com/riscv/riscv-isa-manual/issues/226) 对此进行了讨论：
+
+> - SFENCE **before SATP may be necessary**: The concern is, what if the mapping for the instruction immediately after SFENCE.VMA has been modified? In the Linux kernel, this mapping is fixed (regardless of address space) so the concern does not apply.
+> - SFENCE **after SATP write is definitely necessary**, though. In general, you need to SFENCE after you’ve recycled an ASID. Since we don’t use ASIDs in the Linux kernel yet, every context switch is effectively an ASID reuse, hence the full TLB flush.
+
+喜欢动手的同学可能还会尝试删去 `sfence.vma`，结果发现内核依然能正常运行。难道 QEMU 没有实现 TLB？我们可以设计一个小实验验证一下：
+
+```c
+// create old TLB entry
+asm volatile("li t0, 0x80200000");
+asm volatile("ld t1, 0(t0)");
+// set satp with swapper_pg_dir
+asm volatile("csrw satp, %0" :: "r"(new_satp_value));
+// try to hit old TLB entry
+asm volatile("li t0, 0x80200000");
+asm volatile("ld t1, 0(t0)");
+```
+
+如果 QEMU 实现了 TLB，那么第二次 `ld` 指令应该会命中旧的 TLB 条目。但这条指令触发了 page fault，说明没有命中 TLB。
+
+QEMU 是开源的，所以我们可以直接读源码一探究竟。[qemu tlb 实现分析 | Sherlock's blog](https://wangzhou.github.io/qemu-tlb%E5%AE%9E%E7%8E%B0%E5%88%86%E6%9E%90/) 是一篇很好的博客（作者还写了 QEMU 的其他部分分析），虽然相应的源码版本为 v5.0，但整体思路没有太大变化。我们找到 QEMU 处理 `satp` 写入部分的代码：
+
+```c title="target/riscv/csr.c"
+static target_ulong legalize_xatp(CPURISCVState *env, target_ulong old_xatp,
+                                  target_ulong val)
+{
+    target_ulong mask;
+    bool vm;
+    if (riscv_cpu_mxl(env) == MXL_RV32) {
+        vm = validate_vm(env, get_field(val, SATP32_MODE));
+        mask = (val ^ old_xatp) & (SATP32_MODE | SATP32_ASID | SATP32_PPN);
+    } else {
+        vm = validate_vm(env, get_field(val, SATP64_MODE));
+        mask = (val ^ old_xatp) & (SATP64_MODE | SATP64_ASID | SATP64_PPN);
+    }
+
+    if (vm && mask) {
+        /*
+         * The ISA defines SATP.MODE=Bare as "no translation", but we still
+         * pass these through QEMU's TLB emulation as it improves
+         * performance.  Flushing the TLB on SATP writes with paging
+         * enabled avoids leaking those invalid cached mappings.
+         */
+        tlb_flush(env_cpu(env));
+        return val;
+    }
+    return old_xatp;
+}
+```
+
+QEMU 先验证待写入的值的合法性，如果合法，且和旧值不同，那么就调用 `tlb_flush()` 刷新 TLB。源码注释说明这是为了避免泄漏旧的映射。然而在真实的硬件实现中，并不会有这一保证，所以我们在实验中仍然需要 `sfence.vma`。
