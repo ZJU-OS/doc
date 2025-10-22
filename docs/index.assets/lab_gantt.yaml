@@ -27,10 +27,10 @@
   activities:
   - title: 代码、报告
     start: 2025-10-21
-    end: 2025-11-25
+    end: 2025-11-12
   - title: 验收
     start: 2025-10-21
-    end: 2025-11-26
+    end: 2025-11-19
 
 - title: Lab4 - 用户模式与系统调用（20%）
   activities:

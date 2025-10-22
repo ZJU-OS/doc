@@ -62,10 +62,13 @@ git fetch upstream
 git merge upstream/lab3
 ```
 
-下面的合并说明供同学们解决合并冲突时参考：
+下面的合并说明供同学们解决合并冲突时参考：[lab3: init (!21) · Merge requests · OS / Code · GitLab](https://git.zju.edu.cn/os/code/-/merge_requests/21/diffs)
 
 - 新增实验相关：
-    - 虚拟内存代码 `mm.h`
+    - 虚拟内存代码 `vm.h`、`vm.c`
+    - 头文件中新增了一些宏定义
+    - `vmlinux.lds` 添加虚拟内存配置
+    - 需要物理地址的位置添加了 `PA2VA`、`VA2PA` 宏
 - 变更：
     - `vmlinux.lds`：链接器脚本修改，其中 `_sbss` 移动到 `.bss` 段最开始的位置（因为待会要用），现在不是栈底了。重新弄了俩符号 `_sstack` 和 `_estack` 作为内核栈的边界。之前使用 `_sbss` 作为内核栈的同学需要修改 `head.S`，而在 `head.S` 中自行定义栈边界的同学则不受影响。
     - `head.S` 中 Lab1 Task3（`stvec` 的设置）向前移动，紧接在 Lab1 Task1（栈的设置）之后。这样能更早地捕获异常。
