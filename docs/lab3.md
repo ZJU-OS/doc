@@ -68,6 +68,7 @@ git merge upstream/lab3
     - 虚拟内存代码 `mm.h`
 - 变更：
     - `vmlinux.lds`：链接器脚本修改，其中 `_sbss` 移动到 `.bss` 段最开始的位置（因为待会要用），现在不是栈底了。重新弄了俩符号 `_sstack` 和 `_estack` 作为内核栈的边界。之前使用 `_sbss` 作为内核栈的同学需要修改 `head.S`，而在 `head.S` 中自行定义栈边界的同学则不受影响。
+    - `head.S` 中 Lab1 Task3（`stvec` 的设置）向前移动，紧接在 Lab1 Task1（栈的设置）之后。这样能更早地捕获异常。
 
 ## Part 1：从物理地址到虚拟地址
 
