@@ -333,7 +333,7 @@ Linux 选择了通过 Trap 实现，留给同学们探究。这里介绍一下�
 
     完成 Task 1 后，请你分析这两种重定位方式是否都需要恒等映射？为什么？
 
-### Task 1：大页表双重映射
+### Task 1：大页表双重映射和重定位
 
 !!! tip "术语：映射"
 
@@ -347,6 +347,13 @@ Linux 选择了通过 Trap 实现，留给同学们探究。这里介绍一下�
 
 - 恒等映射：虚拟地址 `0x80000000` ~ `0x9fffffff` 映射到物理地址 `0x80000000` ~ `0x9fffffff`；
 - 内核映射：虚拟地址 `0xffffffd600000000` ~ `0xFFFFFFD61FFFFFFF` 映射到物理地址 `0x80000000` ~ `0x9fffffff`。
+
+<figure markdown="span">
+    ![early_page_table](lab3.assets/early_page_table.drawio)
+    <figcaption>
+    early_pg_dir 的映射关系示意图
+    </figcaption>
+</figure>
 
 你的任务是：
 
@@ -382,7 +389,7 @@ Linux 选择了通过 Trap 实现，留给同学们探究。这里介绍一下�
 
     - 通过 Lab3 Task1 测试
 
-### Task 2：多级页表和重定位
+### Task 2：多级页表
 
 刚才实现的页表比较粗暴：
 
@@ -395,7 +402,7 @@ Linux 选择了通过 Trap 实现，留给同学们探究。这里介绍一下�
 
 - 补全 `setup_vm_final()`
 
-    该函数构造 Sv39 三级页表 `final_pg_dir`，并返回待写入 `satp` 寄存器的值。
+    该函数构造 Sv39 三级页表 `swapper_pg_dir`，并返回待写入 `satp` 寄存器的值。
 
     该页表需要为 `vmlinux.lds` 中定义的各个段建立映射关系，页表项的各个位应当根据存放的内容和标准的要求设置。
 
@@ -419,7 +426,7 @@ Linux 选择了通过 Trap 实现，留给同学们探究。这里介绍一下�
 
     请自由发挥。
 
-- 在 `head.S` 中，调用 `setup_vm_final()`，然后用汇编切换到最终的页表 `final_pg_dir`。
+- 在 `head.S` 中，调用 `setup_vm_final()`，然后用汇编切换到最终的页表 `swapper_pg_dir`。
 
 !!! success "完成条件"
 
