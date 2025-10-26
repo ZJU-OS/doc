@@ -438,10 +438,8 @@ Linux 选择了通过 Trap 实现，留给同学们探究。这里介绍一下�
     - 写入 SATP 寄存器后，QEMU Monitor 能够正确执行下面的指令：
 
         ```text
-        (qemu) gva2gpa 0x80000000
-        gpa: 0x80000000
-        (qemu) gva2gpa 0xffffffd600000000
-        gpa: 0x80000000
+        (qemu) gva2gpa 0xffffffd602000000
+        gpa: 0x80200000
         ```
 
     - 通过 Lab3 Task2 测试。
