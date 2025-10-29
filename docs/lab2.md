@@ -571,14 +571,19 @@ next_task->prev = current_task->prev;
 
 这就是一个典型的竞争条件：`task_list` 是共享数据，而修改 `task_list` 的代码（如 `list_del`）就是一个临界区。为了保护它，我们必须在修改链表之前关闭中断，并在修改完成后重新开启中断。
 
-!!! warning "链表操作的原子性"
+!!! warning "实现正确的临界区保护"
 
-    我们在实验框架中已经为大家考虑了多处临界区并进行了保护。但仍然有一些地方需要同学们自己动手完成（例如链表操作）。请同学们回去给链表操作中你认为需要保护的区域加上中断保护和开启，使用下面两个函数：
+    我们在实验框架中已经为大家考虑所有可能的临界区并进行了保护。你可以阅读 `csr.h` 中的 `interrupt_save()` 和 `interrupt_restore()` 函数，理解它们是如何操作 `sstatus` 寄存器来开启和关闭中断的。
 
     ```c title="csr.h"
-    void interrupt_enable(void);
-    void interrupt_disable(void);
+    void interrupt_save(void);
+    void interrupt_restore(void);
     ```
+
+    值得注意的有两点：
+
+    - 我们在进入临界区前保存了中断状态，并在离开临界区时恢复原有状态，而不是简单地开启中断。这是为了防止嵌套临界区的问题。
+    - 临界区保护应该总是交给调用者来完成，而不是由被调用的函数（如 `list_del`）来完成。这样可以让调用者根据具体情况决定是否需要保护。
 
 #### 例子 2：进程切换过程
 
