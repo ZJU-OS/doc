@@ -396,8 +396,8 @@ struct thread_struct {
     .globl __switch_to
 __switch_to:
     sd ra, 0(a0)          // 保存 Task1 上下文
-    sd sp, 8(t0)
-    sd s0, 16(t0)
+    sd sp, 8(a0)
+    sd s0, 16(a0)
     ...
 
     ld ra, 0(a1)          // 恢复 Task2 上下文

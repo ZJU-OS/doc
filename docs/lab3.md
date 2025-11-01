@@ -349,8 +349,9 @@ Linux 选择了通过 Trap 实现，留给同学们探究。这里介绍一下�
 
 `setup_vm()` 用于构造内核启动初期的页表 `early_pg_dir`。这是一个仅有 Gigapage 的 Sv39 页表，其中包含两个映射关系：
 
-- 恒等映射：虚拟地址 `0x80000000` ~ `0x9fffffff` 映射到物理地址 `0x80000000` ~ `0x9fffffff`；
-- 内核映射：虚拟地址 `0xffffffd600000000` ~ `0xFFFFFFD61FFFFFFF` 映射到物理地址 `0x80000000` ~ `0x9fffffff`。
+- 映射大小：物理内存有多少，就映射多大。QEMU 默认分配 128 MiB 内存，可以通过 `-m` 参数调整。下文以 128 MiB 为例。
+- 恒等映射：虚拟地址 `0x80000000~0x88000000` 映射到物理地址 `0x80000000~0x88000000`。
+- 内核映射：虚拟地址 `0xffffffd600000000~0xffffffd600800000` 映射到物理地址 `0x80000000~0x88000000`。
 
 <figure markdown="span">
     ![early_page_table](lab3.assets/early_page_table.drawio)
