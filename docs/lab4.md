@@ -158,7 +158,15 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
     </figcaption>
 </figure>
 
-嵌套中断的情况应当能被正确处理。
+因此 `_traps()` 的结尾也需要区分用户态 Trap 的返回和内核态 Trap 的返回。思路也很简单：
+
+- `call trap_handler` 返回后，`sp` 仍然指向最新的 Trap 上下文。可以获取其中的 `sstatus.SPP` 位判断要返回到用户态还是内核态。
+- 如果返回到用户态：
+    - 需要切换用户栈和内核栈
+    - 需要交换 `sscratch` 和 `tp`
+- 如果返回到内核态：
+    - 不需要切换栈
+    - 不需要交换 `sscratch` 和 `tp`
 
 !!! info "FAQ：为什么会有嵌套 Trap"
 
@@ -181,8 +189,9 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
             !!! tip "建议在 `entry.S` 中使用 `proc.h` 中提供的一些偏移量宏，这些宏有编译器静态检查，不容易出错。"
 
-        - 实现用户栈与内核栈的切换。
-        - 把 `struct pt_regs` 的指针传递给 `trap_handler()`
+        - 把 Trap 上下文传递给 `trap_handler()`
+        - **我们提供** 在 `_traps()` 返回路径上，根据 `sstatus.SPP` 判断返回到用户态还是内核态，并执行相应的栈切换和 `sscratch` 与 `tp` 交换的逻辑。
+        - **请你修改** `_traps()` 的开头，判断 Trap 来源于用户态还是内核态（sscratch 和 sstatus 应该都行），并执行相应的栈切换和 `sscratch` 与 `tp` 交换逻辑。
 
 - `kernel/arch/riscv/kernel/trap.c`：
     - **请你修改** `trap_handler()`：
@@ -277,7 +286,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 - Chapter 1. Object Files 的 Introduction、File Format、ELF Header 部分
 - Chapter 2. Program Loading and Dynamic Linking 的 Introduction、Program Header 部分
 
-建议先看看下面 AI 总结的要点，搞不清楚的地方再回头看规范原文。
+建议先看看下面的要点，搞不清楚的地方再回头看规范原文。
 
 ??? note "要点：Object Files"
 
@@ -482,6 +491,8 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
     其中有些段的 `MemSiz` 为 0，意思就是这些段不需要加载到内存中。
 
+    （提示：这类“查看 xxx”的动手做，没有什么需要思考的，不需要写一大堆）
+
 ### Task 3：实现 ELF 加载器
 
 你的任务是补全 `kernel/arch/riscv/kernel/binfmt_elf.c` 中的 `load_elf_binary()` 函数。函数接口定义在相应头文件中，其整体逻辑如下：
@@ -496,11 +507,17 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
     这些步骤所需的所有信息都在 Program Header Table 中，上一节已经介绍过，这里就不具体点出了。
 
+!!! success "完成条件"
+
+    本 Task 没有单独的评测，和下一个 Task 一起评测。
+
 ### 从内核态到用户态
 
 只有一种方法能够进入用户态：当 `sstatus.SPP` 为 0 时，执行 `sret` 指令。恰好 `entry.S` 中 `call trap_handler` 之后的部分就是执行 `sret` 指令返回，我们想**复用 Trap 返回的代码路径**来进入用户态。
 
-为此我们在 `entry.S` 中为该部分插入一个新的标签 `ret_from_trap()`。然后需要构造一个合适的 Trap 上下文，即为 `struct pt_regs` 填充合适的值，然后跳转到 `ret_from_trap()` 即可。上下文的构造不难想，无非就是设置好 PC、栈等内容，这里直接给到同学们，同学们需要理解为什么这么设置：
+为此我们在 `entry.S` 中为该部分插入一个新的标签 `ret_from_trap()`。然后需要**构造一个初始的 Trap 上下文**，即为 `struct pt_regs` 填充合适的值，然后跳转到 `ret_from_trap()` 即可。在上文“从用户态到内核态”中我们对 `ret_from_trap()` 分类讨论了返回到用户态和返回到内核态的情况，这里就按照返回到用户态的情况来构造 Trap 上下文。
+
+上下文的构造不难想，无非就是设置好 PC、栈等内容，这里直接给到同学们，同学们需要理解为什么这么设置：
 
 - `sepc`：应当填充用户态程序的入口地址，这一信息也在 ELF Header 中。
 - `sstatus`：
@@ -509,36 +526,33 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
     - `UXL` 应当设置为 2，表示用户态程序运行在 64 位模式。
 - `sp`：应当填充用户栈的初始值。
 
-这些工作在 `kernel/arch/riscv/kernel/binfmt_elf.c` 的 `start_thread()` 函数中完成。
+这些工作在 `kernel/arch/riscv/kernel/binfmt_elf.c` 的 `start_thread()` 函数中完成。`load_elf_binary()` 调用它来为新进程构造初始 Trap 上下文。
 
-最后，我们再次对 `ret_from_trap()` 进行分类讨论。现在有三种情况会经过 `ret_from_trap()`：
+最后我们来梳理一遍用户态进程从创建到运行的整体流程：
 
-- 新进程的初始 Trap 上下文
-- 用户态 Trap 处理完返回
-- 内核态 Trap 处理完返回
-
-
+- **创建进程**：调用 `copy_process()` 创建一个新进程，并加入到进程队列。
+- **加载程序**：调用 `load_elf_binary()` 加载用户态程序到新进程的内存空间，并调用 `start_thread()` 构造初始 Trap 上下文。
+- **切换进程**：调度器切换到该进程时，执行 `__switch_to` 切换页表，并跳转到 `ret_from_trap()`。
+- **进入用户态**：`ret_from_trap()` 设置好寄存器后执行 `sret`，进入用户态运行用户态程序。
 
 ### Task 4：运行用户态程序
 
-现在，我们有了 `load_elf_binary()` 用于加载用户态程序，还有上一个 Lab 实现的 `copy_process()` 用于创建进程。模仿用于创建内核线程的 `kernel_thread()`，我们再包装一个 `user_mode_thread()` 用于创建用户态进程。我们希望该函数的行为是：
+现在，我们有了 `load_elf_binary()` 用于加载用户态程序，还有上一个 Lab 实现的 `copy_process()` 用于创建进程。**请你补全** `kernel/arch/riscv/kernel/proc.c` 中的 `user_mode_thread()` 函数。它的逻辑应该是：
 
 - 调用 `copy_process()` 从当前进程拷贝一个新进程
 - 调用 `load_elf_binary()` 加载用户态程序到新进程的内存空间
     - 调用 `start_thread()` 为新进程构造一个 Trap 上下文，用于 `ret_from_trap` 返回到用户态
 - 设置新进程的 `struct thread_struct` 中的几个寄存器。
     - `ra`：设置为 `ret_from_trap` 即可
-    - 其他都不需要设置，
+    - `sp`：指向初始 Trap 上下文所在的位置，因为 `ret_from_trap` 会从这里恢复寄存器
 
-    建议你对比 `kernel_thread()` 思考一下。
+!!! success "完成条件"
 
+    通过评测。
 
+    因为还未实现系统调用，用户态程序没法输出，所以没什么可以观测的现象。当然，你可以开启 INFO 级别的 LOG 输出，看看调度器有没有成功切换到用户态进程。
 
 ## Part 3：系统调用
-
-### 改进 Trap Handler
-
-经历过前几个实验，同学们应该对进入 Trap 时保存上下文很熟悉了。**系统调用正是利用 ecall 作为一种异常，通过 Trap 上下文与内核传递参数和返回值的**。现在，
 
 ### 系统调用
 
@@ -557,6 +571,9 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
                                         call #  val  val2
     ───────────────────────────────────────────────────────────────────
     riscv       ecall                 a7      a0   a1   -
+    ```
+
+    ```text
         The second table shows the registers used to pass the system call
     arguments.
     Arch/ABI      arg1  arg2  arg3  arg4  arg5  arg6  arg7  Notes
@@ -568,14 +585,29 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
 - Linux 提供的所有系统调用见 [syscalls(2) - Linux manual page](https://man7.org/linux/man-pages/man2/syscalls.2.html)。
 
-系统调用的具体流程与 Lab1 实现的 SBI Ecall 类似：
+    本次实验，我们需要实现 `getpid()`、`write()` 两个系统调用，请同学们简单看看这两个系统调用的文档描述：
 
-- 用户态程序按照上面的约定，将系统调用号和参数放入指定寄存器
-- 执行 `ecall` 指令触发一个异常，进入内核态
-- 由内核的 Trap Handler 处理该异常，并根据用户态程序传递的参数执行相应的服务，最后将结果返回给用户态程序
+    - [getpid(2) - Linux manual page](https://man7.org/linux/man-pages/man2/getpid.2.html)
+    - [write(2) - Linux manual page](https://man7.org/linux/man-pages/man2/write.2.html)
 
-### Task1：实现系统调用
+然后阅读代码并理解：
 
-你的任务是：
+- `kernel/user/src/syscalls.c`：这是系统调用在用户态侧的接口实现，你应当想起 Lab1 中 SBI 调用的实现，基本类似。
+- `kernel/arch/riscv/kernel/syscall.c`：这是系统调用在内核态侧的处理实现。
+- `kernel/arch/riscv/kernel/trap.c`：这里的 `do_ecall_u()` 调用系统调用处理函数。
 
-1. 改进 `_traps()` 的实现：上下文保存到内核栈栈顶，布局与 `struct pt_regs` 定义一致。
+!!! question "考点：系统调用的实现"
+
+    系统调用的用户态、内核态接口以前要同学们自己写，但是没什么意思。现在直接给出了，验收时会对这些代码提问，你要能讲清楚它是怎么工作的。
+
+### Task5：实现 `write` 系统调用
+
+在实验中，`write()` 系统调用使用 `sbi_debug_console_write()` 来输出字符。但 SBI 运行在 M 模式，不经过 S 模式的地址翻译，所以它只接受物理地址作为参数。
+
+`write()` 系统调用中的第二个参数（`char *buf`）从用户态传过来时，是用户态的虚拟地址。**请你补全** `kernel/arch/riscv/kernel/syscall.c` 的 `UVA2PA()` 函数，把用户态的虚拟地址转换为物理地址，然后传递给 `sbi_debug_console_write()`。
+
+!!! success "完成条件"
+
+    通过评测。
+
+    用户态程序见 `kernel/user/src/main.c`，请你阅读它的代码，理解它在干什么。你应该能在控制台看到用户态程序打印出五颜六色的文本。
