@@ -202,8 +202,9 @@ ffffffd600200008: ffc10113           addi sp,sp,-4 # ffffffd600209000 <kthread_c
 
 ### RISC-V Sv39 规范阅读
 
-本节要求同学们**完整阅读**特权级手册中的以下两节：
+本节要求同学们**完整阅读**特权级手册中的以下三节：
 
+- [12.1.11. Supervisor Address Translation and Protection (satp) Register](https://zju-os.github.io/doc/spec/riscv-privileged.html#satp)
 - [12.3. Sv32: Page-Based 32-bit Virtual-Memory Systems](https://zju-os.github.io/doc/spec/riscv-privileged.html#sv32)
 - [12.4. Sv39: Page-Based 39-bit Virtual-Memory System](https://zju-os.github.io/doc/spec/riscv-privileged.html#sv39)
 
@@ -221,6 +222,8 @@ ffffffd600200008: ffc10113           addi sp,sp,-4 # ffffffd600209000 <kthread_c
     - 虚拟地址长度从 32 位变为 39 位；
     - 页表项（PTE）扩展为 8 字节；
     - 支持 2 MiB、1 GiB 的大页（megapage/gigapage）。
+
+- `satp` 是一个 CSR 寄存器，用于控制 S 模式下的地址转换和保护。其中保存了地址转换模式、根页表的物理页号（PPN）等关键信息。
 
 阅读过程中画图是一个很好的习惯。下面这些图来自 [RISC-V Sv32,Sv39 を理解する](https://vlsi.jp/UnderstandMMU.html)，有助于同学们理解 Sv32/Sv39 的各种页类型与地址转换流程：
 
