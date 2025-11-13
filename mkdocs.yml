@@ -32,10 +32,16 @@ nav:
     - ld: https://sourceware.org/binutils/docs/ld
     - binutils: https://sourceware.org/binutils/docs/binutils
   - 源码仓库:
-    - Linux (GitHub): https://github.com/torvalds/linux
-    - Linux (Cross Referencer): https://elixir.bootlin.com/
-    - OpenSBI: https://github.com/riscv-software-src/opensbi
-    - QEMU: https://github.com/qemu/qemu/
+    - Cross Referencer:
+      - Linux: https://elixir.bootlin.com/linux
+      - musl: https://elixir.bootlin.com/musl/
+      - OpenSBI: https://elixir.bootlin.com/opensbi/
+      - QEMU: https://elixir.bootlin.com/qemu/
+    - 官方/GitHub:
+      - Linux: https://github.com/torvalds/linux
+      - musl: https://git.musl-libc.org/cgit/musl
+      - OpenSBI: https://github.com/riscv-software-src/opensbi
+      - QEMU: https://github.com/qemu/qemu/
   - 助教文档: ta
 
 theme:

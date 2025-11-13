@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="_L1n2iBKLJYxsJgJ_c-A" name="Page-1">
-        <mxGraphModel dx="472" dy="1488" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="783" dy="1443" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -14,7 +14,7 @@
                     <mxGeometry x="320" y="120" width="160" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="5" value="Kernel VA" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#D79B00;fontSize=21;fontStyle=1" parent="1" vertex="1">
-                    <mxGeometry x="210" y="115" width="60" height="30" as="geometry"/>
+                    <mxGeometry x="210" y="115" width="110" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="6" value="PA" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#6C8EBF;fontSize=21;fontStyle=1" parent="1" vertex="1">
                     <mxGeometry x="210" y="50" width="60" height="30" as="geometry"/>
@@ -137,10 +137,10 @@
                     <mxGeometry x="480" y="80" width="40" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="56" value="0x4000000000" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#D79B00;" parent="1" vertex="1">
-                    <mxGeometry x="480" y="-30" width="40" height="30" as="geometry"/>
+                    <mxGeometry x="480" y="-30" width="120" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="57" value="0x4000000000" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#D79B00;" parent="1" vertex="1">
-                    <mxGeometry x="480" y="-90" width="40" height="30" as="geometry"/>
+                    <mxGeometry x="480" y="-90" width="120" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="58" value="0x88000000" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#6C8EBF;" parent="1" vertex="1">
                     <mxGeometry x="1400" y="80" width="80" height="30" as="geometry"/>
@@ -150,45 +150,6 @@
                 </mxCell>
                 <mxCell id="60" value="页表" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
                     <mxGeometry x="1160" y="40" width="70" height="20" as="geometry"/>
-                </mxCell>
-                <mxCell id="61" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-                    <mxGeometry x="1000" y="-240" width="80" height="160" as="geometry"/>
-                </mxCell>
-                <mxCell id="62" value="内核栈" style="text;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-                    <mxGeometry x="1000" y="-270" width="80" height="30" as="geometry"/>
-                </mxCell>
-                <mxCell id="63" value="struct pt_regs" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-                    <mxGeometry x="1000" y="-240" width="80" height="20" as="geometry"/>
-                </mxCell>
-                <mxCell id="64" value="sp" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="930" y="-230" width="50" height="20" as="geometry"/>
-                </mxCell>
-                <mxCell id="65" value="" style="endArrow=classic;html=1;" edge="1" parent="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="980" y="-220" as="sourcePoint"/>
-                        <mxPoint x="1000" y="-220" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="66" value="tp" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="770" y="-91" width="50" height="20" as="geometry"/>
-                </mxCell>
-                <mxCell id="67" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-                    <mxGeometry x="840" y="-240" width="80" height="160" as="geometry"/>
-                </mxCell>
-                <mxCell id="68" value="" style="endArrow=classic;html=1;" edge="1" parent="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="820" y="-80.4" as="sourcePoint"/>
-                        <mxPoint x="840" y="-80.4" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="69" value="task_struct" style="text;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-                    <mxGeometry x="840" y="-270" width="80" height="30" as="geometry"/>
-                </mxCell>
-                <mxCell id="71" style="edgeStyle=none;html=1;entryX=0;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="70" target="61">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="70" value=".stack" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-                    <mxGeometry x="840" y="-140" width="80" height="20" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

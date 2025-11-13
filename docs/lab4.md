@@ -18,7 +18,11 @@
 
 - **用户态程序如何调用内核服务？**
 
-    在理论课上我们学习了**系统调用**的概念。用户态程序不能直接进行和敏感资源（如硬件设备、内存管理单元等）相关的操作，而是通过系统调用请求内核代为执行。因此，我们需要**进一步增强 `trap_handler()`，实现系统调用机制**，处理来自用户态的 ecall 异常。
+    在理论课上我们学习了**系统调用**的概念。用户态程序不能直接执行和敏感资源（如硬件设备、内存管理单元等）相关的操作，而是**通过系统调用请求内核代为执行**。因此，我们需要**进一步完善 Trap 处理机制，以实现系统调用**，即处理来自用户态的 ecall 异常。
+
+温馨提示：
+
+- 本次实验的栈、内存地址等内容略显复杂，建议同学们仔细阅读实验文档中的图示，也可以自己画图理一理思路。
 
 ## Part 0：准备工作
 
@@ -40,7 +44,7 @@ TODO
 
 作为本次实验的第一步，我们先不管用户态程序是什么样子，而是从内核的视角出发，设计和实现内核对用户态程序的支持。
 
-- 首先我们要认识用户态的内存布局，修改 `task_struct` 以支持用户态进程的页表、分离的用户栈与内核栈。
+- 首先我们要认识用户态的内存布局，修改 `task_struct` 以支持用户态进程的页表，分离出用户栈与内核栈。
 - 然后我们要改进 `trap_handler()`，以支持从用户态陷入内核态。
 
 ### 用户态内存布局
@@ -61,12 +65,27 @@ TODO
     - **对编译器/链接器：**可以统一假设所有程序都从相同的虚拟基地址开始编译（例如 .text 段从 0x0 起），不需要为不同进程做地址重定位。
 - **隔离：**为每个用户态进程提供一个独立的地址空间，防止它们互相干扰。例如图中微信和 QQ 进程的页表各自独立，微信的页表中不会有 QQ 相关内存的映射，微信没有任何办法访问 QQ 的数据，反之亦然。
 
-在 Lab3 中我们将 `0x0000000000000000` ~ `0x0000003fffffffff` 划给用户空间，可以自由设计用户空间的布局。本实验采用非常简单的设计：
+在 Lab3 中我们已经知道 `0x0000000000000000` ~ `0x0000003fffffffff` 是用户空间的地址范围，我们可以自由设计这部分空间的布局。本实验采用非常简单的设计：
 
-- 把整个程序（代码、数据等）放到这段空间的开头
-- 把用户态栈放到这段空间的末尾，即设置 `sp` 初始值为 `0x0000004000000000`
+- 把整个程序（代码、数据等）放到这段空间的开头（细节见 Part 2 ELF 加载）。
+- 把用户态栈放到这段空间的末尾，即设置 `sp` 初始值为 `0x0000004000000000`。
+
+### Task1：实现进程页表
 
 `struct task_struct` 新增了 `pgd` 成员来保存进程的页表。
+
+- 实现页表的工具函数，见 `kernel/arch/riscv/kernel/vm.c`：
+    - **请你补全** `copy_pgd()`。该函数接收一个三级页表，对其进行**深拷贝**，返回新页表。它的实现和 Lab3 中的 `create_mapping()` 类似。
+    - **我们提供**了 `free_pgd()` 用于释放三级页表。
+- 相应地，进程的整个生命周期也需要维护页表，见 `kernel/arch/riscv/kernel/proc.c`：
+    - **请你修改** `task_init()`，设置第一个进程的页表，即将 `pgd` 指向内核页表 `swapper_pg_dir`。
+    - **请你修改** `release_task()`，添加进程页表的释放。
+    - **请你修改** `copy_process()`，添加进程页表的拷贝。
+- **我们修改了** `kernel/arch/riscv/kernel/entry.S` 的 `__switch_to`，在切换进程时切换页表。
+
+!!! success "完成条件"
+
+    内核和 Lab3 完成时一样运行。
 
 ### 用户栈与内核栈
 
@@ -84,40 +103,99 @@ TODO
 
 !!! note "要点：隔离用户态和内核态数据"
 
-    很多漏洞都是由于内核态数据泄露引起，例如：
+    很多漏洞都是由于内核态数据泄露引起。感兴趣的同学可以阅读以下资料：
 
-    - 硬件漏洞：[幽灵・熔毁・预兆 | 孙耀珠的博客](https://blog.yzsun.me/spectre-meltdown-foreshadow/)
-    - 软件漏洞：[How STACKLEAK improves Linux kernel security | Alexander Popov](https://a13xp0p0v.github.io/2018/11/04/stackleak.html)
+    - 硬件漏洞：[幽灵・熔毁・预兆 | 孙耀珠的博客](https://blog.yzsun.me/spectre-meltdown-foreshadow/)，通过 CPU 乱序执行的漏洞获取内核数据。
+    - 软件漏洞：[How STACKLEAK improves Linux kernel security | Alexander Popov](https://a13xp0p0v.github.io/2018/11/04/stackleak.html)，通过内核栈数据泄露的漏洞获取内核数据。
 
     因此，隔离用户态和内核态数据是操作系统设计中的重要原则。
 
-`struct task_struct` 新增了两个成员：`kernel_sp` 和 `user_sp` 用于保存用户栈和内核栈。
+`struct task_struct` 新增了两个成员：`kernel_sp` 和 `user_sp` 用于保存用户态 `sp` 和内核态 `sp`。`stack` 始终指向内核栈的低地址端。
+
+<figure markdown="span">
+    ![stacks.drawio](lab4.assets/stacks.drawio)
+    <figcaption>
+    用户栈与内核栈
+    </figcaption>
+</figure>
+
+Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap 处理和内核栈布局的。
 
 ### 从用户态到内核态
 
-本节讨论 Trap 处理程序如何完成用户栈与内核栈的切换。RISC-V 提供了一个专门的寄存器 `sscratch`，见 [12.1.6. Supervisor Scratch (sscratch) Register](https://zju-os.github.io/doc/spec/riscv-privileged.html#_supervisor_scratch_sscratch_register)，标准已经说明了它的用法：
+本节讨论 Trap 处理程序如何实现用户栈与内核栈的切换。RISC-V 提供了一个专门的寄存器 `sscratch`，见 [12.1.6. Supervisor Scratch (sscratch) Register](https://zju-os.github.io/doc/spec/riscv-privileged.html#_supervisor_scratch_sscratch_register)，标准已经说明了它的用法：
 
 > Typically, sscratch is used to hold a pointer to the hart-local supervisor context while the hart is executing user code. At the beginning of a trap handler, software normally uses a CSRRW instruction to swap sscratch with an integer register to obtain an initial working register.
 
-- **CPU 运行 User 程序时**：`sscratch` 保存 supervisor context，指的就是存放在内核中的进程控制块（Process Control Block, PCB），即 `struct task_struct`。
+- **CPU 运行用户态程序时**：
+    - `sscratch` 保存 supervisor context，指的就是存放在内核中的进程控制块（Process Control Block, PCB，对应的数据结构是 `struct task_struct`），也就是内核态的 `tp` 寄存器（`proc.h` 将其绑定到 C 语言变量 `current`）。
+    - `tp` 应该是 `0`，不能让 User 程序知道自己的 PCB 在哪里。
 - **Trap 发生时**：使用 CSRRW 指令交换 `sscratch` 和 `tp`，Trap 处理程序就能通过 `tp` 访问 `task_struct`，进而存取其中的 `kernel_sp` 和 `user_sp` 了。
-- **切换栈**：把 `sp`（现在是用户栈）保存到 `user_sp`，再把 `kernel_sp` 加载到 `sp`，切换到内核栈。**然后在内核栈上保存 Trap 上下文，因为中断处理程序要用。**
+- **切换栈**：
+    - 把 `sp`（现在是用户栈）保存到 `user_sp`
+    - 再把 `kernel_sp` 加载到 `sp`，切换到内核栈。
+- **在内核栈上保存 Trap 上下文**
 - **Trap 处理结束后**：再把 `tp` 保存回 `sscratch`。
 
-上面讨论了从用户态 Trap 的情况，但 Trap 处理程序仍需要处理来自内核态的 Trap。为了区分两种情况，我们约定：
+通过上面的设计，很自然地能够在 `_traps()` 开头区分来自用户态的 Trap 和来自内核态的 Trap：
 
-- **Trap 上下文保存完成后**：应当把 `sscratch` 置 0。
-- **Trap 处理程序开始时**：检查 `sscratch` 是否为 0。
-    - 如果为 0，说明是内核态 Trap，继续使用当前的 `sp`。
-    - 如果不为 0，说明是用户态 Trap，需要切换到内核栈。
+- 来自用户态的 Trap：`sscratch` 中保存的是 PCB 地址，不为 0。此时需要：
 
-### Task1：改进 Trap Handler
+    - 切换用户栈和内核栈
+    - 交换 `sscratch` 和 `tp`
 
-按照上面的说明，修改中断处理程序。
+- 来自内核态的 Trap：`sscratch` 中保存的是 0。此时：
+
+    - 不需要操作栈，直接使用当前的 `sp`
+    - 也不需要交换 `sscratch` 和 `tp`
+
+最后，我们考虑嵌套 Trap 的情况。嵌套 Trap 一定是来自内核态的 Trap（先前的 Trap 要么从用户态进入内核态，要么已经在内核态了）。这时会**直接使用当前的 `sp`**，那么 Trap 上下文就依次保存到内核栈上了，不难想象会是下图的情况：
+
+<figure markdown="span">
+    ![nested_trap.drawio](lab4.assets/nested_trap.drawio)
+    <figcaption>
+    嵌套 Trap 时的栈布局
+    </figcaption>
+</figure>
+
+嵌套中断的情况应当能被正确处理。
+
+!!! info "FAQ：为什么会有嵌套 Trap"
+
+    有同学会问，一进 Trap `sstatus.SIE` 就被移到 `sstatus.SPIE` 了，内核态中断被禁止了，怎么还会有 Trap 呢？
+
+    - `SIE` 只管 Interrupt，你的内核代码写得不好的话，可能会触发 **Exception**，比如访问非法内存地址、除零等。这就造成了嵌套 Trap。
+    - 在现实的硬件中，有一种中断叫 NMIs（Non-Maskable Interrupts，非屏蔽中断），它们是不可屏蔽的中断。实验中不需要考虑，感兴趣的同学可以进一步阅读特权级手册的 [8. "Smrnmi" Extension for Resumable Non-Maskable Interrupts, Version 1.0](https://zju-os.github.io/doc/spec/riscv-privileged.html#rnmi) 章节。
+
+### Task2：改进 Trap Handler
+
+按照上文和下面的说明完成任务。
+
+- `kernel/arch/riscv/include/proc.h`：
+    - **我们提供** `struct pt_regs`，用于统一 Trap 上下文的保存格式。
+    - **我们提供** `task_pt_regs(tsk)` 宏，用于获取最新的 Trap 上下文指针。
+    - **我们提供** `(regs)` 函数用于判断 Trap 来源于用户态还是内核态。
+- `kernel/arch/riscv/kernel/entry.S`：
+    - **请检查并修改** `_traps()`
+        - 确保保存和恢复的内容与 `struct pt_regs` 定义一致。
+
+            !!! tip "建议在 `entry.S` 中使用 `proc.h` 中提供的一些偏移量宏，这些宏有编译器静态检查，不容易出错。"
+
+        - 实现用户栈与内核栈的切换。
+        - 把 `struct pt_regs` 的指针传递给 `trap_handler()`
+
+- `kernel/arch/riscv/kernel/trap.c`：
+    - **请你修改** `trap_handler()`：
+        - 仅接受一个参数 `struct pt_regs *regs`，表示本次 Trap 的上下文。
+        - 相关的参数如 `scause`、`sepc` 等均从 `regs` 中获取。
+
+!!! success "完成条件"
+
+    内核和 Lab3 完成时一样运行。
 
 ## Part 2：加载和运行用户态程序
 
-本节我们先了解用户态程序是怎么编译、嵌入内核的，同时认识 ELF 格式和用户态内存布局。接下来我们会实现一个 ELF 加载器，把用户态程序加载到正确的内存位置并设置好权限。完成后就能运行用户态程序了。
+本节我们先了解用户态程序是怎么编译、嵌入内核的，同时认识 ELF 格式和用户态内存布局。接下来实现一个 ELF 加载器，把用户态程序加载到正确的内存位置并设置好权限。完成后就能运行用户态程序了。
 
 ### 用户态程序嵌入内核
 
@@ -194,12 +272,12 @@ TODO
 
 ### ELF 规范阅读
 
-[](https://refspecs.linuxfoundation.org/elf/elf.pdf)
-
-请你阅读其中 Book I: Executable and Linking Format (ELF) 的：
+这是 ELF 规范：[Tool Interface Standard (TIS) Executable and Linking Format (ELF) Specification](https://refspecs.linuxfoundation.org/elf/elf.pdf)。本节涉及其中 Book I: Executable and Linking Format (ELF) 的：
 
 - Chapter 1. Object Files 的 Introduction、File Format、ELF Header 部分
 - Chapter 2. Program Loading and Dynamic Linking 的 Introduction、Program Header 部分
+
+建议先看看下面 AI 总结的要点，搞不清楚的地方再回头看规范原文。
 
 ??? note "要点：Object Files"
 
@@ -307,7 +385,7 @@ TODO
 
 ??? note "要点：Program Loading and Dynamic Linking"
 
-    Program Header（程序头）
+    **Program Header（程序头）**
 
     📘 作用
 
@@ -398,44 +476,65 @@ TODO
 
 !!! example "动手做：查看 `uapp.elf` 的 Program Header"
 
+    稍后我们实现的 ELF 加载器需要根据 Program Header 将用户态程序 `uapp.elf` 加载到内存中，所以先了解一下它的内容。
+
     请同学们使用 `readelf -W -l uapp.elf` 命令查看 `uapp.elf` 的 Program Header 信息。请你描述一下根据这个信息，加载器需要将哪些内容加载到内存的哪些位置，并设置什么权限？
 
     其中有些段的 `MemSiz` 为 0，意思就是这些段不需要加载到内存中。
 
-### Task 1：实现 ELF 加载器
+### Task 3：实现 ELF 加载器
 
-你的任务是补全 `kernel/arch/riscv/kernel/binfmt_elf.c` 中的 `load_elf_binary()` 函数，其整体逻辑如下：
+你的任务是补全 `kernel/arch/riscv/kernel/binfmt_elf.c` 中的 `load_elf_binary()` 函数。函数接口定义在相应头文件中，其整体逻辑如下：
 
 - `file` 指向 ELF 文件起始位置，也就是 ELF Header。
-- 根据 ELF Header 中的 `e_phoff`、`e_phentsize` 和 `e_phnum` 字段，找到 Program Header Table。
-- 遍历 Program Header Table 中的每个条目：
+- 根据 ELF Header 中信息，找到 Program Header Table。
+- 遍历 Program Header Table 中的每个条目，也就是每个 Segment。如果该 Segment 需要加载，就根据 Segment 的信息完成内存映射和数据拷贝。具体来说，针对每个 Segment：
 
-    - 如果 `p_type` 不是 `PT_LOAD`，跳过该条目。
-    - 否则，根据 `p_offset`、`p_vaddr`、`p_filesz` 和 `p_memsz` 字段，将文件中的内容加载到用户态进程的地址空间中。
+    - 根据该段的**大小**，从 Buddy System 中**分配**一些内存页。
+    - 把该段数据**拷贝**到分配的内存页中。
+    - 在该进程的页表中建立相应的**映射**，设置好**权限**。这里我们提供了 `flags_phdr_to_pte()` 函数用于把 ELF 段的权限转换为 PTE 权限位。
+
+    这些步骤所需的所有信息都在 Program Header Table 中，上一节已经介绍过，这里就不具体点出了。
 
 ### 从内核态到用户态
 
-只有一种方法能够进入用户态：当 `sstatus.SPP` 为 0 时，执行 `sret` 指令。因此我们需要构造一个合适的 Trap 上下文，然后从 `call trap_handler` 之后的部分返回即可。我们在 `entry.S` 中为该部分插入一个新的标签 `ret_from_trap`。
+只有一种方法能够进入用户态：当 `sstatus.SPP` 为 0 时，执行 `sret` 指令。恰好 `entry.S` 中 `call trap_handler` 之后的部分就是执行 `sret` 指令返回，我们想**复用 Trap 返回的代码路径**来进入用户态。
 
-像 `struct thread_struct` 一样，我们把 Trap 上下文定义为一个结构体 `struct pt_regs`
+为此我们在 `entry.S` 中为该部分插入一个新的标签 `ret_from_trap()`。然后需要构造一个合适的 Trap 上下文，即为 `struct pt_regs` 填充合适的值，然后跳转到 `ret_from_trap()` 即可。上下文的构造不难想，无非就是设置好 PC、栈等内容，这里直接给到同学们，同学们需要理解为什么这么设置：
 
-```c title="kernel/arch/riscv/include/proc.h"
-struct pt_regs {
-    uint64_t ra;
-    uint64_t sp;
-    //...
-};
-```
+- `sepc`：应当填充用户态程序的入口地址，这一信息也在 ELF Header 中。
+- `sstatus`：
+    - `SPEI` 应当置 1，以便从用户态返回时重新启用 S 态中断。
+    - `SPP` 应当置 0，以便从 S 态返回 U 态。
+    - `UXL` 应当设置为 2，表示用户态程序运行在 64 位模式。
+- `sp`：应当填充用户栈的初始值。
 
-### Task 2
+这些工作在 `kernel/arch/riscv/kernel/binfmt_elf.c` 的 `start_thread()` 函数中完成。
+
+最后，我们再次对 `ret_from_trap()` 进行分类讨论。现在有三种情况会经过 `ret_from_trap()`：
+
+- 新进程的初始 Trap 上下文
+- 用户态 Trap 处理完返回
+- 内核态 Trap 处理完返回
 
 
 
-### 进程页表与用户态内存布局
+### Task 4：运行用户态程序
 
-## Part 2：用户态与内核态的交互
+现在，我们有了 `load_elf_binary()` 用于加载用户态程序，还有上一个 Lab 实现的 `copy_process()` 用于创建进程。模仿用于创建内核线程的 `kernel_thread()`，我们再包装一个 `user_mode_thread()` 用于创建用户态进程。我们希望该函数的行为是：
+
+- 调用 `copy_process()` 从当前进程拷贝一个新进程
+- 调用 `load_elf_binary()` 加载用户态程序到新进程的内存空间
+    - 调用 `start_thread()` 为新进程构造一个 Trap 上下文，用于 `ret_from_trap` 返回到用户态
+- 设置新进程的 `struct thread_struct` 中的几个寄存器。
+    - `ra`：设置为 `ret_from_trap` 即可
+    - 其他都不需要设置，
+
+    建议你对比 `kernel_thread()` 思考一下。
 
 
+
+## Part 3：系统调用
 
 ### 改进 Trap Handler
 
@@ -443,22 +542,40 @@ struct pt_regs {
 
 ### 系统调用
 
-### 内核栈与 sscratch
+同学们在理论课上学习了系统调用，**它是用户态程序请求内核提供服务的接口**。我们将实现 Linux 风格的系统调用机制，相关资料如下：
+
+- Linux 的系统调用规范见 [syscall(2) - Linux manual page](https://man7.org/linux/man-pages/man2/syscall.2.html)，可以在其中看到 RISC-V 架构的系统调用约定：
+
+    ```text
+        The first table lists the instruction used to transition to kernel
+    mode (which might not be the fastest or best way to transition to
+    the kernel, so you might have to refer to vdso(7)), the register
+    used to indicate the system call number, the register(s) used to
+    return the system call result, and the register used to signal an
+    error.
+    Arch/ABI    Instruction           System  Ret  Ret  Error    Notes
+                                        call #  val  val2
+    ───────────────────────────────────────────────────────────────────
+    riscv       ecall                 a7      a0   a1   -
+        The second table shows the registers used to pass the system call
+    arguments.
+    Arch/ABI      arg1  arg2  arg3  arg4  arg5  arg6  arg7  Notes
+    ──────────────────────────────────────────────────────────────
+    riscv         a0    a1    a2    a3    a4    a5    -
+    ```
+
+    同学们应该想起 RISC-V SBI 规范也有类似的规定。
+
+- Linux 提供的所有系统调用见 [syscalls(2) - Linux manual page](https://man7.org/linux/man-pages/man2/syscalls.2.html)。
+
+系统调用的具体流程与 Lab1 实现的 SBI Ecall 类似：
+
+- 用户态程序按照上面的约定，将系统调用号和参数放入指定寄存器
+- 执行 `ecall` 指令触发一个异常，进入内核态
+- 由内核的 Trap Handler 处理该异常，并根据用户态程序传递的参数执行相应的服务，最后将结果返回给用户态程序
 
 ### Task1：实现系统调用
 
 你的任务是：
 
 1. 改进 `_traps()` 的实现：上下文保存到内核栈栈顶，布局与 `struct pt_regs` 定义一致。
-
-
-## Part 3：实现系统调用
-
-## Part 1：运行用户态程序
-
-
-
-### Task 2：加载并运行用户态程序
-
-
-
