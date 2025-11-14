@@ -70,6 +70,27 @@ TODO
 - 把整个程序（代码、数据等）放到这段空间的开头（细节见 Part 2 ELF 加载）。
 - 把用户态栈放到这段空间的末尾，即设置 `sp` 初始值为 `0x0000004000000000`。
 
+### 物理页引用计数
+
+现在每个进程都有自己的页表，我们遇到了 C/C++ 语言中最麻烦的问题：共享指针。如下图所示：
+
+<figure markdown="span">
+    ![ref_count.drawio](lab4.assets/ref_count.drawio)
+    <figcaption>
+    物理页引用计数示意图
+    </figcaption>
+</figure>
+
+例如当 PID0 退出时，我们要释放它的页表。但此时，PID1 可能也映射了同样的物理页。如果我们直接释放这些物理页，就会导致 PID1 访问非法内存，引发异常。
+
+为此 Buddy System 提供了物理页的引用计数机制。API 如下：
+
+- `alloc_page/alloc_pages()`：分配物理页时，引用计数初始化为 1。
+- `ref_page()`：引用计数加 1。
+- `deref_page()`：引用计数减 1，当引用计数变为 0 时，释放该物理页。
+
+后续进行页表操作时，你需要正确使用上述 API。
+
 ### Task1：实现进程页表
 
 `struct task_struct` 新增了 `pgd` 成员来保存进程的页表。
@@ -85,7 +106,7 @@ TODO
 
 !!! success "完成条件"
 
-    内核和 Lab3 完成时一样运行。
+    仅完成该 Task 时，代码并不完善，无法运行。请继续完成下一个 Task。
 
 ### 用户栈与内核栈
 
@@ -175,7 +196,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
     - `SIE` 只管 Interrupt，你的内核代码写得不好的话，可能会触发 **Exception**，比如访问非法内存地址、除零等。这就造成了嵌套 Trap。
     - 在现实的硬件中，有一种中断叫 NMIs（Non-Maskable Interrupts，非屏蔽中断），它们是不可屏蔽的中断。实验中不需要考虑，感兴趣的同学可以进一步阅读特权级手册的 [8. "Smrnmi" Extension for Resumable Non-Maskable Interrupts, Version 1.0](https://zju-os.github.io/doc/spec/riscv-privileged.html#rnmi) 章节。
 
-### Task2：改进 Trap Handler
+### Task2：实现用户栈与内核栈
 
 按照上文和下面的说明完成任务。
 
@@ -183,6 +204,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
     - **我们提供** `struct pt_regs`，用于统一 Trap 上下文的保存格式。
     - **我们提供** `task_pt_regs(tsk)` 宏，用于获取最新的 Trap 上下文指针。
     - **我们提供** `(regs)` 函数用于判断 Trap 来源于用户态还是内核态。
+    - 在进程的整个生命周期中，`user_sp` 和 `kernel_sp` 都需要正确维护。**请你修改** `task_init()`、`release_task()` 和 `copy_process()` 等函数，确保它们被正确设置、拷贝和释放。
 - `kernel/arch/riscv/kernel/entry.S`：
     - **请检查并修改** `_traps()`
         - 确保保存和恢复的内容与 `struct pt_regs` 定义一致。
@@ -191,7 +213,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
         - 把 Trap 上下文传递给 `trap_handler()`
         - **我们提供** 在 `_traps()` 返回路径上，根据 `sstatus.SPP` 判断返回到用户态还是内核态，并执行相应的栈切换和 `sscratch` 与 `tp` 交换的逻辑。
-        - **请你修改** `_traps()` 的开头，判断 Trap 来源于用户态还是内核态（sscratch 和 sstatus 应该都行），并执行相应的栈切换和 `sscratch` 与 `tp` 交换逻辑。
+        - **请你修改** `_traps()` 的开头，判断 Trap 来源于用户态还是内核态，并执行相应的栈切换和 `sscratch` 与 `tp` 交换逻辑。
 
 - `kernel/arch/riscv/kernel/trap.c`：
     - **请你修改** `trap_handler()`：
@@ -200,7 +222,11 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
 !!! success "完成条件"
 
-    内核和 Lab3 完成时一样运行。
+    该 Task 没有单独的评测。内核应当和 Lab3 完成时一样正常运行。
+
+!!! example "动手做：Trap 来源的判断"
+
+    为什么在 Trap 开头**不得不**使用 `sscratch` 判断 Trap 来源，不能像返回时那样通过 `sstatus.SPP` 判断呢？为什么非得用 `csrrw` 指令呢？请你给出解释。
 
 ## Part 2：加载和运行用户态程序
 
@@ -277,7 +303,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
                     -o vmlinux
     ```
 
-    上面的修改将所有 `uapp` 段的内容放在内核的 `_sramdisk` 和 `_eramdisk` 符号之间，而上一步就是把 `uapp.elf` 这个文件放进了 `uapp` 段，现在这个就被嵌入到了内核镜像 `vmlinux` 中。
+    上面的修改将所有 `uapp` 段的内容放在内核的 `_sramdisk` 和 `_eramdisk` 符号之间，而上一步就是把 `uapp.elf` 这个文件放进了 `uapp` 段。最终这个文件就被嵌入到了内核镜像中。
 
 ### ELF 规范阅读
 
@@ -550,7 +576,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
     通过评测。
 
-    因为还未实现系统调用，用户态程序没法输出，所以没什么可以观测的现象。当然，你可以开启 INFO 级别的 LOG 输出，看看调度器有没有成功切换到用户态进程。
+    因为还未实现系统调用，用户态程序没法输出，所以没什么可以观测的现象。当然，你可以开启 DEBUG 级别的 LOG 输出，看看调度器有没有成功切换到用户态进程。
 
 ## Part 3：系统调用
 
@@ -590,7 +616,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
     - [getpid(2) - Linux manual page](https://man7.org/linux/man-pages/man2/getpid.2.html)
     - [write(2) - Linux manual page](https://man7.org/linux/man-pages/man2/write.2.html)
 
-然后阅读代码并理解：
+请同学们阅读代码并理解：
 
 - `kernel/user/src/syscalls.c`：这是系统调用在用户态侧的接口实现，你应当想起 Lab1 中 SBI 调用的实现，基本类似。
 - `kernel/arch/riscv/kernel/syscall.c`：这是系统调用在内核态侧的处理实现。
@@ -600,11 +626,11 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
     系统调用的用户态、内核态接口以前要同学们自己写，但是没什么意思。现在直接给出了，验收时会对这些代码提问，你要能讲清楚它是怎么工作的。
 
-### Task5：实现 `write` 系统调用
+### Task 5：实现 `write` 系统调用
 
-在实验中，`write()` 系统调用使用 `sbi_debug_console_write()` 来输出字符。但 SBI 运行在 M 模式，不经过 S 模式的地址翻译，所以它只接受物理地址作为参数。
+在实验中，`write()` 系统调用使用 `sbi_debug_console_write()` 来输出字符。但 SBI 运行在 M 模式，不经过 S 模式的地址翻译，所以它只接受物理地址作为参数。而 `write()` 系统调用中的第二个参数（`char *buf`）从用户态传过来时，是用户态的虚拟地址。
 
-`write()` 系统调用中的第二个参数（`char *buf`）从用户态传过来时，是用户态的虚拟地址。**请你补全** `kernel/arch/riscv/kernel/syscall.c` 的 `UVA2PA()` 函数，把用户态的虚拟地址转换为物理地址，然后传递给 `sbi_debug_console_write()`。
+**请你补全** `kernel/arch/riscv/kernel/syscall.c` 的 `UVA2PA()` 函数，把用户态的虚拟地址转换为物理地址。
 
 !!! success "完成条件"
 
