@@ -2,7 +2,8 @@
 
 !!! danger "DDL"
 
-    本实验尚未发布。
+    - 代码、报告：2025-12-02 23:59
+    - 验收：2025-12-09 实验课
 
 ## 实验简介
 
@@ -38,13 +39,82 @@ git merge upstream/lab4
 
 下面的合并说明供同学们解决合并冲突时参考：
 
-TODO
+- **新增实验相关文件**
+
+    本次 Lab4 引入 **用户态**、**ELF 加载器**、**系统调用** 三大模块，因此新增文件较多。
+
+    1. 新增：ELF 加载器相关
+
+        | 文件                                      | 描述                                             |
+        | --------------------------------------- | ---------------------------------------------- |
+        | `kernel/arch/riscv/include/binfmts.h`   | ELF 加载接口声明                                     |
+        | `kernel/arch/riscv/kernel/binfmt_elf.c` | 主要的 ELF 加载器实现（load_elf_binary()）               |
+        | `kernel/include/elf.h`                  | 完整 ELF 规范结构体定义（所有 ELF header / program header） |
+
+
+    2. 新增：系统调用相关
+
+        | 文件                                    | 描述                                    |
+        | ------------------------------------- | ------------------------------------- |
+        | `kernel/arch/riscv/include/syscall.h` | syscall 号、trap 编号定义                   |
+        | `kernel/include/syscall_table.h`      | 系统调用分发表（用户态号 → 内核处理函数）                |
+        | `kernel/arch/riscv/kernel/syscall.c`  | 系统调用总入口（do_syscall / syscall_handler） |
+
+    3. 新增：用户态程序构建系统
+
+        这些文件全部来自 `kernel/user/`：
+
+        | 文件                       | 描述                                        |
+        | ------------------------ | ----------------------------------------- |
+        | `kernel/user/Makefile`   | 编译用户态程序 uapp.elf                          |
+        | `kernel/user/src/*`      | 用户态 main.c、libc（简化版 printf）、syscalls stub |
+        | `kernel/user/src/head.S` | 用户态入口 `_start`                            |
+        | `kernel/user/uapp.S`     | incbin 用户态 ELF 到内核镜像 `.uapp` 段            |
+        | `kernel/user/uapp.lds`   | 用户态 ELF 链接脚本                              |
+
+        合并注意：
+
+        - 内核 Makefile 修改：需要把 `user/uapp.o` 链接进 vmlinux。
+
+    4. vmlinux.lds 新增 ramdisk 区（uapp）：详见 Part2 用户态程序嵌入内核
+
+- **对现有内核的修改点**
+
+    1. **页表 / 虚拟内存模块**扩展：详见 Part1
+
+        | 文件                               | 变更                                           |
+        | -------------------------------- | -------------------------------------------- |
+        | `kernel/arch/riscv/include/mm.h` | 新增页表相关宏与用户态地址空间定义                            |
+        | `kernel/arch/riscv/include/vm.h` | 映射接口扩展、PGD 拷贝函数声明                            |
+        | `kernel/arch/riscv/kernel/vm.c`  | 新增 copy_pgd()；扩展 create_mapping()；新增用户态映射逻辑 |
+        | `kernel/arch/riscv/kernel/mm.c`  | 新增物理页引用计数 get_page/put_page                 |
+
+    2. **proc（进程结构）**：详见 Part1 进程页表
+
+        | 文件                                 | 变更                                                       |
+        | ---------------------------------- | -------------------------------------------------------- |
+        | `kernel/arch/riscv/include/proc.h` | 大量新增：用户态栈、kernel_sp、user_sp、pt_regs、task_pt_regs 宏      |
+        | `kernel/arch/riscv/kernel/proc.c`  | task_init / copy_process / release_task 都新增 pgd / 栈指针维护 |
+
+    3. **entry.S 与 trap 处理逻辑**：详见 Part1 用户栈与内核栈
+
+        | 文件                                 | 变更                                  |
+        | ---------------------------------- | ----------------------------------- |
+        | `kernel/arch/riscv/kernel/entry.S` | Trap 开头新增用户态/内核态判断，切换栈；结尾新增 SPP 逻辑 |
+        | `kernel/arch/riscv/kernel/trap.c`  | trap_handler() 修改为只接收 *regs         |
+
+    4. 系统调用入口：
+
+        | 文件                                    | 变更           |
+        | ------------------------------------- | ------------ |
+        | `kernel/arch/riscv/include/syscall.h` | syscall 号定义  |
+        | `kernel/arch/riscv/kernel/syscall.c`  | do_syscall() |
 
 ## Part 1：内核对用户态的支持
 
 作为本次实验的第一步，我们先不管用户态程序是什么样子，而是从内核的视角出发，设计和实现内核对用户态程序的支持。
 
-- 首先我们要认识用户态的内存布局，修改 `task_struct` 以支持用户态进程的页表，分离出用户栈与内核栈。
+- 首先我们要认识用户态的内存布局，修改 `task_struct` 以支持各进程页表独立，分离出用户栈与内核栈。
 - 然后我们要改进 `trap_handler()`，以支持从用户态陷入内核态。
 
 ### 用户态内存布局
@@ -65,7 +135,7 @@ TODO
     - **对编译器/链接器：**可以统一假设所有程序都从相同的虚拟基地址开始编译（例如 .text 段从 0x0 起），不需要为不同进程做地址重定位。
 - **隔离：**为每个用户态进程提供一个独立的地址空间，防止它们互相干扰。例如图中微信和 QQ 进程的页表各自独立，微信的页表中不会有 QQ 相关内存的映射，微信没有任何办法访问 QQ 的数据，反之亦然。
 
-在 Lab3 中我们已经知道 `0x0000000000000000` ~ `0x0000003fffffffff` 是用户空间的地址范围，我们可以自由设计这部分空间的布局。本实验采用非常简单的设计：
+在 Lab3 中我们已经知道 `0x0000000000000000~0x0000003fffffffff` 是用户空间的地址范围，我们可以自由设计这部分空间的布局。本实验采用非常简单的设计：
 
 - 把整个程序（代码、数据等）放到这段空间的开头（细节见 Part 2 ELF 加载）。
 - 把用户态栈放到这段空间的末尾，即设置 `sp` 初始值为 `0x0000004000000000`。
@@ -77,31 +147,55 @@ TODO
 <figure markdown="span">
     ![ref_count.drawio](lab4.assets/ref_count.drawio)
     <figcaption>
-    物理页引用计数示意图
+    不同页表共享物理页
     </figcaption>
 </figure>
 
-例如当 PID0 退出时，我们要释放它的页表。但此时，PID1 可能也映射了同样的物理页。如果我们直接释放这些物理页，就会导致 PID1 访问非法内存，引发异常。
+例如当 PID0 退出时，我们要释放它的页表，那页表指向的页要不要释放呢？这些页可能被其他进程映射，如果直接释放这些物理页，就会导致 PID1 访问非法内存，引发异常。
 
 为此 Buddy System 提供了物理页的引用计数机制。API 如下：
 
 - `alloc_page/alloc_pages()`：分配物理页时，引用计数初始化为 1。
-- `ref_page()`：引用计数加 1。
-- `deref_page()`：引用计数减 1，当引用计数变为 0 时，释放该物理页。
+- `get_page()`：引用计数加 1。
+- `put_page()`：引用计数减 1，当引用计数变为 0 时，释放该物理页。
 
-后续进行页表操作时，你需要正确使用上述 API。
+最后分析页表中存在哪些映射，如何做引用计数管理：
+
+- **内核空间的映射：**在 Lab3 中我们将物理内存 `0x80000000~0x88000000` 直接映射到内核空间 `0xffffffd600000000~0xffffffd608000000`。所有用户态、内核态进程的页表中都包含这部分映射，这些页也永远不需要释放、不需要引用计数管理。
+
+    进一步地，我们可以在三级页表中让这部分页表共享，即指向同一份子页表数据结构，**节省内存开销**。如下图所示：
+
+    <figure markdown="span">
+        ![shared_kernel_pgtable.drawio](lab4.assets/shared_kernel_pgtable.drawio)
+        <figcaption>
+        共享内核空间页表
+        </figcaption>
+    </figure>
+
+- **用户空间的映射：**上一节描述的 `0x0000000000000000~0x0000003fffffffff` 的区域，将在 Part2 展开讲解。
+
+    简单来说，我们会先 `alloc_page()` 分配物理页，然后再通过页表映射到用户空间。在释放页表时，对用户空间的页面调用 `put_page()`。
+
+    对于本实验，所有用户态进程的用户态内存都是独立的一份拷贝，并不会出现上面描述的指向同一个页面的情况，引用计数看起来好像没什么用。但它为下一个实验的 Fork 和内存页面的写时复制（Copy-On-Write, COW）打下了基础。
 
 ### Task1：实现进程页表
 
 `struct task_struct` 新增了 `pgd` 成员来保存进程的页表。
 
 - 实现页表的工具函数，见 `kernel/arch/riscv/kernel/vm.c`：
+
     - **请你补全** `copy_pgd()`。该函数接收一个三级页表，对其进行**深拷贝**，返回新页表。它的实现和 Lab3 中的 `create_mapping()` 类似。
-    - **我们提供**了 `free_pgd()` 用于释放三级页表。
+
+        特例：对于内核空间的页表项，按上面的描述直接共享即可。
+
+    - **我们提供**了 `free_pgd()` 用于释放三级页表，并且用 Buddy System 的 `put_page()` 释放物理页。同样地，内核空间的页表项指向的物理页直接跳过。
+
 - 相应地，进程的整个生命周期也需要维护页表，见 `kernel/arch/riscv/kernel/proc.c`：
+
     - **请你修改** `task_init()`，设置第一个进程的页表，即将 `pgd` 指向内核页表 `swapper_pg_dir`。
     - **请你修改** `release_task()`，添加进程页表的释放。
     - **请你修改** `copy_process()`，添加进程页表的拷贝。
+
 - **我们修改了** `kernel/arch/riscv/kernel/entry.S` 的 `__switch_to`，在切换进程时切换页表。
 
 !!! success "完成条件"
