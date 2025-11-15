@@ -72,11 +72,10 @@ git merge upstream/lab4
         | `kernel/user/uapp.S`     | incbin 用户态 ELF 到内核镜像 `.uapp` 段            |
         | `kernel/user/uapp.lds`   | 用户态 ELF 链接脚本                              |
 
-        合并注意：
+        **合并注意：**
 
-        - 内核 Makefile 修改：需要把 `user/uapp.o` 链接进 vmlinux。
-
-    4. vmlinux.lds 新增 ramdisk 区（uapp）：详见 Part2 用户态程序嵌入内核
+        - `kernel/Makefile` 修改：需要把 `user/uapp.o` 链接进 vmlinux.
+        - `kernel/arch/riscv/kernel/vmlinux.lds` 修改：新增 ramdisk 区（uapp），详见 Part2 用户态程序嵌入内核。
 
 - **对现有内核的修改点**
 
@@ -84,31 +83,36 @@ git merge upstream/lab4
 
         | 文件                               | 变更                                           |
         | -------------------------------- | -------------------------------------------- |
-        | `kernel/arch/riscv/include/mm.h` | 新增页表相关宏与用户态地址空间定义                            |
-        | `kernel/arch/riscv/include/vm.h` | 映射接口扩展、PGD 拷贝函数声明                            |
-        | `kernel/arch/riscv/kernel/vm.c`  | 新增 copy_pgd()；扩展 create_mapping()；新增用户态映射逻辑 |
-        | `kernel/arch/riscv/kernel/mm.c`  | 新增物理页引用计数 get_page/put_page                 |
+        | `kernel/arch/riscv/include/mm.h` | 新增物理页引用计数函数 `get_page`/`put_page` 定义     |
+        | `kernel/arch/riscv/include/vm.h` | 新增页表相关宏与用户态地址空间定义，映射接口扩展、PGD 拷贝函数声明  |
+        | `kernel/arch/riscv/kernel/vm.c`  | 新增 `copy_pgd`；扩展 `create_mapping`；新增用户态映射逻辑 |
+        | `kernel/arch/riscv/kernel/mm.c`  | 新增物理页引用计数函数 `get_page`/`put_page` 实现           |
 
     2. **proc（进程结构）**：详见 Part1 进程页表
 
         | 文件                                 | 变更                                                       |
         | ---------------------------------- | -------------------------------------------------------- |
-        | `kernel/arch/riscv/include/proc.h` | 大量新增：用户态栈、kernel_sp、user_sp、pt_regs、task_pt_regs 宏      |
-        | `kernel/arch/riscv/kernel/proc.c`  | task_init / copy_process / release_task 都新增 pgd / 栈指针维护 |
+        | `kernel/arch/riscv/include/proc.h` | 大量新增：用户态栈、`kernel_sp`、`user_sp`、`pt_regs`、`task_pt_regs` 宏      |
+        | `kernel/arch/riscv/kernel/proc.c`  | `task_init` / `copy_process` / `release_task` 都新增 pgd / 栈指针维护 |
 
-    3. **entry.S 与 trap 处理逻辑**：详见 Part1 用户栈与内核栈
+    3. **用户态、内核态切换与 trap 处理逻辑**：详见 Part1 用户栈与内核栈
 
         | 文件                                 | 变更                                  |
         | ---------------------------------- | ----------------------------------- |
+        | `kernel/arch/riscv/kernel/head.S` | 内核运行时处于 S 态，初始化 `sscratch` 寄存器为 0 |
         | `kernel/arch/riscv/kernel/entry.S` | Trap 开头新增用户态/内核态判断，切换栈；结尾新增 SPP 逻辑 |
-        | `kernel/arch/riscv/kernel/trap.c`  | trap_handler() 修改为只接收 *regs         |
+        | `kernel/arch/riscv/kernel/trap.c`  | `trap_handler` 修改为只接收 *regs         |
 
-    4. 系统调用入口：
-
-        | 文件                                    | 变更           |
-        | ------------------------------------- | ------------ |
-        | `kernel/arch/riscv/include/syscall.h` | syscall 号定义  |
-        | `kernel/arch/riscv/kernel/syscall.c`  | do_syscall() |
+    4. **实验测试**：
+        在 `main.c` 中按如下方式创建用户态和内核态进程：
+    ```diff title="kernel/arch/riscv/kernel/main.c"
+    --- a/kernel/arch/riscv/kernel/main.c
+    +++ b/kernel/arch/riscv/kernel/main.c
+	+  user_mode_thread(_sramdisk); // Lab4 Test
+	   kernel_thread(kthreadd, NULL); // Lab2 Test3
+	+  user_mode_thread(_sramdisk); // Lab4 Test
+	   kthread_create(test_sched, NULL); // Lab2 Test4
+    ```
 
 ## Part 1：内核对用户态的支持
 
@@ -297,7 +301,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 - `kernel/arch/riscv/include/proc.h`：
     - **我们提供** `struct pt_regs`，用于统一 Trap 上下文的保存格式。
     - **我们提供** `task_pt_regs(tsk)` 宏，用于获取最新的 Trap 上下文指针。
-    - **我们提供** `(regs)` 函数用于判断 Trap 来源于用户态还是内核态。
+    - **我们提供** `user_mode(struct pt_regs *regs)` 函数用于判断 Trap 来源于用户态还是内核态。
     - 在进程的整个生命周期中，`user_sp` 和 `kernel_sp` 都需要正确维护。**请你修改** `task_init()`、`release_task()` 和 `copy_process()` 等函数，确保它们被正确设置、拷贝和释放。
 - `kernel/arch/riscv/kernel/entry.S`：
     - **请检查并修改** `_traps()`
@@ -641,7 +645,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
 - `sepc`：应当填充用户态程序的入口地址，这一信息也在 ELF Header 中。
 - `sstatus`：
-    - `SPEI` 应当置 1，以便从用户态返回时重新启用 S 态中断。
+    - `SPIE` 应当置 1，以便从用户态返回时重新启用 S 态中断。
     - `SPP` 应当置 0，以便从 S 态返回 U 态。
     - `UXL` 应当设置为 2，表示用户态程序运行在 64 位模式。
 - `sp`：应当填充用户栈的初始值。
