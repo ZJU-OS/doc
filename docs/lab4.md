@@ -320,7 +320,8 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
 !!! success "完成条件"
 
-    该 Task 没有单独的评测。内核应当和 Lab3 完成时一样正常运行。
+    该 Task 没有单独的评测。
+    你可以尝试注释掉 `main.c` 中的 `user_mode_thread()` 函数调用并运行内核，运行结果应和 Lab3 完成时一样正常进行。
 
 !!! example "动手做：Trap 来源的判断"
 
