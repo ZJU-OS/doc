@@ -720,6 +720,21 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 - `kernel/arch/riscv/kernel/syscall.c`：这是系统调用在内核态侧的处理实现。
 - `kernel/arch/riscv/kernel/trap.c`：这里的 `do_ecall_u()` 调用系统调用处理函数。
 
+!!! example "动手做：系统调用路径"
+
+    请你以 `getpid()` 为例进行 GDB 调试，并**绘制函数调用路径图**描述系统调用从用户态到内核态再返回用户态的完整路径。你需要：
+
+    - 指出相关函数。
+    - 指出进入 `trap_handler()` 函数时，`sp`、当前进程的 `task_struct` 中的 `kernel_sp` 和 `user_sp` 分别指向哪里。
+    - 指出进入 `_traps` 和返回时，`sepc` 发生的变化，以及为什么会有这样的变化。
+    - 指出用户态和内核态是如何传递参数和返回值的。
+
+    本动手做并不复杂，主要是为了确保所有同学熟悉 Trap 处理和系统调用的整体流程。
+
+    另外，同学们也会发现，像 `getpid()` 这样简单的系统调用，也需要陷入内核态进行处理。今天的 Linux 为了性能，提供了像 [vDSO](https://man7.org/linux/man-pages/man7/vdso.7.html) 这样的机制，允许某些系统调用在用户态直接完成，避免陷入内核态的开销。感兴趣的同学可以进一步阅读了解。
+
+
+
 !!! question "考点：系统调用的实现"
 
     系统调用的用户态、内核态接口以前要同学们自己写，但是没什么意思。现在直接给出了，验收时会对这些代码提问，你要能讲清楚它是怎么工作的。
@@ -729,6 +744,39 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 在实验中，`write()` 系统调用使用 `sbi_debug_console_write()` 来输出字符。但 SBI 运行在 M 模式，不经过 S 模式的地址翻译，所以它只接受物理地址作为参数。而 `write()` 系统调用中的第二个参数（`char *buf`）从用户态传过来时，是用户态的虚拟地址。
 
 **请你补全** `kernel/arch/riscv/kernel/syscall.c` 的 `UVA2PA()` 函数，把用户态的虚拟地址转换为物理地址。
+
+!!! example "动手做：“正确”使用 `write` 系统调用😈"
+
+    请你尝试调包 `kernel/user/src/main.c` 下的 `main()` 函数如下：
+
+    ```c title="kernel/user/src/main.c"
+    int main(void)
+    {
+        char *base_addr = (char *)0xffffffd600205000;
+        int len = 100;
+        for (int i = 0; i < 20; i++) {
+            printf("\n\x1b[44m[U]\x1b[0m \x1b[31m[PID = %d]\x1b[0m\n",
+                getpid());
+            write(STDOUT_FILENO, base_addr + (i * len), len);
+            printf("\n");
+            delay(DELAY_TIME * 5);
+        }
+
+        return 0;
+    }
+    ```
+
+    其中，你需要修改 `base_addr`：
+
+    1. 为 `System.map` 符号表中 `_srodata` 符号所在的地址并将其填入;
+    2. 为 `0x80000000`.
+
+    然后请你尝试运行内核。**你分别观察到了什么现象？**
+
+    - 请你分析，这样的现象符合我们对用户态和内核态隔离的设计初衷吗？为什么会出现这样的现象？
+    - 请你思考，如何防止这种现象的发生？并尝试给出一些解决方案。（提示：可以从地址转换方式和页表权限等方面入手）
+
+
 
 !!! success "完成条件"
 
