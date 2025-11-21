@@ -51,7 +51,6 @@ git merge upstream/lab4
         | `kernel/arch/riscv/kernel/binfmt_elf.c` | 主要的 ELF 加载器实现（load_elf_binary()）               |
         | `kernel/include/elf.h`                  | 完整 ELF 规范结构体定义（所有 ELF header / program header） |
 
-
     2. 新增：系统调用相关
 
         | 文件                                    | 描述                                    |
@@ -104,15 +103,17 @@ git merge upstream/lab4
         | `kernel/arch/riscv/kernel/trap.c`  | `trap_handler` 修改为只接收 *regs         |
 
     4. **实验测试**：
+
         在 `main.c` 中按如下方式创建用户态和内核态进程：
-    ```diff title="kernel/arch/riscv/kernel/main.c"
-    --- a/kernel/arch/riscv/kernel/main.c
-    +++ b/kernel/arch/riscv/kernel/main.c
-	+  user_mode_thread(_sramdisk); // Lab4 Test
-	   kernel_thread(kthreadd, NULL); // Lab2 Test3
-	+  user_mode_thread(_sramdisk); // Lab4 Test
-	   kthread_create(test_sched, NULL); // Lab2 Test4
-    ```
+
+        ```diff title="kernel/arch/riscv/kernel/main.c"
+        --- a/kernel/arch/riscv/kernel/main.c
+        +++ b/kernel/arch/riscv/kernel/main.c
+        + user_mode_thread(_sramdisk); // Lab4 Test
+          kernel_thread(kthreadd, NULL); // Lab2 Test3
+        + user_mode_thread(_sramdisk); // Lab4 Test
+          kthread_create(test_sched, NULL); // Lab2 Test4
+        ```
 
 ## Part 1：内核对用户态的支持
 
@@ -178,13 +179,13 @@ git merge upstream/lab4
 
 - **用户空间的映射：**上一节描述的 `0x0000000000000000~0x0000003fffffffff` 的区域，将在 Part2 展开讲解。
 
-    简单来说，我们会先 `alloc_page()` 分配物理页，然后再通过页表映射到用户空间。在释放页表时，对用户空间的页面调用 `put_page()`。
+    简单来说，我们会先 `alloc_page()` 分配物理页，然后在用户态进程的页表中创建对应的映射。在释放页表时，对用户空间的页面调用 `put_page()`。
 
-    对于本实验，所有用户态进程的用户态内存都是独立的一份拷贝，并不会出现上面描述的指向同一个页面的情况，引用计数看起来好像没什么用。但它为下一个实验的 Fork 和内存页面的写时复制（Copy-On-Write, COW）打下了基础。
+    对于本实验，所有用户态进程的用户态内存都是独立的一份拷贝，并不会出现上面描述的指向同一个页面的情况。此时引用计数看起来好像没什么用，但它为下一个实验的 Fork 和写时复制（Copy-On-Write, COW）打下了基础。
 
 ### Task1：实现进程页表
 
-`struct task_struct` 新增了 `pgd` 成员来保存进程的页表。
+`struct task_struct` 新增了 `pgd` 成员来保存进程的页表。你的任务如下：
 
 - 实现页表的工具函数，见 `kernel/arch/riscv/kernel/vm.c`：
 
@@ -238,23 +239,45 @@ git merge upstream/lab4
     </figcaption>
 </figure>
 
-Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap 处理和内核栈布局的。
+Part 2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap 处理和内核栈布局的。
 
 ### 从用户态到内核态
 
 本节讨论 Trap 处理程序如何实现用户栈与内核栈的切换。RISC-V 提供了一个专门的寄存器 `sscratch`，见 [12.1.6. Supervisor Scratch (sscratch) Register](https://zju-os.github.io/doc/spec/riscv-privileged.html#_supervisor_scratch_sscratch_register)，标准已经说明了它的用法：
 
-> Typically, sscratch is used to hold a pointer to the hart-local supervisor context while the hart is executing user code. At the beginning of a trap handler, software normally uses a CSRRW instruction to swap sscratch with an integer register to obtain an initial working register.
+> Typically, sscratch is used to hold a pointer to the hart-local **supervisor context** while the hart is executing **user code**. At the beginning of a trap handler, software normally uses a CSRRW instruction to swap sscratch with an integer register to obtain an initial working register.
 
-- **CPU 运行用户态程序时**：
-    - `sscratch` 保存 supervisor context，指的就是存放在内核中的进程控制块（Process Control Block, PCB，对应的数据结构是 `struct task_struct`），也就是内核态的 `tp` 寄存器（`proc.h` 将其绑定到 C 语言变量 `current`）。
-    - `tp` 应该是 `0`，不能让 User 程序知道自己的 PCB 在哪里。
+下面是对标准的进一步说明：
+
+- **supervisor context** 指的就是 PCB，也就是 `struct task_struct`
+- **PCB 指针**保存的位置：
+    - **用户态**：保存在 `sscratch`。
+    - **内核态**：保存在 `tp`。特别地，`proc.h` 将其绑定到 C 语言变量 `current` 方便使用。此时还将 `sscratch` 设为 `0`，下文会解释原因。
+
+!!! info "FAQ：用户态的 `tp` 是用来做什么的呢？"
+
+    正文讲解了 `tp` 在内核态中指向进程的 `task_struct`，那用户态的 `tp` 是干什么的呢？
+
+    我们可以在 [RISC-V ABIs Specification](https://zju-os.github.io/doc/spec/riscv-abi.pdf) 中找到这个问题的答案，毕竟 thread pointer 这个名字就是这个规范定义的。ABI 规范第 8.5 节 Thread Local Storage 详细讲解了 `tp` 用法。简单来说：
+
+    - `tp` 用于实现多线程编程中的线程局部存储（Thread-Local Storage, TLS），例如 C 语言中的 `__thread` 变量。
+    - 利用 `tp + offset` 的方式实现线程局部存储，无需全局锁也无需为每个线程生成不同的代码。
+
+    （本段内容写于 2025/11/21，规范的内容可能随时间变化，请同学们以最新版本为准。）
+
+切换流程：
+
 - **Trap 发生时**：使用 CSRRW 指令交换 `sscratch` 和 `tp`，Trap 处理程序就能通过 `tp` 访问 `task_struct`，进而存取其中的 `kernel_sp` 和 `user_sp` 了。
 - **切换栈**：
     - 把 `sp`（现在是用户栈）保存到 `user_sp`
     - 再把 `kernel_sp` 加载到 `sp`，切换到内核栈。
 - **在内核栈上保存 Trap 上下文**
-- **Trap 处理结束后**：再把 `tp` 保存回 `sscratch`。
+
+    !!! question "考考你：`tp` 寄存器也是 Trap 上下文的一部分，这个时候要怎么保存 `tp` 寄存器呢？"
+
+- **Trap 处理结束后**：
+    - 把 `tp` 保存回 `sscratch`。不能让 User 程序知道自己的 PCB 在哪里，这是内核敏感数据。
+    - 恢复 Trap 上下文时，`tp` 被恢复为进入 Trap 时的用户态的 `tp`。
 
 通过上面的设计，很自然地能够在 `_traps()` 开头区分来自用户态的 Trap 和来自内核态的 Trap：
 
@@ -307,7 +330,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
     - **请检查并修改** `_traps()`
         - 确保保存和恢复的内容与 `struct pt_regs` 定义一致。
 
-            !!! tip "建议在 `entry.S` 中使用 `proc.h` 中提供的一些偏移量宏，这些宏有编译器静态检查，不容易出错。"
+            !!! tip "Tip：建议在 `entry.S` 中使用 `proc.h` 中提供的一些偏移量宏，这些宏有编译器静态检查，不容易出错。"
 
         - 把 Trap 上下文传递给 `trap_handler()`
         - **我们提供** 在 `_traps()` 返回路径上，根据 `sstatus.SPP` 判断返回到用户态还是内核态，并执行相应的栈切换和 `sscratch` 与 `tp` 交换的逻辑。
@@ -318,10 +341,15 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
         - 仅接受一个参数 `struct pt_regs *regs`，表示本次 Trap 的上下文。
         - 相关的参数如 `scause`、`sepc` 等均从 `regs` 中获取。
 
+!!! tip "Tip：遇到困难？"
+
+    - 如果搞不懂 `entry.S` 怎么写，可以先试试把 Linux 的 `arch/riscv/kernel/entry.S` 看明白，本 Task 的逻辑与其一致。
+
 !!! success "完成条件"
 
     该 Task 没有单独的评测。
-    你可以尝试注释掉 `main.c` 中的 `user_mode_thread()` 函数调用并运行内核，运行结果应和 Lab3 完成时一样正常进行。
+
+    你可以尝试注释掉 `main.c` 中的 `user_mode_thread()` 函数调用并运行内核，运行结果应和 Lab3 完成时一样，各内核线程正常运行并被调度。
 
 !!! example "动手做：Trap 来源的判断"
 
@@ -337,39 +365,16 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
 请同学们打开 `kernel/user/Makefile`，了解用户态程序的编译步骤：
 
-- 首先将 `../lib` 和 `src` 下的所有源文件（`.c`，对应变量 `C_SRC`）编译为目标文件（`.o`，对应变量 `OBJ`）。
-- 然后根据链接脚本 `uapp.lds` 将这些目标文件链接为 ELF 格式的可执行文件 `uapp.elf`。
+- 首先将 `../lib` 和 `src` 下的所有源文件（`.c`，对应变量 `C_SRC`）编译为**目标文件**（`.o`，对应变量 `OBJ`）。
+- 然后根据链接脚本 `uapp.lds` 将这些目标文件链接为 **ELF 格式的可执行文件 `uapp.elf`**。
 
     ```shell
     $(LD) -T uapp.lds -o $@ $(OBJ)
     ```
 
-    ```text title="kernel/user/uapp.lds"
-    ENTRY(_start)
-    SECTIONS
-    {
-        . = 0;
+    链接脚本中的 `ENTRY(_start)` 指定程序入口点为 `_start` 符号，它定义在 `src/head.S` 中。
 
-        .text : {
-            *(.text.init)
-            *(.text .text.*)
-        }
-
-        .rodata : {
-            *(.rodata .rodata*)
-        }
-
-        .data : {
-            *(.data .data.*)
-            *(.sbss .sbss.*)
-            *(.bss .bss.*)
-        }
-    }
-    ```
-
-    - `ENTRY(_start)` 指定程序入口点为 `_start` 符号，它定义在 `src/head.S` 中。
-
-- 接着编译 `uapp.S`，这个汇编代码段使用 `incbin` 指令将 `uapp.elf` 嵌入到 `uapp` 段中，得到目标文件 `uapp.o`。
+- 接着编译 `uapp.S`，这个汇编代码使用 `incbin` 指令将 `uapp.elf` **以二进制文件的形式**嵌入到 `uapp` 段中，得到**目标文件** `uapp.o`。
 
     ```shell
     $(GCC) $(CFLAGS) -c uapp.S
@@ -413,7 +418,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
 建议先看看下面的要点，搞不清楚的地方再回头看规范原文。
 
-??? note "要点：Object Files"
+!!! note "要点：Object Files"
 
     **File Format（文件格式）**
 
@@ -517,7 +522,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
 接下来将关注 Execution View 的相关内容，理解怎么加载、执行文件。
 
-??? note "要点：Program Loading and Dynamic Linking"
+!!! note "要点：Program Loading and Dynamic Linking"
 
     **Program Header（程序头）**
 
@@ -582,7 +587,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
 读完 Chapter 2，应该理解接下来实现的 ELF 加载器就是要根据 Program Header 中的信息将文件内容加载到内存中。Program Header 描述了每个段（Segment）的文件偏移、需要加载到的内存地址、大小和权限等信息，加载器根据这些信息完成加载过程。
 
-??? note "要点：ELF 文件总结"
+!!! note "要点：ELF 文件总结"
 
     📘 总结思维导图式理解
 
@@ -616,21 +621,22 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
     其中有些段的 `MemSiz` 为 0，意思就是这些段不需要加载到内存中。
 
-    （提示：这类“查看 xxx”的动手做，没有什么需要思考的，不需要写一大堆）
+    !!! tip "Tip：这类“查看 xxx”的动手做，没有什么需要思考的，不需要写一大堆"
 
 ### Task 3：实现 ELF 加载器
 
 你的任务是补全 `kernel/arch/riscv/kernel/binfmt_elf.c` 中的 `load_elf_binary()` 函数。函数接口定义在相应头文件中，其整体逻辑如下：
 
 - `file` 指向 ELF 文件起始位置，也就是 ELF Header。
-- 根据 ELF Header 中信息，找到 Program Header Table。
+- 根据 ELF Header 中的信息，找到 Program Header Table。
 - 遍历 Program Header Table 中的每个条目，也就是每个 Segment。如果该 Segment 需要加载，就根据 Segment 的信息完成内存映射和数据拷贝。具体来说，针对每个 Segment：
 
     - 根据该段的**大小**，从 Buddy System 中**分配**一些内存页。
     - 把该段数据**拷贝**到分配的内存页中。
-    - 在该进程的页表中建立相应的**映射**，设置好**权限**。这里我们提供了 `flags_phdr_to_pte()` 函数用于把 ELF 段的权限转换为 PTE 权限位。
+    - 在该进程的页表中建立相应的**映射**，设置好**权限**。
+        - **我们提供** `flags_phdr_to_pte()` 函数用于把 ELF 段的权限转换为 PTE 权限位。
 
-    这些步骤所需的所有信息都在 Program Header Table 中，上一节已经介绍过，这里就不具体点出了。
+    !!! tip "Tip：这些步骤所需的所有信息都在 Program Header Table 中，上一节已经介绍过，这里就不具体点出了。"
 
 !!! success "完成条件"
 
@@ -640,7 +646,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
 只有一种方法能够进入用户态：当 `sstatus.SPP` 为 0 时，执行 `sret` 指令。恰好 `entry.S` 中 `call trap_handler` 之后的部分就是执行 `sret` 指令返回，我们想**复用 Trap 返回的代码路径**来进入用户态。
 
-为此我们在 `entry.S` 中为该部分插入一个新的标签 `ret_from_trap()`。然后需要**构造一个初始的 Trap 上下文**，即为 `struct pt_regs` 填充合适的值，然后跳转到 `ret_from_trap()` 即可。在上文“从用户态到内核态”中我们对 `ret_from_trap()` 分类讨论了返回到用户态和返回到内核态的情况，这里就按照返回到用户态的情况来构造 Trap 上下文。
+为此我们在 `entry.S` 中为该部分插入一个新的标签 `ret_from_trap()`。然后需要**构造一个初始的 Trap 上下文**，即为 `struct pt_regs` 填充合适的值，然后跳转到 `ret_from_trap()` 按其路径返回即可。在上文“从用户态到内核态”中我们分类讨论了 `ret_from_trap()` 返回到用户态和内核态的情况，这里就按照返回到用户态的情况来构造 Trap 上下文。
 
 上下文的构造不难想，无非就是设置好 PC、栈等内容，这里直接给到同学们，同学们需要理解为什么这么设置：
 
@@ -651,7 +657,7 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
     - `UXL` 应当设置为 2，表示用户态程序运行在 64 位模式。
 - `sp`：应当填充用户栈的初始值。
 
-这些工作在 `kernel/arch/riscv/kernel/binfmt_elf.c` 的 `start_thread()` 函数中完成。`load_elf_binary()` 调用它来为新进程构造初始 Trap 上下文。
+**我们提供** `kernel/arch/riscv/kernel/binfmt_elf.c` 的 `start_thread()` 函数完成这些工作。`load_elf_binary()` 应当调用它来为新进程构造初始 Trap 上下文。
 
 最后我们来梳理一遍用户态进程从创建到运行的整体流程：
 
@@ -662,7 +668,9 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
 ### Task 4：运行用户态程序
 
-现在，我们有了 `load_elf_binary()` 用于加载用户态程序，还有上一个 Lab 实现的 `copy_process()` 用于创建进程。**请你补全** `kernel/arch/riscv/kernel/proc.c` 中的 `user_mode_thread()` 函数。它的逻辑应该是：
+现在，我们有了 `load_elf_binary()` 用于加载用户态程序，还有上一个 Lab 实现的 `copy_process()` 用于创建进程。我们将这些工具包装成 `kernel/arch/riscv/kernel/proc.c` 中的 `user_mode_thread()` 函数，用于创建用户态进程。
+
+你的任务是补全这一函数。它的逻辑如下：
 
 - 调用 `copy_process()` 从当前进程拷贝一个新进程
 - 调用 `load_elf_binary()` 加载用户态程序到新进程的内存空间
@@ -734,15 +742,13 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
     另外，同学们也会发现，像 `getpid()` 这样简单的系统调用，也需要陷入内核态进行处理。今天的 Linux 为了性能，提供了像 [vDSO](https://man7.org/linux/man-pages/man7/vdso.7.html) 这样的机制，允许某些系统调用在用户态直接完成，避免陷入内核态的开销。感兴趣的同学可以进一步阅读了解。
 
-
-
 !!! question "考点：系统调用的实现"
 
     系统调用的用户态、内核态接口以前要同学们自己写，但是没什么意思。现在直接给出了，验收时会对这些代码提问，你要能讲清楚它是怎么工作的。
 
 ### Task 5：实现 `write` 系统调用
 
-在实验中，`write()` 系统调用使用 `sbi_debug_console_write()` 来输出字符。但 SBI 运行在 M 模式，不经过 S 模式的地址翻译，所以它只接受物理地址作为参数。而 `write()` 系统调用中的第二个参数（`char *buf`）从用户态传过来时，是用户态的虚拟地址。
+在实验中，`write()` 系统调用使用 `sbi_debug_console_write()` 来输出字符。但 SBI 运行在 M 模式，不经过 S 模式的地址翻译，所以它只接受物理地址作为参数。而 `write()` 系统调用中的第二个参数（`char *buf`）从用户态传过来时，是用户态的虚拟地址。需要在这两个地址间进行转换。
 
 **请你补全** `kernel/arch/riscv/kernel/syscall.c` 的 `UVA2PA()` 函数，把用户态的虚拟地址转换为物理地址。
 
@@ -776,8 +782,6 @@ Part2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap �
 
     - 请你分析，这样的现象符合我们对用户态和内核态隔离的设计初衷吗？为什么会出现这样的现象？
     - 请你思考，如何防止这种现象的发生？并尝试给出一些解决方案。（提示：可以从地址转换方式和页表权限等方面入手）
-
-
 
 !!! success "完成条件"
 
