@@ -45,10 +45,10 @@
   activities:
   - title: 代码、报告
     start: 2025-11-23
-    end: 2025-12-10
+    end: 2025-12-16
   - title: 验收
     start: 2025-11-23
-    end: 2025-12-17
+    end: 2025-12-23
 
 - title: BonusA - 磁盘与文件系统（10%）
   activities:
