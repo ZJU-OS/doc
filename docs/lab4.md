@@ -638,6 +638,15 @@ Part 2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap 
 
     !!! tip "Tip：这些步骤所需的所有信息都在 Program Header Table 中，上一节已经介绍过，这里就不具体点出了。"
 
+实现映射和拷贝的时候，请同学们注意处理对齐问题：
+
+<figure markdown="span">
+    ![elf_load_align.drawio](lab4.assets/elf_load_align.drawio)
+    <figcaption>
+    ELF 加载时的对齐问题
+    </figcaption>
+</figure>
+
 !!! success "完成条件"
 
     本 Task 没有单独的评测，和下一个 Task 一起评测。
