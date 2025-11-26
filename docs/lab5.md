@@ -2,8 +2,6 @@
 
 !!! danger "DDL"
 
-    **本实验尚未发布。**
-
     - 代码、报告：2025-12-16 23:59
     - 验收：2025-12-23 实验课
 
@@ -13,8 +11,8 @@
 
 其实 `fork()` 已经基本做完了，就是前几个 Lab 实现的 `copy_process()`，现在考虑对其进行优化。Lab4 实现了 `copy_pgd()` 来对进程页表及其映射的内存执行深拷贝，但容易发现**父进程的内存往往并不需要被完全复制到子进程中**，一些例子如下：
 
-- 子进程创建后立刻调用 `exec()` 加载一个新的程序，那么父进程的大部分内存空间都用不到（可能仅有少量的栈空间用于传递参数）
-- 子进程可能并不会修改父进程的内存内容，例如只读的代码段、共享库等
+- 子进程创建后立刻调用 `exec()` 加载一个新的程序，那么父进程的大部分内存空间都用不到（可能仅有少量的栈空间用于传递参数）。这些内容不需要复制。
+- 子进程可能并不会修改父进程的内存内容，例如只读的代码段、共享库等。这些内容完全可以被父子进程共享。
 
 于是我们为进程引入**写时复制（Copy-On-Write, COW）**机制：
 
@@ -37,11 +35,88 @@ git fetch upstream
 git merge upstream/lab5
 ```
 
-下面的合并说明供同学们解决合并冲突时参考：
+下面的合并说明供同学们解决合并冲突时参考。
 
-- **新增实验相关文件**
+### Lab5 的测试
 
-- **对现有内核的修改点**
+`kernel/user` 下均为我们提供的用于测试的用户态程序，同学们使用过程中不应自行更改。如果你修改过相关内容，则合并时可能会产生冲突。
+
+Lab4 仅使用一个用户态程序进行测试，而 Lab5 需要测试多个不同的用户态程序，因此我们修改了 `kernel/user` 下的编译过程。
+
+- `kernel/user/lib` 是用户态程序的公共库文件夹，包含了标准库函数（如 `printf()`）和系统调用的封装（如 `fork()`）。
+- `kernel/user/src` 下的每一个文件都是一个独立的用户态程序。
+- `kernel/user` 的 Makefile 会先将上面两个文件夹中的所有源文件编译成对应的 `.o` 目标文件，然后对 `src` 下的每一个用户态程序进行链接，生成对应的 `.elf` 文件。
+- `kernel/user/uapp.sh` 会生成汇编文件 `uapp.S`，用于将上述 `.elf` 文件打包到 ELF 文件中的 `uapp` 段：
+
+    ```assembly title="生成的 uapp.S 示例"
+    .section .uapp
+        .ascii "UAPP\0"
+        # uapp table: offset of app1, offset of app2, ..., 0
+    .Luapp_table:
+        .quad .Llab4 - .Luapp_table
+        .quad .Llab5_cow - .Luapp_table
+        .quad 0
+    .Llab4:
+        .incbin "src/lab4.elf"
+    .Llab5_cow:
+        .incbin "src/lab5_cow.elf"
+        # ...
+    .Lend:
+    ```
+
+    这段汇编代码用汇编器指令填充 `.uapp` 段的内容，首先是一个标识符 `UAPP\0`，然后是一个应用程序表（`uapp table`），记录了每个用户态程序在该段中的偏移，最后是各个用户态程序的二进制内容。
+
+- `uapp.S` 被编译为 `uapp.o`，然后加入内核的链接过程。这部分和 Lab4 一样。
+
+相应地，在 `start_kernel()` 中，按照类似加载 ELF 文件那样的步骤找到每个 ELF 文件的起始位置，然后调用 `user_mode_thread()` 创建用户态进程。
+
+```c title="kernel/arch/riscv/kernel/main.c"
+while ((app_offset = app_table[app_index++])) {
+    void *app_addr = (void *)app_table + app_offset;
+    struct task_struct *app_proc = user_mode_thread(app_addr);
+    app_proc->wait_comp = &common_comp;
+    wait_for_completion(&common_comp);
+}
+```
+
+Lab5 一共有四个测试需要通过：
+
+- Lab4 的测试程序，它会复制多份然后同时运行，并且同时还有一个内核线程在运行，用于测试用户、内核态混合调度下的正确性
+- Lab5 Copy-On-Write 测试程序
+- Lab5 斐波那契数组测试程序
+- Lab5 多次 Fork 测试程序
+
+实验过程中，你可以自己选择调整 `main.c` 中创建的进程，只运行部分测试程序以节省调试时间。最后提交时，autograder 要求按上面的流程完成所有测试。
+
+### Completion 机制
+
+我们希望 Lab5 的测试 app 逐个顺序运行，而不是像 Lab4 那样同时运行多个进程。因此我们引入了一个简单的 **Completion 机制**，用于等待某个事件完成。我们的简单实现和理论课介绍的**信号量（Semaphore）**类似，而在 Linux 内核中的实现则复杂得多。
+
+相关源代码位于 `kernel/arch/riscv/include/completion.h` 和 `kernel/arch/riscv/kernel/completion.c`，请同学们**务必自行查看理解**。简单来说：
+
+- `wait_for_completion()` 会将当前进程状态置为 `TASK_SLEEPING`，调度器将忽略它
+- `complete()` 会找到等待该事件的进程，将其状态置为 `TASK_RUNNING`，从而能够再次被调度器调度
+
+这里引入了新的进程状态 `TASK_SLEEPING`，请同学们回顾自己的调度器实现，可能需要做一些修改以支持该机制。
+
+### 分页虚拟内存的问题
+
+Lab4 的 `write()` 系统调用其实存在严重的 Bug，来源于分页虚拟内存。同学们应当能够理解，虚拟内存中连续的虚拟地址不一定映射到连续的物理地址上。如果 `write()` 调用中传入的缓冲区跨页了，那么 Lab4 的实现会怎么做呢？
+
+<figure markdown="span">
+    ![lab4_write_bug.drawio](lab5.assets/lab4_write_bug.drawio)
+    <figcaption>
+    Lab4 中的 write 跨页问题
+    </figcaption>
+</figure>
+
+OpenSBI 会输出一些正确的内容，随后的行为无法预知，取决于遇到什么数据。
+
+为了解决该问题，我们引入了 `copy_from_user()`，用于从用户空间复制数据到内核空间。Lab4 实现的 `UVA2PA()` 直接删去。
+
+### 引入 `PANIC()` 宏
+
+引入了 `PANIC()` 宏，它的功能很简单：当内核遇到无法处理的错误时，调用该宏输出错误信息并进入无限循环，便于调试查看情况。
 
 ## Part 1：虚拟内存区域 (VMA)
 
@@ -120,9 +195,7 @@ struct mm_struct {
 
 !!! success "完成条件"
 
-    完成该 Task 后，由于我们还没有实现按需分页加载，VMA 中其实不会有任何内容，程序应该和 Lab4 完成时一样正常运行。
-
-    顺便提醒，由于现在的内核只能加载一个用户态的 ELF 程序，我们在 `kernel/user/src/main.c` 中同时提供了 Lab4 和 Lab5 的测试程序，你可以暂时修改 `#define LAB4_TEST 1` 来运行原先 Lab4 的用户态程序。
+    完成该 Task 后，由于我们还没有实现按需分页加载，VMA 中其实不会有任何内容。Lab4 的测试程序应该正常运行。
 
 ## Part 2：按需分页加载（Demand Paging）
 
@@ -172,9 +245,7 @@ struct mm_struct {
     </figcaption>
 </figure>
 
-- 实现缺页异常的捕获，见 `kernel/arch/riscv/kernel/trap.c`：
-    - **请你修改** `trap_handler()` 函数，在捕获到缺页异常时调用 `do_page_fault()` 进行处理。
-- 实现缺页异常的处理逻辑，见 `kernel/arch/riscv/kernel/fault.c`：
+- 实现缺页异常的处理逻辑，见 `kernel/arch/riscv/kernel/trap.c`：
     - **请你补全** `do_page_fault()` 函数，实现上述的缺页异常处理逻辑。
 - 实现按需加载，见 `kernel/arch/riscv/kernel/binfmt_elf.c`：
     - **请你修改** `load_elf_binary()` 函数，使其**不再直接为 ELF 段分配物理内存和创建映射**，而是**为每个段创建对应的 VMA 并通过** `do_mmap()` **添加到进程的 VMA 链表中**。
@@ -273,7 +344,7 @@ struct mm_struct {
 **请你修改**下面两个函数，实现写时复制机制：
 
 - `kernel/arch/riscv/kernel/vm.c` 中的 `copy_pgd()` 函数；
-- `kernel/arch/riscv/kernel/fault.c` 中的 `do_page_fault()` 函数。
+- `kernel/arch/riscv/kernel/trap.c` 中的 `do_page_fault()` 函数。
 
 下面是对这两个函数实现的具体说明：
 
