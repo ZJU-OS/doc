@@ -44,26 +44,26 @@
 - title: Lab5 - 缺页异常与进程创建（30%）
   activities:
   - title: 代码、报告
-    start: 2025-11-23
-    end: 2025-12-16
+    start: 2025-11-27
+    end: 2025-12-17
   - title: 验收
-    start: 2025-11-23
-    end: 2025-12-23
+    start: 2025-11-27
+    end: 2025-12-24
 
 - title: BonusA - 磁盘与文件系统（10%）
   activities:
   - title: 代码、报告
-    start: 2025-12-01
-    end: 2025-12-17
-  - title: 验收
-    start: 2025-12-01
+    start: 2025-12-02
     end: 2025-12-24
+  - title: 验收
+    start: 2025-12-02
+    end: 2025-12-31
 
 - title: BonusB - 多核处理器与调度算法（10%）
   activities:
   - title: 代码、报告
-    start: 2025-12-01
-    end: 2025-12-17
-  - title: 验收
-    start: 2025-12-01
+    start: 2025-12-02
     end: 2025-12-24
+  - title: 验收
+    start: 2025-12-02
+    end: 2025-12-31
