@@ -366,3 +366,48 @@ struct mm_struct {
 **恭喜你完成本学期操作系统实验正片的全部内容！**完结撒花 🎉
 
 ## 扩展阅读：Fork 是一个好的实现吗？
+
+在 [进程复制与加载](lab2.md#进程复制与加载) 一节中，我们比较了 Windows 中的 `CreateProcess()` 和 Unix 中的 `fork()` 两种进程创建方式。Unix 哲学中简洁、通用的设计不仅实现更加简单，而且将进程创建的过程**进一步解耦**：`fork()` 负责创建新进程的骨架，而 `exec()` 负责加载新进程的实体，我们可以在 `fork()` 和 `exec()` 之间插入任意的操作（如修改内存空间、文件描述符等），从而实现更加灵活的进程创建方式。
+
+另外，`fork()` 还强调了**进程之间的关系**。在 Windows 中，`CreateProcess()` 创建的进程和原进程之间联系较弱，而 Unix 中的 `fork()` 创建的进程之间存在**天然的父子关系**，为进程管理提供了便利，例如：
+
+- 父进程可以通过 `wait()` 等待子进程的结束，从而实现进程间的同步；
+- 父子进程可以通过继承来共享一些状态（如文件描述符）。
+
+由于在 Linux 当中，进程都是通过 `fork()` 来创建的，因此操作系统会以 fork 为中心来设计进程管理的相关机制，例如**进程树**、**僵尸进程**等（同学们可以在 Linux 机器上运行 [`pstree`](https://man7.org/linux/man-pages/man1/pstree.1.html) 命令来查看进程树）。
+
+然而，由于在调用 `fork()` 后，父子进程之间的状态存在大量共享，也带来了一些问题和挑战。在 POSIX 标准 [fork(2) — Linux manual page](https://man7.org/linux/man-pages/man2/fork.2.html) 中，关于调用 `fork()` 时的特殊情况处理就有二十余项之多，例如：
+
+- 在多线程程序中，`fork()` 只会复制调用该函数的那个线程，其它线程的状态（包括锁）不会被继承，可能导致死锁或不一致；
+- 子进程会继承父进程所有已打开的文件描述符，因此父子对同一文件的读写会相互影响；
+- `fork()` 后的子进程在调用 `exec()` 前只能使用 async-signal-safe 的函数，否则可能因为锁状态不完整而导致崩溃或死锁。
+
+
+!!! info "fork 共享外部状态的🌰"
+
+    - 如上述所说，`fork()` 后父子进程将会获得相同的**文件描述符**（如 Linux 的 PCB 中的 [`files`](https://elixir.bootlin.com/linux/v6.17/source/include/linux/sched.h#L1181)），它们将会拥有相同的文件抽象和文件偏移量（file offset）。
+    - 如果父子进程同时对同一个文件进行读写操作，可能会导致数据混乱和不一致。感兴趣的同学可以写一个简单的程序来验证这一点。
+
+    <figure markdown="span">
+        ![fork_files.drawio](lab5.assets/fork_files.drawio)
+        <figcaption>
+        父子进程共享文件描述符示意图
+        </figcaption>
+    </figure>
+
+
+为了尝试解决 fork 中的一系列问题，现在的 Linux 也引入了一些替代方案：
+
+| API | 描述 |
+| :-: | :-: |
+| [`posix_spawn`](https://man7.org/linux/man-pages/man3/posix_spawn.3.html) | 类似于 `fork` + `exec` 的组合，先获得一份进程的拷贝，然后调用 `exec` 执行；虽然灵活度不如 `fork`，但性能要明显更优，且执行时间与原进程的内存无关。 |
+| [`vfork`](https://man7.org/linux/man-pages/man2/vfork.2.html) | 接口与 `fork` 一致，它会从父进程中创建出子进程，但不会为子进程单独创建地址空间，因此两者共享地址空间；为了保证正确性，`vfork` 在调用结束后会阻塞父进程，直到子进程 `exec` 或退出。  |
+| [`clone`](https://man7.org/linux/man-pages/man2/clone.2.html) | 比 `fork` 更加精细，不同与 `fork` 的完全复制，它可以指定子进程不需要复制的部分，以及进程栈的位置等，具有更强的通用性。 |
+
+!!! info "小彩蛋🥚：fork 在路上"
+
+    感兴趣的同学可以阅读了解关于 fork 的更多内容：
+
+    - 对 fork 局限性的详尽分析：[A fork() in the road](https://dl.acm.org/doi/pdf/10.1145/3317550.3321435)
+    - fork 在云服务场景下的应用：[Fork in the Road: Reflections and Optimizations for Cold Start Latency in Production Serverless Systems](https://www.usenix.org/system/files/osdi25-chai-xiaohu.pdf)
+
