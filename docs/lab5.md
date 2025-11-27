@@ -21,7 +21,7 @@
 
 注意到上面的操作在页表中将所有内存页都设为只读，丢失了进程原本的内存权限信息。于是在页表之上，我们引入**虚拟内存区域（Virtual Memory Area, VMA）**来描述进程的内存布局（映射的区域及其权限），将其加入到进程的结构体中。
 
-同样的优化也可以应用在进程初次加载（即 `load_elf_binary()`）上。不需要在此时拷贝、映射所有内存页，而是**只创建 VMA** 进行记录，等到进程访问某个页时再拷贝、映射。这称为**按需分页加载（Demand Paging）**。
+同样的优化也可以应用在进程初次加载（即 `load_elf_binary()`）。不需要在此时拷贝、映射所有内存页，而是**只创建 VMA** 进行记录，等到进程访问某个页时再拷贝、映射。这称为**按需分页加载（Demand Paging）**。
 
 ## Part 0：准备工作
 
@@ -101,7 +101,7 @@ Lab5 一共有四个测试需要通过：
 
 ### 分页虚拟内存的问题
 
-Lab4 的 `write()` 系统调用其实存在严重的 Bug，来源于分页虚拟内存。同学们应当能够理解，虚拟内存中连续的虚拟地址不一定映射到连续的物理地址上。如果 `write()` 调用中传入的缓冲区跨页了，那么 Lab4 的实现会怎么做呢？
+Lab4 的 `write()` 系统调用其实存在严重的 Bug。同学们应当能够理解，虚拟内存中连续的虚拟地址不一定映射到连续的物理地址上。如果 `write()` 调用中传入的缓冲区跨页了，那么 Lab4 的实现会怎么做呢？
 
 <figure markdown="span">
     ![lab4_write_bug.drawio](lab5.assets/lab4_write_bug.drawio)
@@ -261,6 +261,8 @@ struct mm_struct {
     5. 用户程序：（并不知道刚才发生了什么）我想要访问 `0x0` 这个地址。
     6. MMU：让我看看**页表**……哦，有映射了！对应的物理内存是……
 
+!!! tip "Tip：修改页表后记得使用 `sfence.vma`！"
+
 !!! success "完成条件"
 
     完成该 Task 后，我们已经实现了按需分页加载的基本功能。程序应该和 Lab4 完成时一样正常运行。
@@ -360,22 +362,6 @@ struct mm_struct {
 !!! success "完成条件"
 
     **通过评测。**
-
-    需要注意的是，我们最终的测试要求如下：
-
-    - 在 `kernel/user/src/main.c` 中开启 Lab 5 的测试程序。
-    ```c title="kernel/user/src/main.c"
-    #define LAB4_TEST 0
-    #define LAB5_TEST 1
-    ```
-
-    - 在 `kernel/arch/riscv/kernel/main.c` 中只手动创建两个进程。它们为 `PID=1` 的用户态进程和 `PID=2` 的 `kthreadd` 进程。
-    ```c title="kernel/arch/riscv/kernel/main.c"
-    user_mode_thread(_sramdisk); // Lab5 Test
- kernel_thread(kthreadd, NULL); // Lab2 Test3
- // user_mode_thread(_sramdisk); // Lab4 Test
- // kthread_create(test_sched, NULL); // Lab2 Test4
-    ```
 
 **恭喜你完成本学期操作系统实验正片的全部内容！**完结撒花 🎉
 
