@@ -1,0 +1,37 @@
+<mxfile host="65bd71144e">
+    <diagram id="CBWTxGyERXmDpSufS4Sj" name="Page-1">
+        <mxGraphModel dx="362" dy="368" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="3" value="Task2 栈数据" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="210" y="180" width="100" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="Task1 栈数据" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="210" y="140" width="100" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="" style="endArrow=classic;html=1;" parent="1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="180" y="179.46" as="sourcePoint"/>
+                        <mxPoint x="210" y="179.46" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="8" value="Task1 被切换出去" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="160" width="110" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="16" value="&lt;font style=&quot;color: rgb(204, 0, 0);&quot;&gt;回来的&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(204, 0, 0);&quot;&gt;Task1 栈&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#cc0000&quot;&gt;向下增长&lt;br&gt;&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(204, 0, 0);&quot;&gt;将破坏 Task2&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fillStyle=hatch;fontColor=#CC0000;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="180" width="80" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" value="" style="endArrow=classic;html=1;" edge="1" parent="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="180" y="219.46" as="sourcePoint"/>
+                        <mxPoint x="210" y="219.46" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="18" value="Task1 被切换回来" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="60" y="200" width="110" height="30" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
