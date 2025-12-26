@@ -1,0 +1,49 @@
+<mxfile host="65bd71144e">
+    <diagram id="9IsWHgqAN4KXs__CKzsh" name="Page-1">
+        <mxGraphModel dx="-319" dy="1338" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1000" y="-240" width="170" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="第 1 次 Trap 上下文" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1000" y="-240" width="170" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="第 1 次 trap_handler() 调用栈" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1000" y="-220" width="170" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="第 2 次 Trap 上下文" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1000" y="-200" width="170" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="第 2 次 trap_handler() 调用栈" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1000" y="-180" width="170" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="第 3 次 Trap 上下文" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1000" y="-160" width="170" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="第 3 次 trap_handler() 调用栈" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1000" y="-140" width="170" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="..." style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1000" y="-120" width="170" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="内核栈" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1055" y="-270" width="60" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="29" value="高地址" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1160" y="-260" width="60" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="30" value="低地址" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1160" y="-80.45" width="60" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="31" value="" style="endArrow=classic;html=1;" parent="1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="1084.78" y="-100.45" as="sourcePoint"/>
+                        <mxPoint x="1084.78" y="-80.45" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
