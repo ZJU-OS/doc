@@ -79,6 +79,7 @@ create_mapping(swapper_pg_dir, (void *)io_to_virt(VIRTIO_START),
 echo [string]   # 将 string 输出到 stdout
 cat [path]      # 将路径为 path 的文件的内容输出到 stdout
 edit [path] [offset] [string] # 将路径为 path 的文件，偏移量为 offset 的部分开始，写为 string
+run [path]      # 运行路径为 path 的用户态程序
 ```
 
 请大家阅读 `kernel/user/src/main.c` 中 `nish` 的实现，理解它是如何通过系统调用与内核进行交互的。在完成本次实验中，你可以使用 `nish` 来测试你实现的文件系统功能。
@@ -201,6 +202,8 @@ struct task_struct {
     - **请你实现** `kernel/fs/vfs.c` 中的 `stdout_write()`, `stderr_write()` 和 `stdin_read()` 函数，分别完成标准输出、标准错误输出和标准输入的功能。
     !!! tip "内核态与用户态地址空间"
         注意到 `write` 和 `read` 系统调用的缓冲区参数 `buf` 是用户态地址空间的地址，而内核态无法直接访问用户态地址空间。你可以参考 `lab5` 中实现的 `copy_from_user()` 函数，**以合适的方式实现内核态和用户态地址空间的数据拷贝**。
+
+        (为避免误导，`bonus-a` 的实验框架中移除了原先 `copy_from_user()` 函数的实现，你可以回退到 `lab5` 查看其实现方式)
 4. **改造 `write` 和 `read` 系统调用。**
     - **请你实现** `kernel/arch/riscv/kernel/syscall.c` 中的 `sys_write` 和 `sys_read` 函数，完成对文件描述符的查找，并调用对应文件对象的 `write` 和 `read` 函数。
 
