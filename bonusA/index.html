@@ -1,0 +1,3112 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="浙江大学操作系统课程实验指导">
+      
+      
+        <meta name="author" content="浙江大学计算机科学与技术学院">
+      
+      
+        <link rel="canonical" href="https://zju-os.github.io/doc/bonusA/">
+      
+      
+        <link rel="prev" href="../lab5/">
+      
+      
+        <link rel="next" href="../bonusB/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/zjueagle.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Bonus A：FAT32 文件系统 - ZJU OS</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../css/timeago.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+      <link rel="stylesheet" href="../stylesheets/counter.css">
+    
+      <link rel="stylesheet" href="../stylesheets/neoteroi-v1.1.2.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#bonus-afat32-文件系统" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="ZJU OS" class="md-header__button md-logo" aria-label="ZJU OS" data-md-component="logo">
+      
+  <img src="../assets/zjueagle_white.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ZJU OS
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Bonus A：FAT32 文件系统
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ZJU-OS/doc" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    ZJU-OS/doc
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="ZJU OS" class="md-nav__button md-logo" aria-label="ZJU OS" data-md-component="logo">
+      
+  <img src="../assets/zjueagle_white.svg" alt="logo">
+
+    </a>
+    ZJU OS
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ZJU-OS/doc" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    ZJU-OS/doc
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    首页
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    实验文档
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    实验文档
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    实验流程及工具讲解
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab 0: Linux 内核调试
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab 1：内核启动与时钟中断
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab 2：抢占式内核线程调度
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab 3：Sv39 分页式虚拟内存系统
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab 4：用户态
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab 5：缺页异常与 Fork 机制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bonus A：FAT32 文件系统
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bonus A：FAT32 文件系统
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#实验简介" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验简介
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-0合并代码" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 0：合并代码
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 0：合并代码">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#更新代码" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        更新代码
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qemu-加载文件系统" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Qemu 加载文件系统
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#virtio-块设备驱动" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VirtIO 块设备驱动
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NISH
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#父子进程与-wait-机制" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        父子进程与 wait 机制
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-1设计文件抽象" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1：设计文件抽象
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1：设计文件抽象">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#在-c-中实现继承与多态" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        在 C 中实现继承与多态
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#进程与文件描述符" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        进程与文件描述符
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-1实现标准输入输出" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 1：实现标准输入输出
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2fat32-文件系统" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2：FAT32 文件系统
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2：FAT32 文件系统">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#背景介绍" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        背景介绍
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fat32-分区初始化" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FAT32 分区初始化
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fat32-文件操作打开读取与写入" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FAT32 文件操作：打开、读取与写入
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-2实现-fat32-文件系统" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 2：实现 FAT32 文件系统
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3从文件系统加载用户态程序" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3：从文件系统加载用户态程序
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3：从文件系统加载用户态程序">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#进程生命周期" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        进程生命周期
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#从文件系统加载-elf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        从文件系统加载 ELF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-3实现程序加载" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 3：实现程序加载
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bonusB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bonus B：多核处理器与调度算法
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../z1-spike/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 1：Spike 工具链
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3">
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RISC-V 规范
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    RISC-V 规范
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-privileged.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    特权级规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-unprivileged.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    非特权级规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-abi.pdf" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ELF ABI 规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-sbi.pdf" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SBI 规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-asm.pdf" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    汇编规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://riscv-programming.org/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    汇编教程
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4">
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    工具文档
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    工具文档
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.qemu.org/docs/master/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QEMU
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sourceware.org/gdb/current/onlinedocs/gdb" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GDB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://gcc.gnu.org/onlinedocs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sourceware.org/binutils/docs/as" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    as
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sourceware.org/binutils/docs/ld" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ld
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sourceware.org/binutils/docs/binutils" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    binutils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5">
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    源码仓库
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    源码仓库
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_1">
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross Referencer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cross Referencer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://elixir.bootlin.com/linux" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linux
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://elixir.bootlin.com/musl/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    musl
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://elixir.bootlin.com/opensbi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenSBI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://elixir.bootlin.com/qemu/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QEMU
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2">
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    官方/GitHub
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    官方/GitHub
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/torvalds/linux" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linux
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://git.musl-libc.org/cgit/musl" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    musl
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/riscv-software-src/opensbi" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenSBI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/qemu/qemu/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QEMU
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6">
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    助教文档
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    助教文档
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/autograder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    评测框架
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/dev/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    源代码管理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/tool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    辅助工具
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_4">
+        
+          
+          <label class="md-nav__link" for="__nav_6_4" id="__nav_6_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    blog
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    blog
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/blog/1.pid0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    操作系统小记（一）：从 PID 0 开始
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/blog/2.sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    操作系统小记（二）：内核同步方法
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/blog/3.stack_unwind/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    操作系统小记（三）：函数序言、调试器断点与堆栈回溯
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/blog/4.board/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    操作系统小记（四）：内核上板历险记
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#实验简介" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验简介
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-0合并代码" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 0：合并代码
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 0：合并代码">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#更新代码" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        更新代码
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qemu-加载文件系统" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Qemu 加载文件系统
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#virtio-块设备驱动" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VirtIO 块设备驱动
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NISH
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#父子进程与-wait-机制" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        父子进程与 wait 机制
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-1设计文件抽象" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1：设计文件抽象
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1：设计文件抽象">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#在-c-中实现继承与多态" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        在 C 中实现继承与多态
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#进程与文件描述符" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        进程与文件描述符
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-1实现标准输入输出" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 1：实现标准输入输出
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2fat32-文件系统" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2：FAT32 文件系统
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2：FAT32 文件系统">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#背景介绍" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        背景介绍
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fat32-分区初始化" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FAT32 分区初始化
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fat32-文件操作打开读取与写入" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FAT32 文件操作：打开、读取与写入
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-2实现-fat32-文件系统" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 2：实现 FAT32 文件系统
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3从文件系统加载用户态程序" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3：从文件系统加载用户态程序
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3：从文件系统加载用户态程序">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#进程生命周期" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        进程生命周期
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#从文件系统加载-elf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        从文件系统加载 ELF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-3实现程序加载" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 3：实现程序加载
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation">
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href=".." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    首页
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../manual/" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    实验文档
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/ZJU-OS/doc/blob/main/docs/bonusA.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
+    </a>
+  
+  
+
+
+<h1 id="bonus-afat32-文件系统">Bonus A：FAT32 文件系统<a class="headerlink" href="#bonus-afat32-文件系统" title="Permanent link">¶</a></h1><p style="color:#bdbdbd"><i>Estimated time to read: 7 minutes</i></p>
+
+<div class="admonition danger">
+<p class="admonition-title">DDL</p>
+<ul>
+<li>代码、报告：2026-01-10 23:59</li>
+<li>验收：无</li>
+</ul>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">本次实验没有自动评测。</p>
+</div>
+<h2 id="实验简介">实验简介<a class="headerlink" href="#实验简介" title="Permanent link">¶</a></h2>
+<p>在此前的实验中，我们的操作系统虽然已经支持多进程与用户态程序，但所有程序与数据都只存在于内存中：用户态 ELF 被静态打包进内核镜像，系统无法读写真实磁盘，也谈不上持久化存储。</p>
+<p>在本次实验中，我们将实现一个简单的 FAT32 文件系统驱动，使得内核能够读写文件系统镜像中的数据，并实现从文件系统中加载并运行用户态程序。</p>
+<p>为了实现这一目标，我们需要考虑以下几个方面的问题：</p>
+<ol>
+<li><strong>内核如何统一管理“文件”？</strong> 为了让标准输入输出、磁盘文件等对象能够被统一访问，我们需要：<ul>
+<li>设计一种<strong>文件抽象</strong>来描述各种类型的文件对象；</li>
+<li>实现统一的文件操作接口。</li>
+</ul>
+</li>
+<li><strong>内核如何与磁盘进行交互，并读写 FAT32 文件系统？</strong> 我们需要：<ul>
+<li>引入 VirtIO 块设备的驱动程序作为磁盘读写的底层基础；</li>
+<li>在其上根据 FAT32 文件系统的磁盘布局实现文件的打开、读取与写入等功能。</li>
+</ul>
+</li>
+<li><strong>内核如何从文件系统中加载用户态程序？</strong> 我们需要：<ul>
+<li>完善进程的生命周期管理，通过 <code>fork</code> + <code>execve</code> 的方式创建用户态进程；</li>
+<li>在加载 ELF 文件和发生缺页异常时从文件系统中读取数据；</li>
+<li>在进程退出后，由父进程通过 <code>wait</code> 来正确回收它。</li>
+</ul>
+</li>
+</ol>
+<h2 id="part-0合并代码">Part 0：合并代码<a class="headerlink" href="#part-0合并代码" title="Permanent link">¶</a></h2>
+<h3 id="更新代码">更新代码<a class="headerlink" href="#更新代码" title="Permanent link">¶</a></h3>
+<p>现在你位于 <code>lab5</code> 分支。你需要创建 <code>bonus-a</code> 分支，合并上游的代码：</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>bonus-a
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>git<span class="w"> </span>fetch<span class="w"> </span>upstream
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>git<span class="w"> </span>merge<span class="w"> </span>upstream/bonus-a
+</span></code></pre></div>
+<h3 id="qemu-加载文件系统">Qemu 加载文件系统<a class="headerlink" href="#qemu-加载文件系统" title="Permanent link">¶</a></h3>
+<p>在 Lab0 中，我们已经尝试过用 qemu 运行自己编译的 Linux 内核镜像，我们同时挂载了一个 <code>rootfs.ext2</code> 的文件系统镜像作为根文件系统。在本次实验中，我们将把它替换为我们预先准备好的 <code>disk.img</code> 文件系统镜像，它包含了一个 FAT32 分区。</p>
+<p>你可以在 <code>Makefile</code> 中看到如下的挂载命令：</p>
+<div class="language-Makefile highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="err">-global</span><span class="w"> </span><span class="nv">virtio-mmio.force-legacy</span><span class="o">=</span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>-drive<span class="w"> </span><span class="nv">file</span><span class="o">=</span><span class="k">$(</span>FAT32_PATH<span class="k">)</span>,format<span class="o">=</span>raw,id<span class="o">=</span>hd0,if<span class="o">=</span>none<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>-device<span class="w"> </span>virtio-blk-device,drive<span class="o">=</span>hd0<span class="w"> </span><span class="se">\</span>
+</span></code></pre></div>
+<p>请你解压 <code>disk.img.zip</code>，并将解压得到的 <code>disk.img</code> 文件放置在项目根目录下准备挂载。</p>
+<h3 id="virtio-块设备驱动">VirtIO 块设备驱动<a class="headerlink" href="#virtio-块设备驱动" title="Permanent link">¶</a></h3>
+<p>VirtIO 是一个开放标准，它定义了一种协议，用于不同类型的驱动程序和设备之间的通信。在 QEMU 上我们可以基于 VirtIO 使用许多模拟出来的外部设备。本次实验中，我们使用 VirtIO 模拟存储设备，并在其上构建文件系统。</p>
+<p>VirtIO 块设备驱动的代码已经位于 <code>kernel/fs/virtio.c</code> 中，无需大家实现。你可以<strong>直接使用其中提供的 <code>virtio_blk_read_sector()</code> 和 <code>virtio_blk_write_sector()</code> 函数来对磁盘扇区进行读写操作</strong>。</p>
+<div class="admonition note">
+<p class="admonition-title">VirtIO 交互方式</p>
+<p>如果你对 VirtIO 设备的交互方式感兴趣，欢迎阅读 <a href="https://rcore-os.cn/rCore-Tutorial-Book-v3/chapter9/2device-driver-3.html">virtio_blk块设备驱动程序</a> 深入了解。在本次实验中，我们采用简单的阻塞轮询方式与 VirtIO 设备交互，另外还有基于中断的交互方式可以实现更高效的设备驱动。</p>
+</div>
+<p>为了初始化 VirtIO 并实现 MBR 引导 (后续会介绍)，我们还需要完成如下的准备工作：</p>
+<ul>
+<li>在 <code>kernel/arch/riscv/kernel/head.S</code> 中的 <code>task_init</code> 函数之后调用 <code>virtio_dev_init()</code> 和 <code>mbr_init()</code>，完成 VirtIO 设备和 MBR 的初始化；</li>
+<li>在 <code>kernel/arch/riscv/kernel/vm.c</code> 中的 <code>setup_vm_final()</code> 函数中添加对 VritIO 外设的映射。此外，你可能还需要修改 <code>copy_pgd()</code> 和 <code>free_pgd()</code> 函数，把这一部分的映射也作为内核映射的一部分进行处理，无需在每个进程页表中重复映射。</li>
+</ul>
+<div class="language-c highlight"><span class="filename">kernel/arch/riscv/kernel/vm.c</span><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// map device memory -|W|R|V</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">create_mapping</span><span class="p">(</span><span class="n">swapper_pg_dir</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="n">io_to_virt</span><span class="p">(</span><span class="n">VIRTIO_START</span><span class="p">),</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">            </span><span class="p">(</span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="n">VIRTIO_START</span><span class="p">,</span><span class="w"> </span><span class="n">VIRTIO_SIZE</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">VIRTIO_COUNT</span><span class="p">,</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">            </span><span class="n">PTE_W</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">PTE_R</span><span class="p">);</span>
+</span></code></pre></div>
+<h3 id="nish">NISH<a class="headerlink" href="#nish" title="Permanent link">¶</a></h3>
+<p>我们为大家提供了用户态程序 "nish" (Not Implemented SHell) 来与我们在实验中完成的 kernel 进行交互。它提供了简单的用户交互和文件读写功能，有如下的命令：</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">echo</span><span class="w"> </span><span class="o">[</span>string<span class="o">]</span><span class="w">   </span><span class="c1"># 将 string 输出到 stdout</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>cat<span class="w"> </span><span class="o">[</span>path<span class="o">]</span><span class="w">      </span><span class="c1"># 将路径为 path 的文件的内容输出到 stdout</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>edit<span class="w"> </span><span class="o">[</span>path<span class="o">]</span><span class="w"> </span><span class="o">[</span>offset<span class="o">]</span><span class="w"> </span><span class="o">[</span>string<span class="o">]</span><span class="w"> </span><span class="c1"># 将路径为 path 的文件，偏移量为 offset 的部分开始，写为 string</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>run<span class="w"> </span><span class="o">[</span>path<span class="o">]</span><span class="w">      </span><span class="c1"># 运行路径为 path 的用户态程序</span>
+</span></code></pre></div>
+<p>请大家阅读 <code>kernel/user/src/main.c</code> 中 <code>nish</code> 的实现，理解它是如何通过系统调用与内核进行交互的。在完成本次实验中，你可以使用 <code>nish</code> 来测试你实现的文件系统功能。</p>
+<h3 id="父子进程与-wait-机制">父子进程与 wait 机制<a class="headerlink" href="#父子进程与-wait-机制" title="Permanent link">¶</a></h3>
+<p>我们在 <code>kernel/arch/riscv/include/proc.h</code> 中为进程结构体 <code>struct task_struct</code> 添加了如下字段：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="cm">/* ... */</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="o">*</span><span class="n">parent</span><span class="p">;</span><span class="w"> </span><span class="cm">/**&lt; 父进程 */</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">completion</span><span class="w"> </span><span class="n">child_exit_comp</span><span class="p">;</span><span class="w"> </span><span class="cm">/**&lt; 子进程退出的 completion */</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">exit_code</span><span class="p">;</span><span class="w"> </span><span class="cm">/**&lt; 退出码 */</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">};</span>
+</span></code></pre></div>
+<p>如果你不完成这一部分的实现，也不会影响本次实验的 FAT32 文件系统功能。但是，<strong>你可能需要在 <code>task_init()</code> 时初始化 <code>child_exit_comp</code>，以避免后续实验中出现未初始化的错误。</strong></p>
+<h2 id="part-1设计文件抽象">Part 1：设计文件抽象<a class="headerlink" href="#part-1设计文件抽象" title="Permanent link">¶</a></h2>
+<h3 id="在-c-中实现继承与多态">在 C 中实现继承与多态<a class="headerlink" href="#在-c-中实现继承与多态" title="Permanent link">¶</a></h3>
+<p>在 Unix 哲学中有着 <strong>“Everything is a File”</strong> 的设计思想。同学们应该都已经学习过《面向对象程序设计》课程，现在让我们用 OOP 来理解文件抽象这一思想。</p>
+<p>计算机系统中的一切事物，都可以<strong>视为一串字节</strong>，可以进行<strong>读（read）、写（write）、寻址（lseek）</strong>等基本操作，比如：</p>
+<ul>
+<li>文件系统中的文件、一个磁盘、一块内存区域：它们都是一串字节。</li>
+<li>一个外设，比如显卡：也可以视为一串字节。这里作一个不太准确的描述：把需要显示的图像写入到显卡的显存中的特定区域，显卡就能将其输出为数字信号，显示到屏幕上。</li>
+</ul>
+<p>对于有一套公共接口的资源，我们自然会想为其创建一个抽象<strong>基类</strong>。我们创建的基类叫做“文件”，它定义在 <code>kernel/include/fs.h</code> 中，包含了文件描述符、权限、当前偏移等通用属性：</p>
+<div class="language-c highlight"><span class="filename">kernel/include/fs.h</span><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">file</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="n">list</span><span class="p">;</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">fd</span><span class="p">;</span><span class="w">     </span><span class="cm">/* 文件描述符编号 */</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">opened</span><span class="p">;</span><span class="w">  </span><span class="cm">/* 文件是否打开 */</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">perms</span><span class="p">;</span><span class="w">   </span><span class="cm">/* 文件权限 */</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">cfo</span><span class="p">;</span><span class="w">   </span><span class="cm">/* 当前文件偏移 */</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="cm">/* 文件操作函数指针 */</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="kt">int64_t</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">lseek</span><span class="p">)(</span><span class="k">struct</span><span class="w"> </span><span class="nc">file</span><span class="w"> </span><span class="o">*</span><span class="n">file</span><span class="p">,</span><span class="w"> </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">offset</span><span class="p">,</span><span class="w"> </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">whence</span><span class="p">);</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="kt">int64_t</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">write</span><span class="p">)(</span><span class="k">struct</span><span class="w"> </span><span class="nc">file</span><span class="w"> </span><span class="o">*</span><span class="n">file</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">len</span><span class="p">);</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">    </span><span class="kt">int64_t</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">read</span><span class="p">)(</span><span class="k">struct</span><span class="w"> </span><span class="nc">file</span><span class="w"> </span><span class="o">*</span><span class="n">file</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">len</span><span class="p">);</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">    </span><span class="kt">char</span><span class="w"> </span><span class="n">path</span><span class="p">[</span><span class="n">MAX_PATH_LENGTH</span><span class="p">];</span><span class="w"> </span><span class="cm">/* 文件路径 */</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="p">};</span>
+</span></code></pre></div>
+<p>显然，读写内存和读写磁盘的具体实现应该不同。在 C++ 中，接下来我们会创建继承自该抽象“文件”的子类，比如文件系统中的文件、磁盘、内存区域等单独创建子类，为不同类型的文件实现其具体的读写方法。但操作系统内核并不是用 C++ 写的，应该怎么实现类似的功能呢？</p>
+<p>答案是：</p>
+<ul>
+<li><strong>使用函数指针和联合体（union）</strong>分别放置具体实现的函数和数据</li>
+<li><strong>显式标注</strong>子类型，相关代码需根据类型执行不同的操作</li>
+</ul>
+<div class="language-c highlight"><span class="filename">kernel/include/fs.h</span><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">file</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">fs_type</span><span class="p">;</span><span class="w">  </span><span class="cm">/* 文件系统类型 */</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="k">union</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">        </span><span class="k">struct</span><span class="w"> </span><span class="nc">fat32_file</span><span class="w"> </span><span class="n">fat32_file</span><span class="p">;</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span><span class="p">};</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>例如，创建 FAT32 文件系统的文件时，我们将 <code>fs_type</code> 设置为 <code>FS_TYPE_FAT32</code>，并将 <code>lseek()</code>、<code>write()</code> 和 <code>read()</code> 这几个函数指针指向 FAT32 文件系统的实现，比如 <code>fat32_write()</code> 等。相关代码需识别 <code>fs_type</code>，并使用 union 中的 <code>fat32_file</code> 成员来存取 FAT32 文件系统中的具体信息。</p>
+<p>通过上述的设计，我们为所有“文件”创建了统一的抽象接口，却又能访问到不同的文件系统。用 OOP 的术语说，我们实现了部分的<strong>继承、多态功能</strong>。</p>
+<h3 id="进程与文件描述符">进程与文件描述符<a class="headerlink" href="#进程与文件描述符" title="Permanent link">¶</a></h3>
+<p>接下来，我们把 <code>struct file</code> 绑定到进程结构体 <code>struct task_struct</code> 中：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">files_struct</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="n">fd_list</span><span class="p">;</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="p">};</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">    </span><span class="cm">/* ... */</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">files_struct</span><span class="w"> </span><span class="n">files</span><span class="p">;</span><span class="w"> </span><span class="cm">/**&lt; 进程的文件描述符表 */</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="p">};</span>
+</span></code></pre></div>
+<p>这样一来，每个进程都可以通过该链表打开和管理多个文件。所谓<strong>文件描述符（file descriptor）就是一个数字</strong>，用于在进程的文件描述符表中寻找对应的文件对象。当前进程总是可以通过 <code>current-&gt;files</code> 访问自己的文件并进行文件操作。</p>
+<p>有几个 FD 已经在习惯上被划定用于特定功能：</p>
+<ul>
+<li>标准输入 (<code>fd = 0</code>)</li>
+<li>标准输出 (<code>fd = 1</code>)</li>
+<li>标准错误输出 (<code>fd = 2</code>)</li>
+</ul>
+<h3 id="task-1实现标准输入输出">Task 1：实现标准输入输出<a class="headerlink" href="#task-1实现标准输入输出" title="Permanent link">¶</a></h3>
+<p>在之前的实验中，我们已经实现了用户态的 <code>write</code> 系统调用，但当时：</p>
+<ul>
+<li>我们并没有实现文件抽象；</li>
+<li>默认仅支持 <code>fd = 1</code> 的标准输出，将来自用户态的数据输出到控制台。</li>
+</ul>
+<p>现在，我们需要以文件抽象为基础，完善 <code>write</code> 系统调用的实现。具体来说：</p>
+<ul>
+<li>标准输出 (<code>fd = 1</code>) 应当被视为一个特殊的文件对象，它实现了一个 <code>write()</code> 函数，能够将数据输出到控制台；</li>
+<li><code>write()</code> 系统调用应当通过当前进程的文件描述符表 (<code>current-&gt;files</code>) 找到 <code>fd = 1</code> 的文件对象，并调用它的 <code>write()</code> 函数 <code>stdout_write()</code> 完成数据输出。</li>
+</ul>
+<p>为了完成 <code>write</code> 系统调用的改造并实现标准输入输出，你需要完成以下工作：</p>
+<ol>
+<li><strong>管理文件对象的生命周期。</strong><ul>
+<li><strong>请你实现</strong> <code>kernel/fs/fs.c</code> 中的一系列函数，完成文件对象的初始化、创建、拷贝、释放等功能，并在 <code>kernel/arch/riscv/kernel/proc.c</code> 中正确地调用它们，确保每个进程的文件描述符表正确地初始化、拷贝和释放。</li>
+</ul>
+</li>
+<li>
+<p><strong>创建标准输入输出对象。</strong></p>
+<ul>
+<li><strong>请你实现</strong> <code>kernel/fs/fs.c</code> 中的 <code>file_init</code> 函数，为每个进程初始化时都创建默认的 stdio 文件对象，并将它们添加到进程的文件描述符表中。其中，我们对 fd 编号做出如下约定：</li>
+</ul>
+<div class="language-text highlight"><span class="filename">标准文件描述符编号</span><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>stdin (0)
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>stdout (1)
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>stderr (2)
+</span></code></pre></div>
+</li>
+<li>
+<p><strong>实现标准输入输出函数。</strong></p>
+<ul>
+<li><strong>请你阅读</strong> <code>kernel/fs/vfs.c</code> 中的 <code>uart_getchar()</code> 和 <code>sbi_puts()</code> 函数，理解它们如何与 UART 设备交互完成字符的输入输出。</li>
+<li><strong>请你实现</strong> <code>kernel/fs/vfs.c</code> 中的 <code>stdout_write()</code>, <code>stderr_write()</code> 和 <code>stdin_read()</code> 函数，分别完成标准输出、标准错误输出和标准输入的功能。</li>
+</ul>
+<div class="admonition tip">
+<p class="admonition-title">内核态与用户态地址空间</p>
+<p>注意到 <code>write</code> 和 <code>read</code> 系统调用的缓冲区参数 <code>buf</code> 是用户态地址空间的地址，而内核态无法直接访问用户态地址空间。你可以参考 <code>lab5</code> 中实现的 <code>copy_from_user()</code> 函数，<strong>以合适的方式实现内核态和用户态地址空间的数据拷贝</strong>。</p>
+<p>(为避免误导，<code>bonus-a</code> 的实验框架中移除了原先 <code>copy_from_user()</code> 函数的实现，你可以回退到 <code>lab5</code> 查看其实现方式)</p>
+</div>
+<ol>
+<li><strong>改造 <code>write</code> 和 <code>read</code> 系统调用。</strong></li>
+<li><strong>请你实现</strong> <code>kernel/arch/riscv/kernel/syscall.c</code> 中的 <code>sys_write</code> 和 <code>sys_read</code> 函数，完成对文件描述符的查找，并调用对应文件对象的 <code>write</code> 和 <code>read</code> 函数。</li>
+</ol>
+</li>
+</ol>
+<div class="admonition success">
+<p class="admonition-title">完成条件</p>
+<p>在完成上述任务后，你的系统应当能够正确地处理用户态程序对标准输入输出的读写操作。</p>
+<p>我们的用户态程序在启动时会调用 <code>write</code> 系统调用测试 <code>stdout</code> 和 <code>stderr</code> 的功能，你可以在控制台观察到如下输出：
+</p><div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>hello, stdout!
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>hello, stderr!
+</span></code></pre></div>
+接下来，我们的用户态程序会<strong>通过 <code>read</code> 系统调用从标准输入读取数据，并将其回显到标准输出</strong>。你可以在控制台输入任意内容，观察到相同的内容被输出。此外， <code>echo</code> 命令应当能够正常工作：
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>SHELL<span class="w"> </span>&gt;<span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"test"</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="nb">test</span>
+</span></code></pre></div><p></p>
+</div>
+<h2 id="part-2fat32-文件系统">Part 2：FAT32 文件系统<a class="headerlink" href="#part-2fat32-文件系统" title="Permanent link">¶</a></h2>
+<h3 id="背景介绍">背景介绍<a class="headerlink" href="#背景介绍" title="Permanent link">¶</a></h3>
+<p><strong>MBR (主引导扇区)</strong> 是计算机开机后访问硬盘时必须要读取的首个扇区，它位于硬盘的第 0 个扇区。在本次实验中，我们只会用到其中 16 字节的<strong>磁盘分区表（DPT）</strong>，解析其中的内容，并找到 FAT 分区的起始与结束相关信息。</p>
+<p><strong>文件分配表 (File Allocation Table，FAT)</strong> 是一种由微软发明并拥有部分专利的文件系统。最早的 FAT 文件系统直接使用扇区号来作为存储的索引，但是这样做的缺点是显然易见的：当磁盘的大小不断扩大，存储扇区号的位数越来越多，越发占用存储空间。以 32 位扇区号的文件系统为例，如果磁盘的扇区大小为 512B，那么文件系统能支持的最大磁盘大小仅为 2TB。因此，FAT32 引入了新的存储管理单位：<strong>簇</strong>。一个簇包含一个或多个扇区，文件系统中记录的索引不再为扇区号，而是簇号，以此来支持更大的存储设备。</p>
+<p>在本次实验中我们仅需实现 FAT32 文件系统中很小一部分功能，我们为实验中的测试做如下限制：</p>
+<ul>
+<li>文件名长度小于等于 8 个字符，并且不包含后缀名和字符 <code>.</code> .</li>
+<li>不包含目录的实现，所有文件都保存在磁盘根目录 <code>/fat32/</code> 下。</li>
+<li>不涉及磁盘上文件的创建和删除。</li>
+<li>不涉及文件大小的修改。</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">FAT32 参考资料</p>
+<p><strong>以下内容对完成本次实验非常重要，请你仔细阅读。</strong></p>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=YfDU6g0CmZE&amp;t=344s">FAT32文件系统？盘它！</a> 里提到了“块”的概念，可以对标本次实验里的“扇区”（sector）<ul>
+<li><code>fat32_init</code> 函数里各种参数的计算方式可以参考本视频；</li>
+</ul>
+</li>
+<li><a href="https://academy.cba.mit.edu/classes/networking_communications/SD/FAT.pdf">Microsoft FAT Specification</a> 是本次实验参考的标准，关于 <code>fat32_bpb</code> <code>fat32_dir_entry</code> 等结构体各个字段的含义，可以直接参考本材料，例如：<ul>
+<li>Page 7 讲解了 <code>fat32_bpb</code>，在 <code>fat32_init</code> 中会使用到；</li>
+<li>Page 23 处讲解了 <code>fat32_dir_entry</code>，在文件操作函数中会使用到。</li>
+</ul>
+</li>
+</ul>
+</div>
+<h3 id="fat32-分区初始化">FAT32 分区初始化<a class="headerlink" href="#fat32-分区初始化" title="Permanent link">¶</a></h3>
+<p>FAT32 分区的第一个扇区中存储了关于这个分区的元数据，我们需要实现 <code>fat32_init()</code> 函数，读取并解析这些元数据，为后续的文件系统操作提供支持。我们在 <code>kernel/include/fat32.h</code> 提供了 <code>fat32_bpb</code> 和 <code>fat32_volume</code> 这两个数据结构的定义，其中：</p>
+<ul>
+<li><code>fat32_bpb</code>（FAT32 BIOS Parameter Block）是一个物理扇区，其中对应的是这个分区的元数据。我们首先需要将该扇区的内容读到一个 <code>fat32_bpb</code> 数据结构中进行解析。</li>
+<li><code>fat32_volume</code> 需要根据 <code>fat32_bpb</code> 中的数据来进行计算并完成初始化，它存储了后续代码中我们需要用到的元数据。</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">FAT32 中扇区的排列方式与用途</p>
+<p>FAT32 中的扇区以如下方式按顺序排列：</p>
+<ul>
+<li>第一个扇区即为 BPB，在这之后紧跟着的是一些保留扇区；</li>
+<li>接下来是第一个 FAT 表所在的扇区（这个表会占用多个扇区，需要从 BPB 中读取），和第二个 FAT 表所在的扇区（为第一个 FAT 表的备份）；</li>
+<li>再之后就是 FAT 数据区。</li>
+</ul>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">关于簇和扇区</p>
+<p>为了简单起见，本次实验中每个簇都只包含 1 个扇区，所以你的代码可能会以各种灵车的方式跑起来，但是你<strong>仍需要对簇和扇区有所区分</strong>，并在报告里有所体现。</p>
+</div>
+<h3 id="fat32-文件操作打开读取与写入">FAT32 文件操作：打开、读取与写入<a class="headerlink" href="#fat32-文件操作打开读取与写入" title="Permanent link">¶</a></h3>
+<p><strong>打开文件</strong>。我们在 <code>fat32_open_file()</code> 函数中实现打开文件的功能。我们需要读取出被打开的文件所在的簇和目录项位置的信息，来供后面 <code>read</code>, <code>write</code>, <code>lseek</code> 使用。具体来说，我们需要：</p>
+<ul>
+<li>遍历数据区开头的根目录扇区；</li>
+<li>找到 <code>name</code> 和 <code>path</code> 末尾的 <code>filename</code> 相匹配的 <code>fat32_dir_entry</code> 目录项结构体；</li>
+<li>从中得到 FAT32 文件和目录项的相关信息。</li>
+</ul>
+<p>其中，文件和目录项的信息存储在 <code>kernel/include/fs.h</code> 中定义的如下两个结构体中：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">fat32_dir</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">cluster</span><span class="p">;</span><span class="w">   </span><span class="c1">// 文件的目录项所在的簇</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">index</span><span class="p">;</span><span class="w">     </span><span class="c1">// 文件的目录项是该簇中的第几个目录项</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="p">};</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="k">struct</span><span class="w"> </span><span class="nc">fat32_file</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">cluster</span><span class="p">;</span><span class="w">       </span><span class="c1">// 文件开头所在的簇</span>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">fat32_dir</span><span class="w"> </span><span class="n">dir</span><span class="p">;</span><span class="w">   </span><span class="c1">// 文件的目录项信息</span>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="p">};</span>
+</span></code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">为什么我匹配不到要打开的文件</p>
+<p>如果你使用 <code>memcmp</code> 来逐一比较 FAT32 文件系统根目录下的各个文件名和想要打开的文件名，则需要 8 个字节完全匹配。</p>
+<p>但是值得注意的是，FAT32 文件系统根目录下的文件名并不是以 <code>\0</code> 结尾的字符串，你需要参考 spec 或者 <code>disk.img</code> 中的内容来了解 FAT32 文件名的存储方式。</p>
+</div>
+<p><strong>读取文件</strong>。我们在 <code>fat32_read()</code> 函数中实现读取文件的功能。我们需要根据 <code>file-&gt;fat32_file</code> 中的信息（即 open 时获取的信息）找到文件内容所在的簇，然后读取出文件内容到 <code>buf</code> 中。</p>
+<div class="admonition tip">
+<p class="admonition-title">一些提示</p>
+<ul>
+<li>通过 <code>cluster_to_sector()</code> 可以得到簇号对应的扇区号；</li>
+<li>通过 <code>virtio_blk_read_sector()</code> 可以对扇区进行读取；</li>
+<li>你可能需要再通过读取目录项来获取文件长度；</li>
+<li>读取是要从 <code>file-&gt;cfo</code> 开始的；</li>
+<li>读取的长度可能会使得内容跨越了一个或几个扇区，你需要多次读取；</li>
+<li>读取到了文件末尾就应该截止，并返回实际读取的长度；</li>
+<li>如果 read 返回了 0，则说明已经读取到了文件末尾，这样用户态程序就知道文件已经完全读取结束了。</li>
+</ul>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">关于实验中基本设定的说明</p>
+<p>因为我们的文件一定在 FAT32 的根目录下，也即 <code>/fat32/</code> 下，所以我们<strong>无需实现与目录遍历相关的逻辑</strong>。</p>
+<p>此外值得注意的是，由于我们的实现是<strong>不区分大小写</strong>的，因此我们需要将文件名统一转换为大写或小写。</p>
+</div>
+<p><strong>写入文件</strong>。我们在 <code>fat32_write()</code> 函数中实现写入文件的功能。写入操作和读取操作十分类似，我们只需要先读取出文件内容，完成修改后再调用 <code>virtio_blk_write_sector()</code> 将修改后的内容写回扇区即可。</p>
+<p><strong>调整文件指针</strong>。在写入文件时，我们可能需要先调整文件指针的位置，从某一个特定偏移开始写入，它通过 <code>fat32_lseek()</code> 函数实现。<code>lseek</code> 函数需要根据 <code>whence</code> 参数来调整 <code>file-&gt;cfo</code> 的值，你可以阅读资料了解 <code>lseek</code> 函数的具体行为。</p>
+<h3 id="task-2实现-fat32-文件系统">Task 2：实现 FAT32 文件系统<a class="headerlink" href="#task-2实现-fat32-文件系统" title="Permanent link">¶</a></h3>
+<ul>
+<li><strong>我们提供</strong> <code>kernel/fs/virtio.c</code> 中的 <code>virtio_blk_read_sector()</code> 和 <code>virtio_blk_write_sector()</code> 函数来完成对磁盘扇区的读写操作，你可以直接调用它们来实现 FAT32 文件系统的功能。</li>
+<li><strong>请你实现</strong> <code>kernel/fs/fat32.c</code> 中的 <code>fat32_init()</code>, <code>fat32_open_file()</code>, <code>fat32_read()</code>, <code>fat32_write()</code> 和 <code>fat32_lseek()</code> 函数，完成 FAT32 文件系统的初始化、文件打开、读取、写入和调整文件指针等功能。</li>
+</ul>
+<p>接下来，为了让 FAT32 文件系统能够被用户态程序使用，我们需要完成上层调用者的实现：</p>
+<ul>
+<li><strong>请你实现</strong> <code>kernel/fs/fs.c</code> 中的 <code>file_open()</code> 函数，它会根据传入的文件路径选择合适的文件系统（本实验中仅有 FAT32），创建对应的文件描述符对象并调用对应文件系统的 <code>open</code> 函数来打开文件。</li>
+<li><strong>请你实现</strong> <code>kernel/arch/riscv/kernel/syscall.c</code> 中的 <code>sys_openat()</code>, <code>sys_close()</code> 和 <code>sys_lseek()</code> 函数，完成对文件的打开、关闭和调整文件指针等系统调用的实现。</li>
+</ul>
+<div class="admonition tip">
+<p class="admonition-title">如何判断文件系统类型</p>
+<p>我们使用最简单方式来判别文件系统，文件前缀为 <code>/fat32/</code> 的即是本次 FAT32 文件系统中的文件。例如，当我们在 <code>nish</code> 中尝试读取文件，使用的命令是 <code>cat /fat32/$FILENAME</code>. <code>file_open()</code> 会根据前缀决定是否调用 <code>fat32_open_file</code> 函数。</p>
+</div>
+<div class="admonition success">
+<p class="admonition-title">完成条件</p>
+<p>在完成上述任务后，我们就能实现对文件的读写操作了。你可以在命令行运行如下命令尝试读取和修改 FAT32 文件系统中的文件内容：</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>SHELL<span class="w"> </span>&gt;<span class="w"> </span>cat<span class="w"> </span>/fat32/email
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>SHELL<span class="w"> </span>&gt;<span class="w"> </span>edit<span class="w"> </span>/fat32/email<span class="w"> </span><span class="m">6</span><span class="w"> </span>TORVALDS
+</span></code></pre></div>
+<p>可以注意到，当我们完成修改后，文件内容是被<strong>持久化存储</strong>在 <code>disk.img</code> 磁盘映像文件中的，即使我们重启系统，修改后的内容依然存在。</p>
+</div>
+<h2 id="part-3从文件系统加载用户态程序">Part 3：从文件系统加载用户态程序<a class="headerlink" href="#part-3从文件系统加载用户态程序" title="Permanent link">¶</a></h2>
+<p>在 Lab4 中，我们实现了从内存中加载用户态 ELF 文件的功能，实现的方式是把所有用户态的 ELF 文件都打包进入 vmlinux 镜像中，与内核一同加载到内存中。</p>
+<p>在本次实验中，我们将实现从 FAT32 文件系统中加载用户态 ELF 文件的功能。在实验提供的 <code>disk.img</code> 文件系统镜像中，包含了来自之前实验中的用户态 ELF 文件，它们分别为：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>nish  -- 我们提供的简单 shell 程序
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>print -- Lab4 中的打印程序
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>cow   -- Lab5 中的写时复制测试程序
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>fib   -- Lab5 中的斐波那契数列计算程序
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>mfork -- Lab5 中的多进程测试程序
+</span></code></pre></div>
+<h3 id="进程生命周期">进程生命周期<a class="headerlink" href="#进程生命周期" title="Permanent link">¶</a></h3>
+<p>我们首先需要实现更加完整的进程生命周期管理，除了内核态守护进程 <code>kthreadd</code> 和第一个用户态程序 <code>nish</code> 之外，<strong>所有进程都通过 <code>fork</code> + <code>execve</code> 的方式创建</strong>。</p>
+<p>其中，<code>fork</code> 系统调用的语义已经在 Lab5 中实现，接下来我们对 <code>execve</code> 系统调用的语义进行说明：</p>
+<ul>
+<li>用户态程序通过 <code>execve</code> 系统调用来加载一个新的 ELF 文件，并将当前进程替换为该 ELF 文件对应的进程。为了简化实现，用户态的系统调用接口为 <code>int exec(char *path)</code>，没有 <code>argv</code> 和 <code>envp</code> 等其他参数。</li>
+<li><code>execve</code> 系统调用会重新初始化原进程的 <code>vma</code>, <code>files</code> 等结构体，重置页表和栈空间，并将新的 ELF 文件加载到内存中，最后以恰当的方式跳转到用户态执行新程序。</li>
+</ul>
+<p>为了实现父子进程和它们之间的同步关系，我们需要实现 <code>wait</code> 机制，父进程可以通过 <code>wait</code> 系统调用等待子进程的结束，并获取子进程的退出状态码。为了实现这一机制，我们需要在 <code>struct task_struct</code> 中添加新的字段：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="o">*</span><span class="n">parent</span><span class="p">;</span><span class="w"> </span><span class="cm">/**&lt; 父进程 */</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">completion</span><span class="w"> </span><span class="n">child_exit_comp</span><span class="p">;</span><span class="w"> </span><span class="cm">/**&lt; 子进程退出的 completion */</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">exit_code</span><span class="p">;</span><span class="w"> </span><span class="cm">/**&lt; 退出码 */</span>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="p">};</span>
+</span></code></pre></div>
+<p>当我们通过 <code>fork</code> 创建子进程时，需要将子进程的 <code>parent</code> 字段指向父进程；当子进程通过 <code>do_exit()</code> 退出时，需要通过 <code>complete()</code> 唤醒等待的父进程，并将退出码存储在 <code>exit_code</code> 字段中。</p>
+<p>当父进程调用 <code>wait()</code> 时，如果没有已经退出的子进程，则需要通过 <code>wait_for_completion()</code> 阻塞等待子进程的退出；如果有已经退出的子进程，则直接获取其退出码并返回。</p>
+<div class="admonition note">
+<p class="admonition-title">关于进程销毁的时机</p>
+<p>在当前设计下，所有新进程都是通过 <code>fork</code> 的方式创建的，而 <strong><code>wait</code> 机制要求父进程等待子进程退出后才能销毁子进程</strong>。因此，你需要修改 <code>schedule()</code> 中调度器的实现，把销毁进程的时机延后到父进程 <code>wait</code> 之后 (这一部分逻辑我们已经提供)。</p>
+</div>
+<p>这样一来，我们在 nish 中可以通过如下方式启动并运行新的用户态程序：</p>
+<div class="language-c highlight"><span class="filename">kernel/user/src/main.c</span><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kt">int</span><span class="w"> </span><span class="n">pid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fork</span><span class="p">();</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">pid</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Fork failed</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">pid</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">    </span><span class="c1">//  子进程</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="w">    </span><span class="n">exec</span><span class="p">(</span><span class="n">exec_path</span><span class="p">);</span>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="w">    </span><span class="c1">//  父进程</span>
+</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="w">    </span><span class="n">wait</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+</span><span id="__span-15-10"><a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="p">}</span>
+</span></code></pre></div>
+<h3 id="从文件系统加载-elf">从文件系统加载 ELF<a class="headerlink" href="#从文件系统加载-elf" title="Permanent link">¶</a></h3>
+<p>为了从 FAT32 文件系统中加载 ELF 文件，我们需要修改如下两个部分的代码：</p>
+<ul>
+<li><code>user_mode_thread()</code> 和 <code>load_elf_binary()</code>，它们的输入参数不再是内存中的 ELF 文件地址，而是一个文件路径字符串，我们需要通过文件系统打开该文件，并将其内容读入内存中；</li>
+<li><code>do_page_fault()</code>，当发生缺页异常时，我们需要从文件系统中读取对应的文件内容到内存中，而不是直接从内存中的 ELF 文件拷贝。</li>
+</ul>
+<p>其中，一种参考的实现接口为：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="o">*</span><span class="n">user_mode_thread</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">path</span><span class="p">);</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="kt">int</span><span class="w"> </span><span class="nf">load_elf_binary</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="o">*</span><span class="n">task</span><span class="p">);</span>
+</span></code></pre></div>
+<h3 id="task-3实现程序加载">Task 3：实现程序加载<a class="headerlink" href="#task-3实现程序加载" title="Permanent link">¶</a></h3>
+<p>请你根据上述描述，完成进程生命周期管理和从文件系统加载用户态程序的功能。</p>
+<p>最后，请你修改 <code>kernel/arch/riscv/kernel/main.c</code>，<strong>以 <code>user_mode_thread("/fat32/nish")</code> 的方式启动第一个用户态程序 <code>nish</code>。</strong></p>
+<div class="admonition tip">
+<p class="admonition-title">这一部分的自由度较大，你可以自行思考和设计具体的实现方式。</p>
+</div>
+<div class="admonition success">
+<p class="admonition-title">完成条件</p>
+<p>在完成上述任务后，你的系统应当能够正确地通过 <code>fork</code> + <code>execve</code> 的方式创建并运行用户态程序，并且能够从 FAT32 文件系统中加载 ELF 文件。</p>
+<p>你可以在 <code>nish</code> 中运行如下命令来测试：</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>SHELL<span class="w"> </span>&gt;<span class="w"> </span>run<span class="w"> </span>/fat32/print
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>SHELL<span class="w"> </span>&gt;<span class="w"> </span>run<span class="w"> </span>/fat32/cow
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>SHELL<span class="w"> </span>&gt;<span class="w"> </span>run<span class="w"> </span>/fat32/fib
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>SHELL<span class="w"> </span>&gt;<span class="w"> </span>run<span class="w"> </span>/fat32/mfork
+</span></code></pre></div>
+<p>其运行结果应当与之前的实验一致。</p>
+</div>
+
+
+
+
+
+
+
+  
+    
+  
+  
+    
+  
+
+
+  <aside class="md-source-file">
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Last update">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="2026年1月6日 08:04:05 UTC"><span class="timeago" datetime="2026-01-06T08:04:05+00:00" locale="zh"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="2026年1月6日 08:04:05 UTC">2026-01-06</span>
+  </span>
+
+    
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Created">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"></path></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="2025年12月24日 05:51:39 UTC"><span class="timeago" datetime="2025-12-24T05:51:39+00:00" locale="zh"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="2025年12月24日 05:51:39 UTC">2025-12-24</span>
+  </span>
+
+    
+    
+    
+      
+  <span class="md-source-file__fact">
+    
+      
+  <span class="md-icon" title="Contributors">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"></path></svg>
+  </span>
+  <span>GitHub</span>
+
+    
+    <nav>
+      
+        <a href="https://github.com/hharryz" class="md-author" title="@hharryz">
+          
+          <img src="https://avatars.githubusercontent.com/u/122276274?v=4&amp;size=72" alt="hharryz">
+        </a>
+      
+        <a href="https://github.com/bowling233" class="md-author" title="@bowling233">
+          
+          <img src="https://avatars.githubusercontent.com/u/35755846?v=4&amp;size=72" alt="bowling233">
+        </a>
+      
+      
+      
+    </nav>
+  </span>
+
+    
+  </aside>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer">
+        
+          
+          <a href="../lab5/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Lab 5：缺页异常与 Fork 机制">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Lab 5：缺页异常与 Fork 机制
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../bonusB/" class="md-footer__link md-footer__link--next" aria-label="Next: Bonus B：多核处理器与调度算法">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Bonus B：多核处理器与调度算法
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"></path></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      浙江大学计算机科学与技术学院
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer", "navigation.sections", "navigation.expand", "navigation.indexes", "navigation.tracking", "navigation.path", "navigation.top", "toc.follow", "content.action.edit", "search.suggest", "search.highlight", "search.share"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../js/timeago.min.js"></script>
+      
+        <script src="../js/timeago_mkdocs_material.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/polyfill/index.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax/es5/tex-mml-chtml.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/tablesort/dist/tablesort.min.js"></script>
+      
+        <script src="../javascripts/tablesort.js"></script>
+      
+        <script src="../javascripts/mermaid.mjs" type="module"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>

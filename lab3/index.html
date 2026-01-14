@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="浙江大学操作系统课程实验指导" name="description"/>
+<meta content="浙江大学计算机科学与技术学院" name="author"/>
+<link href="https://zju-os.github.io/doc/lab3/" rel="canonical"/>
+<link href="../lab2/" rel="prev"/>
+<link href="../lab4/" rel="next"/>
+<link href="../assets/zjueagle.png" rel="icon"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.7.1" name="generator"/>
+<title>Lab 3：Sv39 分页式虚拟内存系统 - ZJU OS</title>
+<link href="../assets/stylesheets/main.484c7ddc.min.css" rel="stylesheet"/>
+<link href="../assets/stylesheets/palette.ab4e12ef.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<link href="../css/timeago.css" rel="stylesheet"/>
+<link href="../stylesheets/fonts.css" rel="stylesheet"/>
+<link href="../stylesheets/counter.css" rel="stylesheet"/>
+<link href="../stylesheets/neoteroi-v1.1.2.css" rel="stylesheet"/>
+<script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+<link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"/><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+<body data-md-color-accent="indigo" data-md-color-primary="indigo" data-md-color-scheme="default" dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#lab-3sv39-分页式虚拟内存系统">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header md-header--shadow" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="ZJU OS" class="md-header__button md-logo" data-md-component="logo" href=".." title="ZJU OS">
+<img alt="logo" src="../assets/zjueagle_white.svg"/>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            ZJU OS
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              Lab 3：Sv39 分页式虚拟内存系统
+            
+          </span>
+</div>
+</div>
+</div>
+<form class="md-header__option" data-md-component="palette">
+<input aria-label="Switch to dark mode" class="md-option" data-md-color-accent="indigo" data-md-color-media="(prefers-color-scheme: light)" data-md-color-primary="indigo" data-md-color-scheme="default" id="__palette_0" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_1" hidden="" title="Switch to dark mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+</label>
+<input aria-label="Switch to light mode" class="md-option" data-md-color-accent="indigo" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-primary="indigo" data-md-color-scheme="slate" id="__palette_1" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_0" hidden="" title="Switch to light mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+</label>
+</form>
+<script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<a aria-label="Share" class="md-search__icon md-icon" data-clipboard="" data-clipboard-text="" data-md-component="search-share" href="javascript:void(0)" tabindex="-1" title="Share">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
+</a>
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+<div class="md-search__suggest" data-md-component="search-suggest"></div>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="" tabindex="0">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="md-header__source">
+<a class="md-source" data-md-component="source" href="https://github.com/ZJU-OS/doc" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    ZJU-OS/doc
+  </div>
+</a>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="ZJU OS" class="md-nav__button md-logo" data-md-component="logo" href=".." title="ZJU OS">
+<img alt="logo" src="../assets/zjueagle_white.svg"/>
+</a>
+    ZJU OS
+  </label>
+<div class="md-nav__source">
+<a class="md-source" data-md-component="source" href="https://github.com/ZJU-OS/doc" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    ZJU-OS/doc
+  </div>
+</a>
+</div>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="..">
+<span class="md-ellipsis">
+    
+  
+    首页
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+<span class="md-ellipsis">
+    
+  
+    实验文档
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="true" aria-labelledby="__nav_2_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_2">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    实验文档
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../manual/">
+<span class="md-ellipsis">
+    
+  
+    实验流程及工具讲解
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../lab0/">
+<span class="md-ellipsis">
+    
+  
+    Lab 0: Linux 内核调试
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../lab1/">
+<span class="md-ellipsis">
+    
+  
+    Lab 1：内核启动与时钟中断
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../lab2/">
+<span class="md-ellipsis">
+    
+  
+    Lab 2：抢占式内核线程调度
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+<span class="md-ellipsis">
+    
+  
+    Lab 3：Sv39 分页式虚拟内存系统
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="./">
+<span class="md-ellipsis">
+    
+  
+    Lab 3：Sv39 分页式虚拟内存系统
+  
+
+    
+  </span>
+</a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#实验简介">
+<span class="md-ellipsis">
+      
+        实验简介
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#实验要求">
+<span class="md-ellipsis">
+      
+        实验要求
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-0环境配置">
+<span class="md-ellipsis">
+      
+        Part 0：环境配置
+      
+    </span>
+</a>
+<nav aria-label="Part 0：环境配置" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#更新代码">
+<span class="md-ellipsis">
+      
+        更新代码
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-1从物理地址到虚拟地址">
+<span class="md-ellipsis">
+      
+        Part 1：从物理地址到虚拟地址
+      
+    </span>
+</a>
+<nav aria-label="Part 1：从物理地址到虚拟地址" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#虚拟与加载地址">
+<span class="md-ellipsis">
+      
+        虚拟与加载地址
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#寻址方式">
+<span class="md-ellipsis">
+      
+        寻址方式
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#虚拟与物理地址的转换">
+<span class="md-ellipsis">
+      
+        虚拟与物理地址的转换
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-2构造-sv39-页表">
+<span class="md-ellipsis">
+      
+        Part 2：构造 Sv39 页表
+      
+    </span>
+</a>
+<nav aria-label="Part 2：构造 Sv39 页表" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#risc-v-sv39-规范阅读">
+<span class="md-ellipsis">
+      
+        RISC-V Sv39 规范阅读
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#内存屏障与-tlb缓存刷新">
+<span class="md-ellipsis">
+      
+        内存屏障与 TLB、缓存刷新
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#内核内存布局">
+<span class="md-ellipsis">
+      
+        内核内存布局
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#重定位">
+<span class="md-ellipsis">
+      
+        重定位
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-1大页表双重映射和重定位">
+<span class="md-ellipsis">
+      
+        Task 1：大页表双重映射和重定位
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-2多级页表">
+<span class="md-ellipsis">
+      
+        Task 2：多级页表
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#扩展阅读qemu-的-tlb-实现">
+<span class="md-ellipsis">
+      
+        扩展阅读：QEMU 的 TLB 实现
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../lab4/">
+<span class="md-ellipsis">
+    
+  
+    Lab 4：用户态
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../lab5/">
+<span class="md-ellipsis">
+    
+  
+    Lab 5：缺页异常与 Fork 机制
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../bonusA/">
+<span class="md-ellipsis">
+    
+  
+    Bonus A：FAT32 文件系统
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../bonusB/">
+<span class="md-ellipsis">
+    
+  
+    Bonus B：多核处理器与调度算法
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../z1-spike/">
+<span class="md-ellipsis">
+    
+  
+    附录 1：Spike 工具链
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_3" type="checkbox"/>
+<label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+<span class="md-ellipsis">
+    
+  
+    RISC-V 规范
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_3_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_3">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    RISC-V 规范
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-privileged.html">
+<span class="md-ellipsis">
+    
+  
+    特权级规范
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-unprivileged.html">
+<span class="md-ellipsis">
+    
+  
+    非特权级规范
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-abi.pdf">
+<span class="md-ellipsis">
+    
+  
+    ELF ABI 规范
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-sbi.pdf">
+<span class="md-ellipsis">
+    
+  
+    SBI 规范
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-asm.pdf">
+<span class="md-ellipsis">
+    
+  
+    汇编规范
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://riscv-programming.org/">
+<span class="md-ellipsis">
+    
+  
+    汇编教程
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_4" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+<span class="md-ellipsis">
+    
+  
+    工具文档
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_4_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_4">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    工具文档
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://www.qemu.org/docs/master/index.html">
+<span class="md-ellipsis">
+    
+  
+    QEMU
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://sourceware.org/gdb/current/onlinedocs/gdb">
+<span class="md-ellipsis">
+    
+  
+    GDB
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://gcc.gnu.org/onlinedocs/">
+<span class="md-ellipsis">
+    
+  
+    GCC
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://sourceware.org/binutils/docs/as">
+<span class="md-ellipsis">
+    
+  
+    as
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://sourceware.org/binutils/docs/ld">
+<span class="md-ellipsis">
+    
+  
+    ld
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://sourceware.org/binutils/docs/binutils">
+<span class="md-ellipsis">
+    
+  
+    binutils
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_5" type="checkbox"/>
+<label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+<span class="md-ellipsis">
+    
+  
+    源码仓库
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_5_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_5">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    源码仓库
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_5_1" type="checkbox"/>
+<label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+<span class="md-ellipsis">
+    
+  
+    Cross Referencer
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_5_1_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_5_1">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    Cross Referencer
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://elixir.bootlin.com/linux">
+<span class="md-ellipsis">
+    
+  
+    Linux
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://elixir.bootlin.com/musl/">
+<span class="md-ellipsis">
+    
+  
+    musl
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://elixir.bootlin.com/opensbi/">
+<span class="md-ellipsis">
+    
+  
+    OpenSBI
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://elixir.bootlin.com/qemu/">
+<span class="md-ellipsis">
+    
+  
+    QEMU
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_5_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+<span class="md-ellipsis">
+    
+  
+    官方/GitHub
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_5_2_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_5_2">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    官方/GitHub
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://github.com/torvalds/linux">
+<span class="md-ellipsis">
+    
+  
+    Linux
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://git.musl-libc.org/cgit/musl">
+<span class="md-ellipsis">
+    
+  
+    musl
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://github.com/riscv-software-src/opensbi">
+<span class="md-ellipsis">
+    
+  
+    OpenSBI
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://github.com/qemu/qemu/">
+<span class="md-ellipsis">
+    
+  
+    QEMU
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_6" type="checkbox"/>
+<label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+<span class="md-ellipsis">
+    
+  
+    助教文档
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_6_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_6">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    助教文档
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/autograder/">
+<span class="md-ellipsis">
+    
+  
+    评测框架
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/dev/">
+<span class="md-ellipsis">
+    
+  
+    源代码管理
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/tool/">
+<span class="md-ellipsis">
+    
+  
+    辅助工具
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_6_4" type="checkbox"/>
+<label class="md-nav__link" for="__nav_6_4" id="__nav_6_4_label" tabindex="0">
+<span class="md-ellipsis">
+    
+  
+    blog
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_6_4_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_6_4">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    blog
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/blog/1.pid0/">
+<span class="md-ellipsis">
+    
+  
+    操作系统小记（一）：从 PID 0 开始
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/blog/2.sync/">
+<span class="md-ellipsis">
+    
+  
+    操作系统小记（二）：内核同步方法
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/blog/3.stack_unwind/">
+<span class="md-ellipsis">
+    
+  
+    操作系统小记（三）：函数序言、调试器断点与堆栈回溯
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/blog/4.board/">
+<span class="md-ellipsis">
+    
+  
+    操作系统小记（四）：内核上板历险记
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#实验简介">
+<span class="md-ellipsis">
+      
+        实验简介
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#实验要求">
+<span class="md-ellipsis">
+      
+        实验要求
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-0环境配置">
+<span class="md-ellipsis">
+      
+        Part 0：环境配置
+      
+    </span>
+</a>
+<nav aria-label="Part 0：环境配置" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#更新代码">
+<span class="md-ellipsis">
+      
+        更新代码
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-1从物理地址到虚拟地址">
+<span class="md-ellipsis">
+      
+        Part 1：从物理地址到虚拟地址
+      
+    </span>
+</a>
+<nav aria-label="Part 1：从物理地址到虚拟地址" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#虚拟与加载地址">
+<span class="md-ellipsis">
+      
+        虚拟与加载地址
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#寻址方式">
+<span class="md-ellipsis">
+      
+        寻址方式
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#虚拟与物理地址的转换">
+<span class="md-ellipsis">
+      
+        虚拟与物理地址的转换
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-2构造-sv39-页表">
+<span class="md-ellipsis">
+      
+        Part 2：构造 Sv39 页表
+      
+    </span>
+</a>
+<nav aria-label="Part 2：构造 Sv39 页表" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#risc-v-sv39-规范阅读">
+<span class="md-ellipsis">
+      
+        RISC-V Sv39 规范阅读
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#内存屏障与-tlb缓存刷新">
+<span class="md-ellipsis">
+      
+        内存屏障与 TLB、缓存刷新
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#内核内存布局">
+<span class="md-ellipsis">
+      
+        内核内存布局
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#重定位">
+<span class="md-ellipsis">
+      
+        重定位
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-1大页表双重映射和重定位">
+<span class="md-ellipsis">
+      
+        Task 1：大页表双重映射和重定位
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-2多级页表">
+<span class="md-ellipsis">
+      
+        Task 2：多级页表
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#扩展阅读qemu-的-tlb-实现">
+<span class="md-ellipsis">
+      
+        扩展阅读：QEMU 的 TLB 实现
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<nav aria-label="Navigation" class="md-path">
+<ol class="md-path__list">
+<li class="md-path__item">
+<a class="md-path__link" href="..">
+<span class="md-ellipsis">
+    首页
+  </span>
+</a>
+</li>
+<li class="md-path__item">
+<a class="md-path__link" href="../manual/">
+<span class="md-ellipsis">
+    实验文档
+  </span>
+</a>
+</li>
+</ol>
+</nav>
+<article class="md-content__inner md-typeset">
+<a class="md-content__button md-icon" href="https://github.com/ZJU-OS/doc/blob/main/docs/lab3.md" rel="edit" title="Edit this page">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
+</a>
+<h1 id="lab-3sv39-分页式虚拟内存系统">Lab 3：Sv39 分页式虚拟内存系统<a class="headerlink" href="#lab-3sv39-分页式虚拟内存系统" title="Permanent link">¶</a></h1><p style="color:#bdbdbd"><i>Estimated time to read: 10 minutes</i></p>
+
+<div class="admonition danger">
+<p class="admonition-title">DDL</p>
+<ul>
+<li>代码、报告：2025-11-11 23:59</li>
+<li>验收：2025-11-18 实验课</li>
+</ul>
+</div>
+<h2 id="实验简介">实验简介<a class="headerlink" href="#实验简介" title="Permanent link">¶</a></h2>
+<p>在前两个实验中，我们的内核一直运行在<strong>物理地址空间</strong>中。本次实验的目标，是让内核正式进入“虚拟世界”——实现 RISC-V 的 <strong>Sv39 分页式虚拟内存系统</strong>。</p>
+<p>在理论课第八、九章中，我们已经学习了虚拟内存的概念与设计思想。现在，让我们从“为什么”出发，重新理一理它的演进脉络：</p>
+<ul>
+<li>在早期系统中，程序员需要手动管理物理内存，容易出错，也难以实现隔离和保护。</li>
+<li>
+<p>随着系统复杂度提升，内存管理经历了从<strong>单一连续分配 → 静态分段（Base and Bound） → 动态分段（Segmentation）→ 分页（Paging）</strong>的演化。每种方式都有优缺点：分段容易产生<strong>外部碎片</strong>，分页则可能带来<strong>内部碎片</strong>。</p>
+<p></p><figure markdown="span">
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab3.assets/vm_history.webp"><img alt="vm_history" src="../lab3.assets/vm_history.webp"/></a>
+<figcaption>
+    内存管理的发展历程<br/>
+<small>图片来源：Linux Kernel Development (3rd)
+    </small>
+</figcaption>
+</figure><p></p>
+</li>
+<li>
+<p>分页机制的关键思想是：<strong>用“虚拟地址”统一抽象内存，让程序认为自己独占整个地址空间</strong>。</p>
+</li>
+</ul>
+<p>实现虚拟内存需要软硬件协作，如下图所示：</p>
+<figure>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab3.assets/vm_system.webp"><img alt="vm_system" src="../lab3.assets/vm_system.webp"/></a>
+<figcaption>
+    虚拟内存的软硬件协作<br/>
+<small>图片来源：<a href="https://x.com/_streetdogg/status/1870679201424261309">Piyush Itankar on X: "Here is how MMU (memory management unit) works!"</a>
+</small>
+</figcaption>
+</figure>
+<ul>
+<li>CPU 内部的 <strong>MMU（Memory Management Unit）</strong> 负责解析页表、执行地址转换和权限检查。我们的所有硬件都是 QEMU 模拟的，它也会实现 MMU 的功能。</li>
+<li>我们实现的操作系统需要负责<strong>构建与维护页表</strong>、<strong>处理缺页异常</strong>。</li>
+</ul>
+<p>本实验要实现 RISC-V 规范中的 <strong>Sv39 多级页表机制</strong>，你将完成以下关键步骤：</p>
+<ol>
+<li><strong>理解并掌握页表结构</strong>：学习 Sv39 的三级页表格式，弄清每级索引、PTE 各字段的意义。</li>
+<li><strong>构建内核页表</strong>：为内核镜像的各个段（<code>.text</code>、<code>.rodata</code>、<code>.data</code>、<code>.bss</code>）建立映射，并配置正确的访问权限；同时实现内核空间的直接映射区域。</li>
+<li><strong>切换至虚拟地址执行</strong>：配置 <code>satp</code> 寄存器，执行 <code>sfence.vma</code>，完成从物理地址到虚拟地址的安全过渡。</li>
+</ol>
+<p>完成本实验后，你的操作系统将第一次具备<strong>完整的地址空间抽象能力</strong>，为 Lab4 实现用户态进程奠定基础。</p>
+<h2 id="实验要求">实验要求<a class="headerlink" href="#实验要求" title="Permanent link">¶</a></h2>
+<p>见 <a href="../#要求和评分标准">首页#要求和评分标准</a></p>
+<h2 id="part-0环境配置">Part 0：环境配置<a class="headerlink" href="#part-0环境配置" title="Permanent link">¶</a></h2>
+<h3 id="更新代码">更新代码<a class="headerlink" href="#更新代码" title="Permanent link">¶</a></h3>
+<p>现在你位于 <code>lab2</code> 分支。你需要创建 <code>lab3</code> 分支，合并上游的代码：</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>lab3
+</span><span id="__span-0-2"><a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a>git<span class="w"> </span>fetch<span class="w"> </span>upstream
+</span><span id="__span-0-3"><a href="#__codelineno-0-3" id="__codelineno-0-3" name="__codelineno-0-3"></a>git<span class="w"> </span>merge<span class="w"> </span>upstream/lab3
+</span></code></pre></div>
+<p>下面的合并说明供同学们解决合并冲突时参考：<a href="https://git.zju.edu.cn/os/code/-/merge_requests/21/diffs">lab3: init (!21) · Merge requests · OS / Code · GitLab</a></p>
+<ul>
+<li>新增实验相关：<ul>
+<li>虚拟内存代码 <code>vm.h</code>、<code>vm.c</code></li>
+<li>头文件中新增了一些宏定义</li>
+<li><code>vmlinux.lds</code> 添加虚拟内存配置</li>
+<li>需要物理地址的位置添加了 <code>PA2VA</code>、<code>VA2PA</code> 宏</li>
+</ul>
+</li>
+<li>变更：<ul>
+<li><code>vmlinux.lds</code>：链接器脚本修改，其中 <code>_sbss</code> 移动到 <code>.bss</code> 段最开始的位置（因为待会要用），现在不是栈底了。重新弄了俩符号 <code>_sstack</code> 和 <code>_estack</code> 作为内核栈的边界。之前使用 <code>_sbss</code> 作为内核栈的同学需要修改 <code>head.S</code>，而在 <code>head.S</code> 中自行定义栈边界的同学则不受影响。</li>
+<li><code>head.S</code> 中 Lab1 Task3（<code>stvec</code> 的设置）向前移动，紧接在 Lab1 Task1（栈的设置）之后。这样能更早地捕获异常。</li>
+</ul>
+</li>
+</ul>
+<h2 id="part-1从物理地址到虚拟地址">Part 1：从物理地址到虚拟地址<a class="headerlink" href="#part-1从物理地址到虚拟地址" title="Permanent link">¶</a></h2>
+<h3 id="虚拟与加载地址">虚拟与加载地址<a class="headerlink" href="#虚拟与加载地址" title="Permanent link">¶</a></h3>
+<p>同学们合并 <code>vmlinux.lds</code> 的更改时，应该注意到其中发生了这样的变更：</p>
+<div class="language-diff highlight"><pre><span></span><code><span id="__span-1-1"><a href="#__codelineno-1-1" id="__codelineno-1-1" name="__codelineno-1-1"></a><span class="gh">diff --git a/kernel/arch/riscv/kernel/vmlinux.lds b/kernel/arch/riscv/kernel/vmlinux.lds</span>
+</span><span id="__span-1-2"><a href="#__codelineno-1-2" id="__codelineno-1-2" name="__codelineno-1-2"></a><span class="gh">index 6ede8c0..24c9f07 100644</span>
+</span><span id="__span-1-3"><a href="#__codelineno-1-3" id="__codelineno-1-3" name="__codelineno-1-3"></a><span class="gd">--- a/kernel/arch/riscv/kernel/vmlinux.lds</span>
+</span><span id="__span-1-4"><a href="#__codelineno-1-4" id="__codelineno-1-4" name="__codelineno-1-4"></a><span class="gi">+++ b/kernel/arch/riscv/kernel/vmlinux.lds</span>
+</span><span id="__span-1-5"><a href="#__codelineno-1-5" id="__codelineno-1-5" name="__codelineno-1-5"></a><span class="gu">@@ -7,12 +7,15 @@ PHY_SIZE     = (128 * 1024 * 1024);</span>
+</span><span id="__span-1-6"><a href="#__codelineno-1-6" id="__codelineno-1-6" name="__codelineno-1-6"></a><span class="w"> </span>PHY_END      = (PHY_START + PHY_SIZE);
+</span><span id="__span-1-7"><a href="#__codelineno-1-7" id="__codelineno-1-7" name="__codelineno-1-7"></a><span class="w"> </span>PGSIZE       = 0x1000;
+</span><span id="__span-1-8"><a href="#__codelineno-1-8" id="__codelineno-1-8" name="__codelineno-1-8"></a><span class="w"> </span>OPENSBI_SIZE = (0x200000);
+</span><span id="__span-1-9"><a href="#__codelineno-1-9" id="__codelineno-1-9" name="__codelineno-1-9"></a><span class="gi">+VM_DIRECT_START = 0xffffffd600000000;</span>
+</span><span id="__span-1-10"><a href="#__codelineno-1-10" id="__codelineno-1-10" name="__codelineno-1-10"></a><span class="gi">+VM_DIRECT_END = (VM_DIRECT_START + PHY_SIZE);</span>
+</span><span id="__span-1-11"><a href="#__codelineno-1-11" id="__codelineno-1-11" name="__codelineno-1-11"></a>
+</span><span id="__span-1-12"><a href="#__codelineno-1-12" id="__codelineno-1-12" name="__codelineno-1-12"></a><span class="w"> </span>MEMORY {
+</span><span id="__span-1-13"><a href="#__codelineno-1-13" id="__codelineno-1-13" name="__codelineno-1-13"></a><span class="w"> </span>    ram  (wxa!ri): ORIGIN = PHY_START + OPENSBI_SIZE, LENGTH = PHY_SIZE - OPENSBI_SIZE
+</span><span id="__span-1-14"><a href="#__codelineno-1-14" id="__codelineno-1-14" name="__codelineno-1-14"></a><span class="gi">+    ramv (wxa!ri): ORIGIN = VM_DIRECT_START + OPENSBI_SIZE, LENGTH = PHY_SIZE - OPENSBI_SIZE</span>
+</span><span id="__span-1-15"><a href="#__codelineno-1-15" id="__codelineno-1-15" name="__codelineno-1-15"></a><span class="w"> </span>}
+</span><span id="__span-1-16"><a href="#__codelineno-1-16" id="__codelineno-1-16" name="__codelineno-1-16"></a>
+</span><span id="__span-1-17"><a href="#__codelineno-1-17" id="__codelineno-1-17" name="__codelineno-1-17"></a><span class="gd">-BASE_ADDR = PHY_START + OPENSBI_SIZE;</span>
+</span><span id="__span-1-18"><a href="#__codelineno-1-18" id="__codelineno-1-18" name="__codelineno-1-18"></a><span class="gi">+BASE_ADDR = VM_DIRECT_START + OPENSBI_SIZE;</span>
+</span><span id="__span-1-19"><a href="#__codelineno-1-19" id="__codelineno-1-19" name="__codelineno-1-19"></a>
+</span><span id="__span-1-20"><a href="#__codelineno-1-20" id="__codelineno-1-20" name="__codelineno-1-20"></a><span class="w"> </span>SECTIONS
+</span><span id="__span-1-21"><a href="#__codelineno-1-21" id="__codelineno-1-21" name="__codelineno-1-21"></a><span class="w"> </span>{
+</span><span id="__span-1-22"><a href="#__codelineno-1-22" id="__codelineno-1-22" name="__codelineno-1-22"></a><span class="gu">@@ -28,7 +31,7 @@ SECTIONS</span>
+</span><span id="__span-1-23"><a href="#__codelineno-1-23" id="__codelineno-1-23" name="__codelineno-1-23"></a><span class="w"> </span>        *(.text .text.*)
+</span><span id="__span-1-24"><a href="#__codelineno-1-24" id="__codelineno-1-24" name="__codelineno-1-24"></a>
+</span><span id="__span-1-25"><a href="#__codelineno-1-25" id="__codelineno-1-25" name="__codelineno-1-25"></a><span class="w"> </span>        _etext = .;
+</span><span id="__span-1-26"><a href="#__codelineno-1-26" id="__codelineno-1-26" name="__codelineno-1-26"></a><span class="gd">-    } AT&gt;ram</span>
+</span><span id="__span-1-27"><a href="#__codelineno-1-27" id="__codelineno-1-27" name="__codelineno-1-27"></a><span class="gi">+    } &gt;ramv AT&gt;ram</span>
+</span><span id="__span-1-28"><a href="#__codelineno-1-28" id="__codelineno-1-28" name="__codelineno-1-28"></a>
+</span><span id="__span-1-29"><a href="#__codelineno-1-29" id="__codelineno-1-29" name="__codelineno-1-29"></a><span class="w"> </span>    .rodata : ALIGN(0x1000) {
+</span><span id="__span-1-30"><a href="#__codelineno-1-30" id="__codelineno-1-30" name="__codelineno-1-30"></a><span class="w"> </span>        _srodata = .;
+</span></code></pre></div>
+<p>请编译内核，并观察上述修改引起的变化：</p>
+<ul>
+<li>
+<p><strong>修改</strong>：<code>BASE_ADDR</code> 从物理地址 <code>0x80000000</code> 变为虚拟地址 <code>0xffffffd600000000</code>。</p>
+<p><strong>变化</strong>：打开 <code>System.map</code>，看看内核符号们的地址发生了什么变化？</p>
+<p>所有符号的地址都从原来的 <code>0x80000000</code> 开头变为 <code>0xffffffd600000000</code> 开头。Part 2 内存布局一节会解释为什么选择这个地址。</p>
+</li>
+<li>
+<p><strong>修改</strong>：各 Section 的地址发生了变化，相关的链接器脚本语法见 <a href="https://sourceware.org/binutils/docs/ld.html#Output-Section-LMA-1">3.6.8.2 Output Section LMA - LD</a>。</p>
+<blockquote>
+<p>Every section has a virtual address (VMA) and a load address (LMA); see Basic Linker Script Concepts. The virtual address is specified by the see Output Section Address described earlier. The load address is specified by the AT or AT&gt; keywords. Specifying a load address is optional.</p>
+<p>The AT keyword takes an expression as an argument. This specifies the exact load address of the section. The AT&gt; keyword takes the name of a memory region as an argument. See MEMORY Command. The load address of the section is set to the next free address in the region, aligned to the section’s alignment requirements.</p>
+</blockquote>
+<p><strong>变化</strong>：链接器在执行符号解析、重定位等链接操作时，现在会使用 VMA 地址（虚拟地址），而在生成最终的内核镜像时，仍然使用的是 LMA 地址（物理地址）。</p>
+<p>注意到链接器脚本中的每个段后都有 <code>AT&gt;ram</code>，这保证了内核镜像仍然会被加载到 <code>0x80200000</code> 开始的物理内存中。</p>
+<div class="admonition example">
+<p class="admonition-title">动手做：验证内核加载的仍是物理地址</p>
+<p>动手调试一下刚编译的内核：</p>
+<ul>
+<li>在 <code>0x80200000</code> 处打断点，让 GDB 运行到断点处停下来；</li>
+<li>你会发现 GDB 现在没法解析源码位置（比如断点处停下来的时候显示 <code>0x80200000 in ??()</code>）。这是因为 GDB 是根据符号的位置来推算当前位于哪个函数的，现在所有符号都变成了虚拟地址，它现在找不到 <code>0x80200000</code> 对应哪个函数；</li>
+<li>使用 GDB 或 QEMU Monitor，将从 <code>0x80200000</code> 开始的内存打印为指令，与 <code>vmlinux.asm</code> 中的反汇编结果对比，它们是否一致？</li>
+</ul>
+</div>
+</li>
+</ul>
+<h3 id="寻址方式">寻址方式<a class="headerlink" href="#寻址方式" title="Permanent link">¶</a></h3>
+<p>在刚才的动手做中，你应该发现了结果存在一些不一致。这里以 <code>mm_init()</code> 函数的调用为例：</p>
+<div class="language-text highlight"><span class="filename">vmlinux.asm 中的反汇编结果</span><pre><span></span><code><span id="__span-2-1"><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a>    call mm_init
+</span><span id="__span-2-2"><a href="#__codelineno-2-2" id="__codelineno-2-2" name="__codelineno-2-2"></a>ffffffd600200018: 3f9000ef           jal ffffffd600200c10 &lt;mm_init&gt;
+</span></code></pre></div>
+<div class="language-text highlight"><span class="filename">GDB 中的反汇编结果</span><pre><span></span><code><span id="__span-3-1"><a href="#__codelineno-3-1" id="__codelineno-3-1" name="__codelineno-3-1"></a>(gdb) x/10i 0x80200018
+</span><span id="__span-3-2"><a href="#__codelineno-3-2" id="__codelineno-3-2" name="__codelineno-3-2"></a>   0x80200018:  jal     0x80200c10
+</span><span id="__span-3-3"><a href="#__codelineno-3-3" id="__codelineno-3-3" name="__codelineno-3-3"></a>(gdb) x/10xw 0x80200018
+</span><span id="__span-3-4"><a href="#__codelineno-3-4" id="__codelineno-3-4" name="__codelineno-3-4"></a>0x80200018:     0x3f9000ef
+</span></code></pre></div>
+<p><code>objdump</code> 反汇编结果显示 <code>jal</code> 指令跳转到 <code>0xffffffd600200c10</code>，而 GDB 显示跳转到 <code>0x80200c10</code>。但是，两边的机器码都是 <code>0x3f9000ef</code>，说明它们实际上是同一条指令。你能解释这是为什么吗？</p>
+<div class="admonition example">
+<p class="admonition-title">动手做：解释同一条指令的不同翻译结果</p>
+<p>提示：</p>
+<ul>
+<li>把机器码（用你自己的机器码，和文档不一定相同）输入到 <a href="https://luplab.gitlab.io/rvcodecjs/">rvcodec.js · RISC-V Instruction Encoder/Decoder</a> 中，看看解码出来是什么。</li>
+<li><code>jal</code> 指令的寻址方式是什么？</li>
+<li>在 <code>vmlinux.asm</code> 和 GDB 中，<strong>当前指令地址（PC）</strong>分别是什么？你能算算跳转目标地址是否和翻译结果一致吗？</li>
+</ul>
+</div>
+<p>再看看其他指令。在 Lab1 中我们设置了栈，一般是通过 <code>la</code> 某个符号地址实现的，看看看它翻译成了什么：</p>
+<div class="language-text highlight"><span class="filename">vmlinux.asm 中的反汇编结果</span><pre><span></span><code><span id="__span-4-1"><a href="#__codelineno-4-1" id="__codelineno-4-1" name="__codelineno-4-1"></a>    /* Lab1 Task1 */
+</span><span id="__span-4-2"><a href="#__codelineno-4-2" id="__codelineno-4-2" name="__codelineno-4-2"></a>    # need to setup sp for C function
+</span><span id="__span-4-3"><a href="#__codelineno-4-3" id="__codelineno-4-3" name="__codelineno-4-3"></a>    # s0 is callee-saved, so we can use it as a temporary register
+</span><span id="__span-4-4"><a href="#__codelineno-4-4" id="__codelineno-4-4" name="__codelineno-4-4"></a>    la sp, _estack
+</span><span id="__span-4-5"><a href="#__codelineno-4-5" id="__codelineno-4-5" name="__codelineno-4-5"></a>ffffffd600200004: 00009117           auipc sp,0x9
+</span><span id="__span-4-6"><a href="#__codelineno-4-6" id="__codelineno-4-6" name="__codelineno-4-6"></a>ffffffd600200008: ffc10113           addi sp,sp,-4 # ffffffd600209000 &lt;kthread_create_info_cache&gt;
+</span></code></pre></div>
+<p>通过上述探究，同学们应该能想起《计算机组成》课上学习过的 RISC-V 寻址方式：</p>
+<figure>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab3.assets/addressing_modes.webp"><img alt="addressing_modes" src="../lab3.assets/addressing_modes.webp"/></a>
+<figcaption>
+    RISC-V 的寻址方式<br/>
+<small>图片来源：《计算机组成》课程 PPT</small>
+</figcaption>
+</figure>
+<p>现在我们知道，链接器在解析函数、全局变量等符号时，使用的都是 PC 相对寻址。记住这一点，它为下文的重定位奠定了基础。</p>
+<h3 id="虚拟与物理地址的转换">虚拟与物理地址的转换<a class="headerlink" href="#虚拟与物理地址的转换" title="Permanent link">¶</a></h3>
+<p>需要注意的是，有些地方仍然使用物理地址。例如：</p>
+<ul>
+<li><code>sbi_debug_console_write()</code> 函数仍然接收物理地址参数</li>
+<li>Buddy System 仍然使用物理页帧（PFN）管理内存</li>
+<li>下文学习的 SATP、PTE 中的 PPN 也是物理页号</li>
+</ul>
+<p>这些位置使用 <code>VA2PA</code>、<code>PA2VA</code> 等宏进行转换。在合并、编写代码时，请务必区分清楚虚拟地址与物理地址，避免混淆。</p>
+<h2 id="part-2构造-sv39-页表">Part 2：构造 Sv39 页表<a class="headerlink" href="#part-2构造-sv39-页表" title="Permanent link">¶</a></h2>
+<h3 id="risc-v-sv39-规范阅读">RISC-V Sv39 规范阅读<a class="headerlink" href="#risc-v-sv39-规范阅读" title="Permanent link">¶</a></h3>
+<p>本节要求同学们<strong>完整阅读</strong>特权级手册中的以下三节：</p>
+<ul>
+<li><a href="https://zju-os.github.io/doc/spec/riscv-privileged.html#satp">12.1.11. Supervisor Address Translation and Protection (satp) Register</a></li>
+<li><a href="https://zju-os.github.io/doc/spec/riscv-privileged.html#sv32">12.3. Sv32: Page-Based 32-bit Virtual-Memory Systems</a></li>
+<li><a href="https://zju-os.github.io/doc/spec/riscv-privileged.html#sv39">12.4. Sv39: Page-Based 39-bit Virtual-Memory System</a></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">不可跳过规范阅读</p>
+<p>Sv39 是分页机制的核心，<strong>历年考试几乎必考</strong>。不读标准，你会在位宽、权限位、翻译流程上出现理解偏差。请务必认真通读并结合图表理解。</p>
+</div>
+<p>导读：</p>
+<ul>
+<li>阅读目标是掌握 RISC-V 的<strong>虚拟地址结构、页表层级与翻译算法</strong>。阅读 <strong>Sv32 了解机制</strong>，阅读 <strong>Sv39 明确差异</strong>。</li>
+<li><strong>Sv32</strong> 是给 32 位系统设计的，它详细描述了地址翻译的全过程，是学习流程的<strong>模板</strong>。</li>
+<li>
+<p><strong>Sv39</strong> 面向 64 位系统，只在 Sv32 的基础上说明有何不同，例如：</p>
+<ul>
+<li>页表层级从 2 级变为 3 级；</li>
+<li>虚拟地址长度从 32 位变为 39 位；</li>
+<li>页表项（PTE）扩展为 8 字节；</li>
+<li>支持 2 MiB、1 GiB 的大页（megapage/gigapage）。</li>
+</ul>
+</li>
+<li>
+<p><code>satp</code> 是一个 <strong>CSR 寄存器</strong>，用于控制 S 模式下的地址转换和保护。其中保存了地址转换模式、根页表的物理页号（PPN）等关键信息。</p>
+</li>
+<li><strong>ASID</strong> 相关的内容跳过即可。</li>
+</ul>
+<p>阅读过程中画图是一个很好的习惯。下面这些图来自 <a href="https://vlsi.jp/UnderstandMMU.html">RISC-V Sv32,Sv39 を理解する</a>，有助于同学们理解 Sv32/Sv39 的各种页类型与地址转换流程：</p>
+<figure>
+<div style="display:flex; gap:8px; align-items:flex-start;">
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab3.assets/Sv32_Translation.webp"><img alt="Sv32 地址转换流程" loading="lazy" src="../lab3.assets/Sv32_Translation.webp"/></a>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab3.assets/Sv32_Megapage.webp"><img alt="Sv32 2MiB 大页示意" loading="lazy" src="../lab3.assets/Sv32_Megapage.webp"/></a>
+</div>
+<figcaption>
+    Sv32 地址转换与 2MiB 大页<br/>
+<small><a href="https://vlsi.jp/UnderstandMMU.html">RISC-V Sv32,Sv39 を理解する</a>
+</small>
+</figcaption>
+</figure>
+<figure>
+<div style="display:flex; gap:8px; align-items:flex-start;">
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab3.assets/Sv39_Translation.webp"><img alt="Sv39 地址转换流程" loading="lazy" src="../lab3.assets/Sv39_Translation.webp"/></a>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab3.assets/Sv39_Megapage.webp"><img alt="Sv39 2MiB 大页示意" loading="lazy" src="../lab3.assets/Sv39_Megapage.webp"/></a>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab3.assets/Sv39_Gigapage.webp"><img alt="Sv39 1GiB 大页示意" loading="lazy" src="../lab3.assets/Sv39_Gigapage.webp"/></a>
+</div>
+<figcaption>
+        Sv39 地址转换与 2MiB、1GiB 大页<br/>
+<small><a href="https://vlsi.jp/UnderstandMMU.html">RISC-V Sv32,Sv39 を理解する</a></small>
+</figcaption>
+</figure>
+<details class="note">
+<summary>要点：Sv39 分页虚拟内存系统</summary>
+<table>
+<thead>
+<tr>
+<th>类别</th>
+<th>关键要点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>地址结构</strong></td>
+<td>Sv39 虚拟地址 39 位：VPN[2:0] 各 9 位，页内偏移 12 位。<br/>CPU 访问时检查符号扩展：bit 63–39 必须与 bit 38 相同。</td>
+</tr>
+<tr>
+<td><strong>页表结构</strong></td>
+<td>三级页表，每层 512 项、每项 8 B。<br/>页表页大小 4 KiB；根页物理基址在 <code>satp.PPN</code>。</td>
+</tr>
+<tr>
+<td><strong>页表项（PTE）格式</strong></td>
+<td>低 10 位含 V/R/W/X/U/G/A/D；其余为 PPN。<br/>R=0 且 W=1 非法；A/D 由硬件在访问时更新。</td>
+</tr>
+<tr>
+<td><strong>树形结构</strong></td>
+<td>叶子表项：R/W/X 任一为 1。<br/>中间表项：V=1 且 R/W/X=0。</td>
+</tr>
+<tr>
+<td><strong>权限控制</strong></td>
+<td>V：有效位。<br/>R/W/X：读/写/执行许可。<br/>U：用户可访问。<br/>G：全局映射。<br/>A/D：访问/修改标记。<br/>非法组合会触发页错误。</td>
+</tr>
+<tr>
+<td><strong>地址转换流程</strong></td>
+<td>自 <code>satp.PPN</code> 逐级索引：VPN[2] → VPN[1] → VPN[0]。<br/>遇叶子即停止；无效/越权/未对齐触发页错误。</td>
+</tr>
+<tr>
+<td><strong>关键寄存器</strong></td>
+<td><code>satp.MODE</code>=8：Sv39。<br/><code>satp.ASID</code>：区分地址空间。</td>
+</tr>
+<tr>
+<td><strong>关键指令</strong></td>
+<td><code>sfence.vma</code>：刷新 TLB，避免旧映射。</td>
+</tr>
+<tr>
+<td><strong>访存行为控制</strong></td>
+<td><code>sstatus.SUM</code>：允许内核访问 U=1 页。<br/><code>sstatus.MXR</code>：允许从可执行页读。</td>
+</tr>
+</tbody>
+</table>
+</details>
+<h3 id="内存屏障与-tlb缓存刷新">内存屏障与 TLB、缓存刷新<a class="headerlink" href="#内存屏障与-tlb缓存刷新" title="Permanent link">¶</a></h3>
+<p>刚才阅读的章节末尾有这么一段话：</p>
+<blockquote>
+<p>Note that writing satp does not imply any ordering constraints between page-table updates and subsequent address translations, nor does it imply any invalidation of address-translation caches. If the new address space’s page tables have been modified, or if an ASID is reused, it may be necessary to execute an SFENCE.VMA instruction (see Section 12.2.1) after, or in some cases before, writing satp.</p>
+</blockquote>
+<p>本节就来看看 <code>sfence.vma</code>。请同学们阅读特权级手册的 <a href="https://zju-os.github.io/doc/spec/riscv-privileged.html#sfence.vma">12.2.1. Supervisor Memory-Management Fence Instruction</a> 一节。阅读时，你需要回忆<strong>《计算机组成》中学习的 TLB、《计算机体系结构》中学习的缓存一致性</strong>等相关知识。</p>
+<p>导读：</p>
+<ul>
+<li>
+<blockquote>
+<p>The supervisor memory-management fence instruction SFENCE.VMA is used to synchronize updates to in-memory memory-management data structures with current execution. Instruction execution causes implicit reads and writes to these data structures; however, these implicit references are ordinarily not ordered with respect to explicit loads and stores.</p>
+</blockquote>
+<p>这里的 in-memory memory-management data structures 指的就是<strong>放在内存中的页表</strong>。</p>
+</li>
+<li>
+<blockquote>
+<p>The SFENCE.VMA is used to flush any local hardware caches related to address translation. It is specified as a fence rather than a TLB flush to provide cleaner semantics with respect to which instructions are affected by the flush operation and to support a wider variety of dynamic caching structures and memory-management schemes. SFENCE.VMA is also used by higher privilege levels to synchronize page table writes and the address translation hardware.</p>
+</blockquote>
+<p>这里解释了 <code>sfence.vma</code> 为什么被设计成内存屏障（fence）而不是简单的 TLB 刷新指令。《计算机体系结构》课上我们学习了 CPU 在 L1 会有 i Cache 和 d Cache，这同样涉及虚拟内存。<code>sfence.vma</code> 的语义更宽泛，能够<strong>涵盖所有与地址转换相关的缓存结构</strong>。</p>
+</li>
+<li>
+<blockquote>
+<p>Changes to the sstatus fields SUM and MXR take effect immediately, without the need to execute an SFENCE.VMA instruction. Changing satp.MODE from Bare to other modes and vice versa also takes effect immediately, without the need to execute an SFENCE.VMA instruction. Likewise, changes to satp.ASID take effect immediately.</p>
+</blockquote>
+<p>这里说明了首次启用分页机制时，不需要 <code>sfence.vma</code>。但是，如果页表发生变化，或者 ASID 被重用，就需要执行 <code>sfence.vma</code>。</p>
+</li>
+<li>
+<p>该节剩余的部分涉及《计算机体系结构》中的内存一致性模型（RVWMO，对应体系结构课上学习的 Weak Ordering）。内存一致性在体系结构中也算比较难的内容，这里就不展开了。感兴趣的同学可以自行阅读，在报告中讲讲你读完后觉得 <code>sfence.vma</code> 有什么有意思的地方。这里提供一篇参考资料：<a href="https://zhuanlan.zhihu.com/p/677678235">细说 RVWMO：RISC-V 指令集手册 Appendix A（一） - 知乎</a>。</p>
+<p></p><figure markdown="span">
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab3.assets/memory_model.webp"><img alt="memory_model" src="../lab3.assets/memory_model.webp"/></a>
+<figcaption>
+    内存一致性模型概览<br/>
+<small>图片来源：《计算机体系结构》课程 PPT
+    </small>
+</figcaption>
+</figure><p></p>
+</li>
+</ul>
+<h3 id="内核内存布局">内核内存布局<a class="headerlink" href="#内核内存布局" title="Permanent link">¶</a></h3>
+<p>RISC-V 架构下的 Linux 内核的内存布局见 <a href="https://docs.kernel.org/arch/riscv/vm-layout.html">Virtual Memory Layout on RISC-V Linux — The Linux Kernel documentation</a>。我们采取简化的模型。</p>
+<ul>
+<li>
+<p><strong>内核与用户空间：</strong></p>
+<p>同学们已经了解到，Sv39 分页式虚拟内存系统中，64b 的虚拟地址实际有效的只有 39b，其余高位必须与 bit 38 保持符号扩展一致。这意味着整个 <span class="arithmatex">\(2^{64}\text{B}\)</span> 的地址空间被划分为两个对称的区域：</p>
+<ul>
+<li><strong>用户空间</strong>：<code>0x0000000000000000</code> ~ <code>0x0000003fffffffff</code>（低地址半区）</li>
+<li>无效地址：多达 16M TB。</li>
+<li><strong>内核空间</strong>：<code>0xffffffc000000000</code> ~ <code>0xffffffffffffffff</code>（高地址半区）</li>
+</ul>
+<p>在本实验中，我们只实现内核空间的映射，用户空间的映射将在 Lab4 实现。</p>
+</li>
+<li>
+<p><strong>内核空间：</strong></p>
+<p>Linux 的内核空间布局较为复杂，包含设备 I/O、内核堆栈等区域，我们全部弃用。本实验只实现直接映射，也就是将 Lab2 中介绍的从 <code>0x80000000</code> 开始的物理内存全部映射到 <code>0xffffffd600000000</code> 开始的虚拟地址空间。</p>
+</li>
+</ul>
+<h3 id="重定位">重定位<a class="headerlink" href="#重定位" title="Permanent link">¶</a></h3>
+<p>内核启动初期运行在物理地址上，它要怎么切换到虚拟地址空间呢？</p>
+<p>最重要的问题是 PC 要从物理地址跳转到虚拟地址。回忆目前为止学习的所有 RISC-V 知识，有哪些地方可以修改 PC？</p>
+<ul>
+<li>跳转：<code>jal</code>、<code>jalr</code>、<code>ret</code> 指令（本质上是 <code>jalr</code>）</li>
+<li>Trap：陷入、xRET 返回</li>
+</ul>
+<p>Linux 选择了通过 Trap 实现，留给同学们探究。这里介绍一下通过跳转实现重定位的思路：</p>
+<ul>
+<li>写一个汇编函数 <code>relocate()</code></li>
+<li>在其中给<strong>某些寄存器</strong>加上偏移量 <code>PA2VA_OFFSET</code></li>
+<li><code>ret</code> 返回，PC 和<strong>某些寄存器</strong>就完成了重定位，切换到了虚拟地址</li>
+<li>因为函数、全局变量都是 PC 相对寻址的，所以整个内核镜像都完成了重定位</li>
+</ul>
+<p>这里的<strong>某些寄存器</strong>请同学们自己思考。</p>
+<div class="admonition example">
+<p class="admonition-title">动手做：中断实现重定位</p>
+<p>阅读 Linux 内核源码 <a href="https://github.com/torvalds/linux/blob/master/arch/riscv/kernel/head.S"><code>arch/riscv/kernel/head.S</code></a> 的 <code>relocate_enable_mmu()</code> 函数，解释它是怎么实现重定位的。</p>
+<p>完成 Task 1 后，请你分析这两种重定位方式是否都需要恒等映射？为什么？</p>
+</div>
+<h3 id="task-1大页表双重映射和重定位">Task 1：大页表双重映射和重定位<a class="headerlink" href="#task-1大页表双重映射和重定位" title="Permanent link">¶</a></h3>
+<div class="admonition tip">
+<p class="admonition-title">术语：映射</p>
+<p><strong>映射（mapping）</strong>：将虚拟地址空间的一段连续区域对应到物理地址空间的一段连续区域的过程。</p>
+<p>在 RISC-V 中，映射是通过页表实现的。页表将虚拟地址转换为物理地址，并提供权限控制。</p>
+<p>所以，当我们说“建立映射”时，实际上是指<strong>在页表中创建相应的页表项（PTE）</strong>，以实现虚拟地址到物理地址的转换。</p>
+</div>
+<p><code>setup_vm()</code> 用于构造内核启动初期的页表 <code>early_pg_dir</code>。这是一个仅有 Gigapage 的 Sv39 页表，其中包含两个映射关系：</p>
+<ul>
+<li>映射大小：物理内存有多少，就映射多大。QEMU 默认分配 128 MiB 内存，可以通过 <code>-m</code> 参数调整。下文以 128 MiB 为例。</li>
+<li>恒等映射：虚拟地址 <code>0x80000000~0x88000000</code> 映射到物理地址 <code>0x80000000~0x88000000</code>。</li>
+<li>内核映射：虚拟地址 <code>0xffffffd600000000~0xffffffd608000000</code> 映射到物理地址 <code>0x80000000~0x88000000</code>。</li>
+</ul>
+<figure>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab3.assets/early_page_table.drawio"><div class="mxgraph" data-mxgraph='{"toolbar-position": "bottom", "toolbar-nohide": "0", "tooltips": "1", "border": 5, "resize": "1", "edit": "_blank", "lightbox": "1", "toolbar": "pages tags zoom layers lightbox", "xml": "&lt;mxfile host=\"65bd71144e\"&gt;\n    &lt;diagram id=\"_L1n2iBKLJYxsJgJ_c-A\" name=\"Page-1\"&gt;\n        &lt;mxGraphModel dx=\"719\" dy=\"456\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"1\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"850\" pageHeight=\"1100\" math=\"0\" shadow=\"0\"&gt;\n            &lt;root&gt;\n                &lt;mxCell id=\"0\"/&gt;\n                &lt;mxCell id=\"1\" parent=\"0\"/&gt;\n                &lt;mxCell id=\"2\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"305\" y=\"50\" width=\"185\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"3\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"630\" y=\"50\" width=\"185\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"4\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=#fff2cc;strokeColor=#d6b656;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"490\" y=\"50\" width=\"140\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"5\" value=\"VA\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#D79B00;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"220\" y=\"45\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"6\" value=\"PA\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#6C8EBF;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"220\" y=\"120\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"7\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"305\" y=\"125\" width=\"185\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"9\" value=\"\" style=\"endArrow=none;html=1;entryX=0;entryY=1;entryDx=0;entryDy=0;exitX=0;exitY=0;exitDx=0;exitDy=0;startArrow=classic;startFill=1;\" parent=\"1\" source=\"7\" target=\"2\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"390\" y=\"290\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"440\" y=\"240\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"10\" value=\"\" style=\"endArrow=none;html=1;entryX=0;entryY=1;entryDx=0;entryDy=0;exitX=1;exitY=0;exitDx=0;exitDy=0;startArrow=classic;startFill=1;\" parent=\"1\" source=\"7\" target=\"4\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"480\" y=\"145\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"480\" y=\"90\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"11\" value=\"\" style=\"endArrow=none;html=1;entryX=1;entryY=1;entryDx=0;entryDy=0;exitX=0;exitY=0;exitDx=0;exitDy=0;startArrow=classic;startFill=1;\" parent=\"1\" source=\"7\" target=\"4\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"500\" y=\"135\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"500\" y=\"80\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"12\" value=\"\" style=\"endArrow=none;html=1;entryX=1;entryY=1;entryDx=0;entryDy=0;exitX=1;exitY=0;exitDx=0;exitDy=0;startArrow=classic;startFill=1;\" parent=\"1\" source=\"7\" target=\"3\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"315\" y=\"135\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"640\" y=\"80\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"13\" value=\"0x80000000\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#D79B00;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"305\" y=\"25\" width=\"175\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"14\" value=\"\" style=\"endArrow=none;html=1;exitX=0;exitY=0;exitDx=0;exitDy=0;fillColor=#fff2cc;strokeColor=#d6b656;\" parent=\"1\" source=\"2\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"260\" y=\"90\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"305\" y=\"30\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"15\" value=\"0xffffffd600000000\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#D79B00;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"630\" y=\"25\" width=\"190\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"16\" value=\"\" style=\"endArrow=none;html=1;exitX=0;exitY=0;exitDx=0;exitDy=0;fillColor=#fff2cc;strokeColor=#d6b656;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"630\" y=\"50\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"630\" y=\"30\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"17\" value=\"0x80000000\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#6C8EBF;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"305\" y=\"140\" width=\"175\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"18\" value=\"\" style=\"endArrow=none;html=1;exitX=0;exitY=0;exitDx=0;exitDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"305\" y=\"165\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"305\" y=\"145\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n            &lt;/root&gt;\n        &lt;/mxGraphModel&gt;\n    &lt;/diagram&gt;\n&lt;/mxfile&gt;"}' style="max-width:100%;border:1px solid transparent;"></div></a>
+<figcaption>
+    early_pg_dir 的映射关系示意图
+    </figcaption>
+</figure>
+<p>你的任务是：</p>
+<ul>
+<li>
+<p>在 <code>setup_vm()</code> 中，完成对 <code>early_pg_dir</code> 的初始化，建立包含上述映射关系的大页表。页表项的各个位应当根据存放的内容和标准的要求设置。</p>
+<p>该函数的返回值是待写入 <code>satp</code> 寄存器的值，也就是说它可以这么用：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a href="#__codelineno-5-1" id="__codelineno-5-1" name="__codelineno-5-1"></a>call setup_vm
+</span><span id="__span-5-2"><a href="#__codelineno-5-2" id="__codelineno-5-2" name="__codelineno-5-2"></a>csrw satp, a0
+</span></code></pre></div>
+<p>选择让 <code>setup_vm()</code> 返回 <code>satp</code> 值，是因为在 C 语言中用运算符构造 <code>satp</code> 的值会比写汇编更方便一些。请同学们善用头文件中提供的宏 😉。</p>
+</li>
+<li>
+<p>在 <code>head.S</code> 中，调用 <code>setup_vm()</code>，然后用汇编开启 Sv39 分页虚拟内存。</p>
+</li>
+<li>在 <code>head.S</code> 中实现 <code>relocate()</code> 汇编函数，完成重定位。具体实现方式自由选择，跳转或模仿 Linux 的 Trap 方式都行。</li>
+</ul>
+<p>你需要想清楚下列问题：</p>
+<ul>
+<li>要映射的区域大小是多少？Gigapage 大页的大小是多少？你需要创建多少个页表项？</li>
+</ul>
+<div class="admonition success">
+<p class="admonition-title">完成条件</p>
+<ul>
+<li>开启虚拟内存后没有异常，内核和 Lab2 一样正常运行</li>
+<li>
+<p>写入 SATP 寄存器后，QEMU Monitor 能够正确执行下面的指令：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a href="#__codelineno-6-1" id="__codelineno-6-1" name="__codelineno-6-1"></a>(qemu) gva2gpa 0x80000000
+</span><span id="__span-6-2"><a href="#__codelineno-6-2" id="__codelineno-6-2" name="__codelineno-6-2"></a>gpa: 0x80000000
+</span><span id="__span-6-3"><a href="#__codelineno-6-3" id="__codelineno-6-3" name="__codelineno-6-3"></a>(qemu) gva2gpa 0xffffffd600000000
+</span><span id="__span-6-4"><a href="#__codelineno-6-4" id="__codelineno-6-4" name="__codelineno-6-4"></a>gpa: 0x80000000
+</span></code></pre></div>
+</li>
+<li>
+<p>通过 Lab3 Task1 测试</p>
+</li>
+</ul>
+</div>
+<h3 id="task-2多级页表">Task 2：多级页表<a class="headerlink" href="#task-2多级页表" title="Permanent link">¶</a></h3>
+<p>刚才实现的页表比较粗暴：</p>
+<ul>
+<li>用 Gigapage 粗粒度地映射了整片空间</li>
+<li>没有完全切换到虚拟地址空间，仍能通过恒等映射访问物理地址</li>
+</ul>
+<p>但通过刚才的简单页表，我们成功切换到了虚拟地址空间，现在 Buddy System 返回的内存就都是虚拟地址了。有了 Buddy System 的支持，我们就可以构造更精细的多级页表映射了。</p>
+<p>你的任务是：</p>
+<ul>
+<li>
+<p>补全 <code>setup_vm_final()</code></p>
+<p>该函数构造 Sv39 三级页表 <code>swapper_pg_dir</code>，并返回待写入 <code>satp</code> 寄存器的值。</p>
+<p>该页表需要为 <code>vmlinux.lds</code> 中定义的各个段建立映射关系，页表项的各个位应当根据存放的内容和标准的要求设置。</p>
+<ul>
+<li><code>.text</code>：代码</li>
+<li><code>.rodata</code>：只读数据</li>
+<li><code>.data</code>、<code>.bss</code> 和<strong>剩余的所有物理内存</strong>：读写数据</li>
+</ul>
+<p>注意最后一段映射要包括剩余的所有物理内存，它们要给 Buddy System 使用。</p>
+<p>要求该函数调用 <code>create_mapping()</code> 来完成具体的映射工作。</p>
+</li>
+<li>
+<p>补全 <code>create_mapping()</code></p>
+<p>该函数负责在给定的<strong>三级页表</strong>中，建立从 <code>pa</code> 到 <code>va</code> 的映射，长度为 <code>size</code> 字节，权限为 <code>perm</code>。</p>
+<p>该函数有非常多种实现方法：</p>
+<ul>
+<li>单层循环</li>
+<li>多层循环</li>
+<li>递归</li>
+</ul>
+<p>请自由发挥。</p>
+</li>
+<li>
+<p>在 <code>head.S</code> 中，调用 <code>setup_vm_final()</code>，然后用汇编切换到最终的页表 <code>swapper_pg_dir</code>。</p>
+</li>
+</ul>
+<div class="admonition success">
+<p class="admonition-title">完成条件</p>
+<ul>
+<li>开启虚拟内存后没有异常，内核和 Lab2 一样正常运行</li>
+<li>
+<p>写入 SATP 寄存器后，QEMU Monitor 能够正确执行下面的指令：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a href="#__codelineno-7-1" id="__codelineno-7-1" name="__codelineno-7-1"></a>(qemu) gva2gpa 0xffffffd600200000
+</span><span id="__span-7-2"><a href="#__codelineno-7-2" id="__codelineno-7-2" name="__codelineno-7-2"></a>gpa: 0x80200000
+</span></code></pre></div>
+</li>
+<li>
+<p>通过 Lab3 Task2 测试。</p>
+</li>
+</ul>
+</div>
+<h2 id="扩展阅读qemu-的-tlb-实现">扩展阅读：QEMU 的 TLB 实现<a class="headerlink" href="#扩展阅读qemu-的-tlb-实现" title="Permanent link">¶</a></h2>
+<p>本节我们研究一个问题：修改 <code>satp</code> 寄存器和 <code>sfence.vma</code> 这两个操作的先后顺序应该是怎样的？</p>
+<p>我们知道 <code>sfence.vma</code> 的一大作用是刷新 TLB 和缓存，以避免使用旧的地址映射，应该在写入 <code>satp</code> 之后执行。但是如果去看 Linux 的 <code>arch/riscv/kernel/head.S</code>，会发现它是在写入 <code>satp</code> 之前执行的：</p>
+<div class="language-text highlight"><span class="filename">arch/riscv/kernel/head.S</span><pre><span></span><code><span id="__span-8-1"><a href="#__codelineno-8-1" id="__codelineno-8-1" name="__codelineno-8-1"></a>    /*
+</span><span id="__span-8-2"><a href="#__codelineno-8-2" id="__codelineno-8-2" name="__codelineno-8-2"></a>     * Load trampoline page directory, which will cause us to trap to
+</span><span id="__span-8-3"><a href="#__codelineno-8-3" id="__codelineno-8-3" name="__codelineno-8-3"></a>     * stvec if VA != PA, or simply fall through if VA == PA.  We need a
+</span><span id="__span-8-4"><a href="#__codelineno-8-4" id="__codelineno-8-4" name="__codelineno-8-4"></a>     * full fence here because setup_vm() just wrote these PTEs and we need
+</span><span id="__span-8-5"><a href="#__codelineno-8-5" id="__codelineno-8-5" name="__codelineno-8-5"></a>     * to ensure the new translations are in use.
+</span><span id="__span-8-6"><a href="#__codelineno-8-6" id="__codelineno-8-6" name="__codelineno-8-6"></a>     */
+</span><span id="__span-8-7"><a href="#__codelineno-8-7" id="__codelineno-8-7" name="__codelineno-8-7"></a>    sfence.vma
+</span><span id="__span-8-8"><a href="#__codelineno-8-8" id="__codelineno-8-8" name="__codelineno-8-8"></a>    csrw CSR_SATP, a0
+</span></code></pre></div>
+<p>这是因为 Linux 采用 Trap 的方式完成重定位。理由已经在注释中说明了，这里主要是用它的<strong>内存屏障（fence）</strong>语义，确保在写入 <code>satp</code> 之后硬件能立刻看到内存中的页表，从而立刻触发 Trap 跳转到重定位代码。而刷新 TLB 和缓存并不是主要目的，因为这里是第一次开启 MMU，前文引用的 RISC-V 规范已经说明了这种情况（Bare 到其他模式）不需要 <code>sfence.vma</code>。</p>
+<p>除去这一特殊情况，一般 <code>sfence.vma</code> 都会放置在 <code>satp</code> 写入之后。<a href="https://github.com/riscv/riscv-isa-manual/issues/226">SFENCE.VMA Before or After SATP Write · Issue #226 · riscv/riscv-isa-manual</a> 对此进行了讨论：</p>
+<blockquote>
+<ul>
+<li>SFENCE <strong>before SATP may be necessary</strong>: The concern is, what if the mapping for the instruction immediately after SFENCE.VMA has been modified? In the Linux kernel, this mapping is fixed (regardless of address space) so the concern does not apply.</li>
+<li>SFENCE <strong>after SATP write is definitely necessary</strong>, though. In general, you need to SFENCE after you’ve recycled an ASID. Since we don’t use ASIDs in the Linux kernel yet, every context switch is effectively an ASID reuse, hence the full TLB flush.</li>
+</ul>
+</blockquote>
+<p>喜欢动手的同学可能还会尝试删去 <code>sfence.vma</code>，结果发现内核依然能正常运行。难道 QEMU 没有实现 TLB？我们可以设计一个小实验验证一下：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-9-1"><a href="#__codelineno-9-1" id="__codelineno-9-1" name="__codelineno-9-1"></a><span class="c1">// create old TLB entry</span>
+</span><span id="__span-9-2"><a href="#__codelineno-9-2" id="__codelineno-9-2" name="__codelineno-9-2"></a><span class="k">asm</span><span class="w"> </span><span class="k">volatile</span><span class="p">(</span><span class="s">"li t0, 0x80200000"</span><span class="p">);</span>
+</span><span id="__span-9-3"><a href="#__codelineno-9-3" id="__codelineno-9-3" name="__codelineno-9-3"></a><span class="k">asm</span><span class="w"> </span><span class="k">volatile</span><span class="p">(</span><span class="s">"ld t1, 0(t0)"</span><span class="p">);</span>
+</span><span id="__span-9-4"><a href="#__codelineno-9-4" id="__codelineno-9-4" name="__codelineno-9-4"></a><span class="c1">// set satp with swapper_pg_dir</span>
+</span><span id="__span-9-5"><a href="#__codelineno-9-5" id="__codelineno-9-5" name="__codelineno-9-5"></a><span class="k">asm</span><span class="w"> </span><span class="k">volatile</span><span class="p">(</span><span class="s">"csrw satp, %0"</span><span class="w"> </span><span class="o">::</span><span class="w"> </span><span class="s">"r"</span><span class="p">(</span><span class="n">new_satp_value</span><span class="p">));</span>
+</span><span id="__span-9-6"><a href="#__codelineno-9-6" id="__codelineno-9-6" name="__codelineno-9-6"></a><span class="c1">// try to hit old TLB entry</span>
+</span><span id="__span-9-7"><a href="#__codelineno-9-7" id="__codelineno-9-7" name="__codelineno-9-7"></a><span class="k">asm</span><span class="w"> </span><span class="k">volatile</span><span class="p">(</span><span class="s">"li t0, 0x80200000"</span><span class="p">);</span>
+</span><span id="__span-9-8"><a href="#__codelineno-9-8" id="__codelineno-9-8" name="__codelineno-9-8"></a><span class="k">asm</span><span class="w"> </span><span class="k">volatile</span><span class="p">(</span><span class="s">"ld t1, 0(t0)"</span><span class="p">);</span>
+</span></code></pre></div>
+<p>如果 QEMU 实现了 TLB，那么第二次 <code>ld</code> 指令应该会命中旧的 TLB 条目。但这条指令触发了 page fault，说明没有命中 TLB。</p>
+<p>QEMU 是开源的，所以我们可以直接读源码一探究竟。<a href="https://wangzhou.github.io/qemu-tlb%E5%AE%9E%E7%8E%B0%E5%88%86%E6%9E%90/">qemu tlb 实现分析 | Sherlock's blog</a> 是一篇很好的博客（作者还写了 QEMU 的其他部分分析），虽然相应的源码版本为 v5.0，但整体思路没有太大变化。我们找到 QEMU 处理 <code>satp</code> 写入部分的代码：</p>
+<div class="language-c highlight"><span class="filename">target/riscv/csr.c</span><pre><span></span><code><span id="__span-10-1"><a href="#__codelineno-10-1" id="__codelineno-10-1" name="__codelineno-10-1"></a><span class="k">static</span><span class="w"> </span><span class="n">target_ulong</span><span class="w"> </span><span class="nf">legalize_xatp</span><span class="p">(</span><span class="n">CPURISCVState</span><span class="w"> </span><span class="o">*</span><span class="n">env</span><span class="p">,</span><span class="w"> </span><span class="n">target_ulong</span><span class="w"> </span><span class="n">old_xatp</span><span class="p">,</span>
+</span><span id="__span-10-2"><a href="#__codelineno-10-2" id="__codelineno-10-2" name="__codelineno-10-2"></a><span class="w">                                  </span><span class="n">target_ulong</span><span class="w"> </span><span class="n">val</span><span class="p">)</span>
+</span><span id="__span-10-3"><a href="#__codelineno-10-3" id="__codelineno-10-3" name="__codelineno-10-3"></a><span class="p">{</span>
+</span><span id="__span-10-4"><a href="#__codelineno-10-4" id="__codelineno-10-4" name="__codelineno-10-4"></a><span class="w">    </span><span class="n">target_ulong</span><span class="w"> </span><span class="n">mask</span><span class="p">;</span>
+</span><span id="__span-10-5"><a href="#__codelineno-10-5" id="__codelineno-10-5" name="__codelineno-10-5"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">vm</span><span class="p">;</span>
+</span><span id="__span-10-6"><a href="#__codelineno-10-6" id="__codelineno-10-6" name="__codelineno-10-6"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">riscv_cpu_mxl</span><span class="p">(</span><span class="n">env</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">MXL_RV32</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-10-7"><a href="#__codelineno-10-7" id="__codelineno-10-7" name="__codelineno-10-7"></a><span class="w">        </span><span class="n">vm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">validate_vm</span><span class="p">(</span><span class="n">env</span><span class="p">,</span><span class="w"> </span><span class="n">get_field</span><span class="p">(</span><span class="n">val</span><span class="p">,</span><span class="w"> </span><span class="n">SATP32_MODE</span><span class="p">));</span>
+</span><span id="__span-10-8"><a href="#__codelineno-10-8" id="__codelineno-10-8" name="__codelineno-10-8"></a><span class="w">        </span><span class="n">mask</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">val</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="n">old_xatp</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">SATP32_MODE</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">SATP32_ASID</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">SATP32_PPN</span><span class="p">);</span>
+</span><span id="__span-10-9"><a href="#__codelineno-10-9" id="__codelineno-10-9" name="__codelineno-10-9"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-10-10"><a href="#__codelineno-10-10" id="__codelineno-10-10" name="__codelineno-10-10"></a><span class="w">        </span><span class="n">vm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">validate_vm</span><span class="p">(</span><span class="n">env</span><span class="p">,</span><span class="w"> </span><span class="n">get_field</span><span class="p">(</span><span class="n">val</span><span class="p">,</span><span class="w"> </span><span class="n">SATP64_MODE</span><span class="p">));</span>
+</span><span id="__span-10-11"><a href="#__codelineno-10-11" id="__codelineno-10-11" name="__codelineno-10-11"></a><span class="w">        </span><span class="n">mask</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">val</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="n">old_xatp</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">SATP64_MODE</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">SATP64_ASID</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">SATP64_PPN</span><span class="p">);</span>
+</span><span id="__span-10-12"><a href="#__codelineno-10-12" id="__codelineno-10-12" name="__codelineno-10-12"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-10-13"><a href="#__codelineno-10-13" id="__codelineno-10-13" name="__codelineno-10-13"></a>
+</span><span id="__span-10-14"><a href="#__codelineno-10-14" id="__codelineno-10-14" name="__codelineno-10-14"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">vm</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">mask</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-10-15"><a href="#__codelineno-10-15" id="__codelineno-10-15" name="__codelineno-10-15"></a><span class="w">        </span><span class="cm">/*</span>
+</span><span id="__span-10-16"><a href="#__codelineno-10-16" id="__codelineno-10-16" name="__codelineno-10-16"></a><span class="cm">         * The ISA defines SATP.MODE=Bare as "no translation", but we still</span>
+</span><span id="__span-10-17"><a href="#__codelineno-10-17" id="__codelineno-10-17" name="__codelineno-10-17"></a><span class="cm">         * pass these through QEMU's TLB emulation as it improves</span>
+</span><span id="__span-10-18"><a href="#__codelineno-10-18" id="__codelineno-10-18" name="__codelineno-10-18"></a><span class="cm">         * performance.  Flushing the TLB on SATP writes with paging</span>
+</span><span id="__span-10-19"><a href="#__codelineno-10-19" id="__codelineno-10-19" name="__codelineno-10-19"></a><span class="cm">         * enabled avoids leaking those invalid cached mappings.</span>
+</span><span id="__span-10-20"><a href="#__codelineno-10-20" id="__codelineno-10-20" name="__codelineno-10-20"></a><span class="cm">         */</span>
+</span><span id="__span-10-21"><a href="#__codelineno-10-21" id="__codelineno-10-21" name="__codelineno-10-21"></a><span class="w">        </span><span class="n">tlb_flush</span><span class="p">(</span><span class="n">env_cpu</span><span class="p">(</span><span class="n">env</span><span class="p">));</span>
+</span><span id="__span-10-22"><a href="#__codelineno-10-22" id="__codelineno-10-22" name="__codelineno-10-22"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">val</span><span class="p">;</span>
+</span><span id="__span-10-23"><a href="#__codelineno-10-23" id="__codelineno-10-23" name="__codelineno-10-23"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-10-24"><a href="#__codelineno-10-24" id="__codelineno-10-24" name="__codelineno-10-24"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">old_xatp</span><span class="p">;</span>
+</span><span id="__span-10-25"><a href="#__codelineno-10-25" id="__codelineno-10-25" name="__codelineno-10-25"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>QEMU 先验证待写入的值的合法性，如果合法，且和旧值不同，那么就调用 <code>tlb_flush()</code> 刷新 TLB。源码注释说明这是为了避免泄漏旧的映射。然而在真实的硬件实现中，并不会有这一保证，所以我们在实验中仍然需要 <code>sfence.vma</code>。</p>
+<aside class="md-source-file">
+<span class="md-source-file__fact">
+<span class="md-icon" title="Last update">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
+</span>
+<span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="2026年1月12日 09:47:39 UTC"><span class="timeago" datetime="2026-01-12T09:47:39+00:00" locale="zh"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="2026年1月12日 09:47:39 UTC">2026-01-12</span>
+</span>
+<span class="md-source-file__fact">
+<span class="md-icon" title="Created">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"></path></svg>
+</span>
+<span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="2025年10月21日 06:45:41 UTC"><span class="timeago" datetime="2025-10-21T06:45:41+00:00" locale="zh"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="2025年10月21日 06:45:41 UTC">2025-10-21</span>
+</span>
+<span class="md-source-file__fact">
+<span class="md-icon" title="Contributors">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"></path></svg>
+</span>
+<span>GitHub</span>
+<nav>
+<a class="md-author" href="https://github.com/bowling233" title="@bowling233">
+<img alt="bowling233" src="https://avatars.githubusercontent.com/u/35755846?v=4&amp;size=72"/>
+</a>
+</nav>
+</span>
+</aside>
+</article>
+</div>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+</div>
+<button class="md-top md-icon" data-md-component="top" hidden="" type="button">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+</main>
+<footer class="md-footer">
+<nav aria-label="Footer" class="md-footer__inner md-grid">
+<a aria-label="Previous: Lab 2：抢占式内核线程调度" class="md-footer__link md-footer__link--prev" href="../lab2/">
+<div class="md-footer__button md-icon">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</div>
+<div class="md-footer__title">
+<span class="md-footer__direction">
+                Previous
+              </span>
+<div class="md-ellipsis">
+                Lab 2：抢占式内核线程调度
+              </div>
+</div>
+</a>
+<a aria-label="Next: Lab 4：用户态" class="md-footer__link md-footer__link--next" href="../lab4/">
+<div class="md-footer__title">
+<span class="md-footer__direction">
+                Next
+              </span>
+<div class="md-ellipsis">
+                Lab 4：用户态
+              </div>
+</div>
+<div class="md-footer__button md-icon">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"></path></svg>
+</div>
+</a>
+</nav>
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+<div class="md-copyright__highlight">
+      浙江大学计算机科学与技术学院
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer", "navigation.sections", "navigation.expand", "navigation.indexes", "navigation.tracking", "navigation.path", "navigation.top", "toc.follow", "content.action.edit", "search.suggest", "search.highlight", "search.share"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+<script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+<script src="../js/timeago.min.js"></script>
+<script src="../js/timeago_mkdocs_material.js"></script>
+<script src="../javascripts/mathjax.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/polyfill/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax/es5/tex-mml-chtml.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tablesort/dist/tablesort.min.js"></script>
+<script src="../javascripts/tablesort.js"></script>
+<script src="../javascripts/mermaid.mjs" type="module"></script>
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script><script src="https://viewer.diagrams.net/js/viewer-static.min.js"></script></body></html>

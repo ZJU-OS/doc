@@ -1,0 +1,2885 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="浙江大学操作系统课程实验指导">
+      
+      
+        <meta name="author" content="浙江大学计算机科学与技术学院">
+      
+      
+        <link rel="canonical" href="https://zju-os.github.io/doc/bonusB/">
+      
+      
+        <link rel="prev" href="../bonusA/">
+      
+      
+        <link rel="next" href="../z1-spike/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/zjueagle.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Bonus B：多核处理器与调度算法 - ZJU OS</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../css/timeago.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+      <link rel="stylesheet" href="../stylesheets/counter.css">
+    
+      <link rel="stylesheet" href="../stylesheets/neoteroi-v1.1.2.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#bonus-b多核处理器与调度算法" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="ZJU OS" class="md-header__button md-logo" aria-label="ZJU OS" data-md-component="logo">
+      
+  <img src="../assets/zjueagle_white.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ZJU OS
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Bonus B：多核处理器与调度算法
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ZJU-OS/doc" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    ZJU-OS/doc
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="ZJU OS" class="md-nav__button md-logo" aria-label="ZJU OS" data-md-component="logo">
+      
+  <img src="../assets/zjueagle_white.svg" alt="logo">
+
+    </a>
+    ZJU OS
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ZJU-OS/doc" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    ZJU-OS/doc
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    首页
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    实验文档
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    实验文档
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    实验流程及工具讲解
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab 0: Linux 内核调试
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab 1：内核启动与时钟中断
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab 2：抢占式内核线程调度
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab 3：Sv39 分页式虚拟内存系统
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab 4：用户态
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab 5：缺页异常与 Fork 机制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bonusA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bonus A：FAT32 文件系统
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bonus B：多核处理器与调度算法
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bonus B：多核处理器与调度算法
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#实验简介" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验简介
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-0合并代码" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 0：合并代码
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 0：合并代码">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#更新代码" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        更新代码
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#percpu-数据结构" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PerCPU 数据结构
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-1多核启动过程" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1：多核启动过程
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1：多核启动过程">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#task-1唤醒其他核心" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 1：唤醒其他核心
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2多核调度" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2：多核调度
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2：多核调度">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-queue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Queue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#load-balance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Load Balance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-2实现多核负载均衡" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 2：实现多核负载均衡
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3多核同步方法" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3：多核同步方法
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3：多核同步方法">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#使用原子操作保护简单变量" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        使用原子操作保护简单变量
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#使用锁保护复杂数据结构" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        使用锁保护复杂数据结构
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-3识别并保护关键区" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 3：识别并保护关键区
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#预期实验结果" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        预期实验结果
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#调试建议" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        调试建议
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../z1-spike/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 1：Spike 工具链
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3">
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RISC-V 规范
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    RISC-V 规范
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-privileged.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    特权级规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-unprivileged.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    非特权级规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-abi.pdf" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ELF ABI 规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-sbi.pdf" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SBI 规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/riscv-asm.pdf" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    汇编规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://riscv-programming.org/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    汇编教程
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4">
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    工具文档
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    工具文档
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.qemu.org/docs/master/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QEMU
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sourceware.org/gdb/current/onlinedocs/gdb" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GDB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://gcc.gnu.org/onlinedocs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sourceware.org/binutils/docs/as" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    as
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sourceware.org/binutils/docs/ld" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ld
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sourceware.org/binutils/docs/binutils" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    binutils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5">
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    源码仓库
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    源码仓库
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_1">
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross Referencer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cross Referencer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://elixir.bootlin.com/linux" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linux
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://elixir.bootlin.com/musl/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    musl
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://elixir.bootlin.com/opensbi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenSBI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://elixir.bootlin.com/qemu/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QEMU
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2">
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    官方/GitHub
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    官方/GitHub
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/torvalds/linux" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linux
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://git.musl-libc.org/cgit/musl" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    musl
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/riscv-software-src/opensbi" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenSBI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/qemu/qemu/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QEMU
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6">
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    助教文档
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    助教文档
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/autograder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    评测框架
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/dev/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    源代码管理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/tool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    辅助工具
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_4">
+        
+          
+          <label class="md-nav__link" for="__nav_6_4" id="__nav_6_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    blog
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    blog
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/blog/1.pid0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    操作系统小记（一）：从 PID 0 开始
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/blog/2.sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    操作系统小记（二）：内核同步方法
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/blog/3.stack_unwind/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    操作系统小记（三）：函数序言、调试器断点与堆栈回溯
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ta/blog/4.board/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    操作系统小记（四）：内核上板历险记
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#实验简介" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验简介
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-0合并代码" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 0：合并代码
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 0：合并代码">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#更新代码" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        更新代码
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#percpu-数据结构" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PerCPU 数据结构
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-1多核启动过程" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1：多核启动过程
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1：多核启动过程">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#task-1唤醒其他核心" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 1：唤醒其他核心
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2多核调度" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2：多核调度
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2：多核调度">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-queue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Queue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#load-balance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Load Balance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-2实现多核负载均衡" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 2：实现多核负载均衡
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3多核同步方法" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3：多核同步方法
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3：多核同步方法">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#使用原子操作保护简单变量" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        使用原子操作保护简单变量
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#使用锁保护复杂数据结构" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        使用锁保护复杂数据结构
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-3识别并保护关键区" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 3：识别并保护关键区
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#预期实验结果" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        预期实验结果
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#调试建议" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        调试建议
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation">
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href=".." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    首页
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../manual/" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    实验文档
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/ZJU-OS/doc/blob/main/docs/bonusB.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
+    </a>
+  
+  
+
+
+<h1 id="bonus-b多核处理器与调度算法">Bonus B：多核处理器与调度算法<a class="headerlink" href="#bonus-b多核处理器与调度算法" title="Permanent link">¶</a></h1><p style="color:#bdbdbd"><i>Estimated time to read: 5 minutes</i></p>
+
+<div class="admonition danger">
+<p class="admonition-title">DDL</p>
+<ul>
+<li>代码、报告：2026-01-10 23:59</li>
+<li>验收：无</li>
+</ul>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">本次实验供同学们自由发挥：没有自动评测，提供的代码不多，描述也比较简略。</p>
+</div>
+<h2 id="实验简介">实验简介<a class="headerlink" href="#实验简介" title="Permanent link">¶</a></h2>
+<p>在此前的实验中，我们的处理器只有一个核心。这种情况下的并发不是真并发，每个时刻系统中仍只有一个进程在运行。</p>
+<p>当处理器拥有多个核心，软、硬件要考虑的事情就变得十分复杂。我们已经在《计算机体系结构》课程中体会过这种复杂性：</p>
+<ul>
+<li>缓存一致性：使用侦听或目录协议保证多核系统的 Cache 与主存保持一致</li>
+<li>内存一致性：不同模型下，核心之间的读写操作可见性不同</li>
+</ul>
+<p>好在 QEMU 帮我们处理了这些硬件部分的内容，我们的操作系统在不同核心上看到的内存是一致的。</p>
+<p>本次实验让我们来考虑软件部分：</p>
+<ol>
+<li>
+<p>多个核心要如何启动？</p>
+<p>多核启动时，OpenSBI 会选择一个核心作为启动核心，其余核心则暂时不启动，可以通过 SBI 调用唤起。我们将思考：</p>
+<ul>
+<li>启动过程的哪些工作应当在唤起其他核心前完成？</li>
+<li>唤起其他核心时，它们应当执行什么代码？</li>
+</ul>
+</li>
+<li>
+<p>如何在多个核心上调度进程？</p>
+<p>将进程分配到不同核心上执行，才能实现真并发。我们将思考：</p>
+<ul>
+<li>如何设计调度算法，能够将进程自动分配到合适的核心上运行？</li>
+<li>进程、调度相关的数据结构需要如何修改？</li>
+</ul>
+</li>
+<li>
+<p>如何处理真并发？</p>
+<p>在单核系统中，我们通过控制中断阻止抢占的方式来保护关键区。在多核系统中，即使我们关闭了某个核心的中断，其他核心的进程仍然在运行，仍可能修改共享的数据结构。我们将思考：</p>
+<ul>
+<li>如何实现自旋锁？</li>
+<li>内核中的哪些地方是关键区？</li>
+<li>如何使用自旋锁保护关键区？</li>
+</ul>
+</li>
+</ol>
+<h2 id="part-0合并代码">Part 0：合并代码<a class="headerlink" href="#part-0合并代码" title="Permanent link">¶</a></h2>
+<h3 id="更新代码">更新代码<a class="headerlink" href="#更新代码" title="Permanent link">¶</a></h3>
+<p>现在你位于 <code>lab5</code> 分支。你需要创建 <code>bonus-b</code> 分支，合并上游的代码：</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>bonus-b
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>git<span class="w"> </span>fetch<span class="w"> </span>upstream
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>git<span class="w"> </span>merge<span class="w"> </span>upstream/bonus-b
+</span></code></pre></div>
+<h3 id="percpu-数据结构">PerCPU 数据结构<a class="headerlink" href="#percpu-数据结构" title="Permanent link">¶</a></h3>
+<p>当我们的系统扩展到多核时，有些<strong>全局和静态变量</strong>需要为每个核心单独维护，例如 <code>current</code> 应当指向当前核心运行的进程的 PCB。为了方便这一用法，Linux 内核设计了 PerCPU 数据结构。用法如下：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">DEFINE_PER_CPU</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">percpu_struct</span><span class="p">,</span><span class="w"> </span><span class="n">percpu</span><span class="p">);</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">get_cpu_var</span><span class="p">(</span><span class="n">percpu</span><span class="p">)</span><span class="o">++</span><span class="p">;</span>
+</span></code></pre></div>
+<p>实现静态的 PerCPU 数据结构很简单，使用数组即可：</p>
+<ul>
+<li>将宏 <code>DEFINE_PER_CPU</code> 展开为长度等于核心数的数组定义</li>
+<li>获取值时，根据当前的核心编号，从数组中获取对应的 PerCPU 数据结构</li>
+</ul>
+<p>请你阅读相关代码理解 PerCPU 数据结构。</p>
+<div class="admonition example">
+<p class="admonition-title">思考题</p>
+<ul>
+<li>
+<p>为什么自动变量（本地变量）不需要设计 PerCPU 变量？</p>
+<div class="admonition tip">
+<p class="admonition-title">回忆 C 语言课程中学习变量生命周期、存储位置的知识。</p>
+</div>
+</li>
+<li>
+<p>为什么 <code>current</code> 没有定义为 PerCPU 变量？</p>
+</li>
+</ul>
+</div>
+<h2 id="part-1多核启动过程">Part 1：多核启动过程<a class="headerlink" href="#part-1多核启动过程" title="Permanent link">¶</a></h2>
+<p>现在 QEMU 的启动参数添加了 <code>-smp 4</code>，此时将使用四个核启动 QEMU。观察 OpenSBI 的输出，可以看到：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Domain0 Boot HART           : 2
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Domain0 HARTs               : 0*,1*,2*,3*
+</span></code></pre></div>
+<p>不难推测，OpenSBI 会选择其中一个核作为 Boot Hart，其余 Hart 则暂时不启动。如果不做其他工作，我们的系统就这样只使用一个核心，之前实验的代码仍然能正常运行。你可以向合并前的代码添加 <code>-smp 4</code> 并运行 QEMU 来验证。</p>
+<p>那么如何唤醒剩余的核心，并告诉它们应该执行什么代码呢？我们再次向 SBI 寻求帮助。请阅读 SBI 规范 Chapter 9. Hart State Management Extension (EID#0x48534D "HSM")，这一章介绍了 SBI 提供的管理 Hart（硬件线程）的接口。你需要在规范中找到下列问题的答案：</p>
+<ul>
+<li>Hart 有哪些状态？</li>
+<li>如何使用 SBI 提供的接口改变 Hart 的状态？</li>
+<li>如何使用 <code>sbi_hart_start()</code>？它接收什么参数？</li>
+<li><code>sbi_hart_start()</code> 启动一个 Hart 时，它处于什么样的状态？<ul>
+<li>它启用了中断吗？</li>
+<li>它使用物理地址还是虚拟地址？</li>
+<li>它的寄存器存放着什么内容？</li>
+</ul>
+</li>
+</ul>
+<div class="admonition example">
+<p class="admonition-title">动手做：查看核心初始状态</p>
+<p>请你在 <code>start_kernel()</code> 中使用 OpenSBI 提供的接口，打印刚启动时 4 个核心的状态。</p>
+</div>
+<p>如果你正确找到了上述问题的答案，不难分析出剩余核心唤醒后需要做的工作：</p>
+<ul>
+<li>设置 Trap 向量寄存器</li>
+<li>启用虚拟内存</li>
+<li>开启中断</li>
+</ul>
+<p>完成这些工作后，我们的所有核心就都运行在虚拟地址空间上，并且能够由时钟中断驱动调度等机制的运行了。</p>
+<h3 id="task-1唤醒其他核心">Task 1：唤醒其他核心<a class="headerlink" href="#task-1唤醒其他核心" title="Permanent link">¶</a></h3>
+<ul>
+<li><strong>请你阅读</strong> <code>start_kernel()</code> 中新增的 <code>smp_init()</code> 及其相关源码，理解 Boot Hart 启动其他核心的逻辑。</li>
+<li><strong>请你补全</strong> <code>kernel/arch/riscv/kernel/head.S</code> 的 <code>secondary_start()</code>，完成其他核心启动时需要做的工作。</li>
+</ul>
+<h2 id="part-2多核调度">Part 2：多核调度<a class="headerlink" href="#part-2多核调度" title="Permanent link">¶</a></h2>
+<p>本节实现的调度算法基于 Linux 2.6.0-2.6.22 的 <span class="arithmatex">\(O(1)\)</span> 调度器，建议你阅读 <a href="https://litux.nl/mirror/kerneldevelopment/0672327201/ch04lev1sec2.html">The Linux Scheduling Algorithm</a>。</p>
+<h3 id="run-queue">Run Queue<a class="headerlink" href="#run-queue" title="Permanent link">¶</a></h3>
+<p>将调度算法扩展到多核并不复杂，最简单的方式就是让每个核心运行各自的调度算法。于是我们将原先的全局链表 <code>task_list</code> 修改为 PerCPU 的运行队列，在每个核心各自的进程队列上运行 RR 调度算法。</p>
+<p>请你阅读 <code>kernel/arch/riscv/kernel/sched.h</code> 中 <code>struct run_queue</code> 的定义和相关代码，理解 Run Queue 如何描述某个 CPU 核心上任务的运行情况。</p>
+<h3 id="load-balance">Load Balance<a class="headerlink" href="#load-balance" title="Permanent link">¶</a></h3>
+<p>现在每个核心能够在自己的队列上运行调度算法。我们还需要解决核心间的问题：任务应当何时移动到其他核心？如何移动？</p>
+<p>操作系统调度算法的普遍目标是提升公平性、响应性。要在多核系统中实现公平性，自然的想法是令所有核心的任务队列长度趋向相同，也就是进行<strong>负载均衡（Load Balance）</strong>。做法很简单：每个核心主动去寻找负载比自己高的核心，并尝试将任务移动到自己的队列。</p>
+<h3 id="task-2实现多核负载均衡">Task 2：实现多核负载均衡<a class="headerlink" href="#task-2实现多核负载均衡" title="Permanent link">¶</a></h3>
+<ul>
+<li><strong>请你自行修改</strong>自己的调度器，实现上文描述的多核负载均衡的功能。我们对调度器的复杂度没有严格要求，它不一定要是 <span class="arithmatex">\(O(1)\)</span> 的，能实现合适的负载均衡策略即可。</li>
+</ul>
+<h2 id="part-3多核同步方法">Part 3：多核同步方法<a class="headerlink" href="#part-3多核同步方法" title="Permanent link">¶</a></h2>
+<p>因为同学们的代码实现不同，所以实验指导无法涵盖所有的情况。本章将用两个例子介绍原子操作和锁两种多核同步方法，剩余的部分需要同学们自己阅读、调试代码，识别所有关键区。</p>
+<h3 id="使用原子操作保护简单变量">使用原子操作保护简单变量<a class="headerlink" href="#使用原子操作保护简单变量" title="Permanent link">¶</a></h3>
+<p>注意到多个核心可能同时调用 <code>create_pid()</code>，它的核心是一个静态变量。让我们看看它的汇编代码：</p>
+<div class="language-text highlight"><span class="filename">kernel/vmlinux.asm</span><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>    return pm_nr_tasks++;
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>ffffffd600201ff8:   0004d797            auipc   a5,0x4d
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>ffffffd600201ffc:   01078793            addi    a5,a5,16 # ffffffd60024f008 &lt;pm_nr_tasks.5&gt;
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>ffffffd600202000:   0007a503            lw  a0,0(a5)
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>ffffffd600202004:   0015071b            addiw   a4,a0,1
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>ffffffd600202008:   00e7a023            sw  a4,0(a5)
+</span></code></pre></div>
+<p>可以看到，C 语言中简单的一个递增操作需要三条指令来完成：<code>lw</code>、<code>addiw</code>、<code>sw</code>。</p>
+<div class="admonition example">
+<p class="admonition-title">思考题：识别临界区</p>
+<p>同学们已经在理论课上学习过进程同步、临界区等知识。请你指出为什么这三条指令在多核系统中是一个<strong>临界区</strong>？</p>
+</div>
+<p>对于这样简单的临界区，我们不需要使用锁，只需要使用原子操作。请同学们阅读 <a href="https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html"><code>__atomic</code> Builtins (Using the GNU Compiler Collection (GCC))</a>，了解 GCC 内置了哪些原子操作函数。</p>
+<p>通过阅读文档，我们找到了适合该操作的 <code>__atomic_fetch_add()</code> 函数：</p>
+<div class="language-text highlight"><span class="filename">kernel/vmlinux.asm</span><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>    return __atomic_fetch_add(&amp;pm_nr_tasks, 1, __ATOMIC_SEQ_CST);
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>ffffffd600202024:   0004d797            auipc   a5,0x4d
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>ffffffd600202028:   fe478793            addi    a5,a5,-28 # ffffffd60024f008 &lt;pm_nr_tasks.5&gt;
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>ffffffd60020202c:   00100713            li  a4,1
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>ffffffd600202030:   06e7a52f            amoadd.w.aqrl   a0,a4,(a5)
+</span></code></pre></div>
+<p>这样就实现了多线程安全的变量修改。</p>
+<div class="admonition example">
+<p class="admonition-title">思考题：<code>fetch</code> 与操作的先后顺序</p>
+<p>注意到文档中还有 <code>__atomic_add_fetch()</code>，它和这里使用的 <code>__atomic_fetch_add()</code> 有什么区别？</p>
+</div>
+<h3 id="使用锁保护复杂数据结构">使用锁保护复杂数据结构<a class="headerlink" href="#使用锁保护复杂数据结构" title="Permanent link">¶</a></h3>
+<p><strong>自旋锁（spin lock）</strong>用于防止多个线程同时进入临界区，用法如下：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">spin_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lock</span><span class="p">);</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="cm">/* critical section */</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">spin_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lock</span><span class="p">);</span>
+</span></code></pre></div>
+<p>有多种方法可以实现自旋锁，最简单的是原子操作。GCC 提供了相关的内建函数，见 <a href="https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html"><code>__atomic</code> Builtins (Using the GNU Compiler Collection (GCC))</a>。我们将使用 <code>bool __atomic_test_and_set (void *ptr, int memorder)</code> 来实现自旋锁，它原子化地对指针 <code>ptr</code> 指向的位置执行下面的操作：</p>
+<ul>
+<li>如果 <code>ptr</code> 指向的值为 Set，则返回 False</li>
+<li>如果 <code>ptr</code> 指向的值不为 Set，则将 <code>ptr</code> 置为 Set，返回 True</li>
+</ul>
+<p>用它实现自旋锁的逻辑如下：</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">__atomic_test_and_set</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lock</span><span class="o">-&gt;</span><span class="n">lock</span><span class="p">,</span><span class="w"> </span><span class="n">__ATOMIC_ACQUIRE</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span><span class="c1">// busy wait</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>在 RISC-V 架构下，该函数由 A 指令集的原子指令 <code>amoor.w.aq</code> 实现：</p>
+<iframe width="800px" height="200px" src="https://godbolt.org/e#g:!((g:!((g:!((h:codeEditor,i:(filename:'1',fontScale:14,fontUsePx:'0',j:1,lang:___c,selection:(endColumn:1,endLineNumber:6,positionColumn:1,positionLineNumber:6,selectionStartColumn:1,selectionStartLineNumber:6,startColumn:1,startLineNumber:6),source:'%23include+%3Cstdint.h%3E%0Avoid+test(uint64_t+*lock)%0A%7B%0A++++__atomic_test_and_set(lock,+__ATOMIC_ACQUIRE)%3B%0A%7D%0A'),l:'5',n:'0',o:'C+source+%231',t:'0')),k:40.502227622519236,l:'4',n:'0',o:'',s:0,t:'0'),(g:!((h:compiler,i:(compiler:rv64-cgcctrunk,filters:(b:'0',binary:'1',binaryObject:'1',commentOnly:'0',debugCalls:'1',demangle:'0',directives:'0',execute:'1',intel:'0',libraryCode:'1',trim:'1',verboseDemangling:'0'),flagsViewOpen:'1',fontScale:14,fontUsePx:'0',j:1,lang:___c,libs:!((name:cs50,ver:'910')),options:'',overrides:!(),selection:(endColumn:19,endLineNumber:13,positionColumn:9,positionLineNumber:13,selectionStartColumn:19,selectionStartLineNumber:13,startColumn:9,startLineNumber:13),source:1),l:'5',n:'0',o:'+RISC-V+(64-bits)+gcc+(trunk)+(Editor+%231)',t:'0')),k:59.497772377480764,l:'4',n:'0',o:'',s:0,t:'0')),l:'2',n:'0',o:'',t:'0')),version:4"></iframe>
+
+<p>请阅读 <a href="https://learn.lianglianglee.com/%E4%B8%93%E6%A0%8F/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9F%BA%E7%A1%80%E5%AE%9E%E6%88%98%E8%AF%BE/20%20RISC-V%E6%8C%87%E4%BB%A4%E7%B2%BE%E8%AE%B2%EF%BC%88%E4%BA%94%EF%BC%89%EF%BC%9A%E5%8E%9F%E5%AD%90%E6%8C%87%E4%BB%A4%E5%AE%9E%E7%8E%B0%E4%B8%8E%E8%B0%83%E8%AF%95.md">20 RISC-V指令精讲（五）：原子指令实现与调试</a>，理解 RISC-V 指令集定义的原子操作。</p>
+<h3 id="task-3识别并保护关键区">Task 3：识别并保护关键区<a class="headerlink" href="#task-3识别并保护关键区" title="Permanent link">¶</a></h3>
+<p>来到本次实验的最后一个任务，我们梳理至今为止的所有并发来源，帮助同学们更清晰地识别关键区并应用合适的保护措施：</p>
+<ol>
+<li>
+<p><strong>真并发</strong>：同一时刻，有多个线程在临界区中运行。这是本实验引入的新的并发来源。</p>
+<ol>
+<li>
+<p><strong>多核系统</strong>：多核系统是真并发的唯一来源。只有多核系统中，同一时刻才可能存在多个线程在同一个临界区中执行。</p>
+<p><strong>保护措施</strong>：如前文所述，使用原子操作或自旋锁。</p>
+</li>
+</ol>
+</li>
+<li>
+<p><strong>伪并发</strong>：同一时刻，只有一个线程在运行；但多个线程交织运行，它们都位于临界区。这正是此前的实验处理的并发来源。</p>
+<ol>
+<li>
+<p><strong>Trap</strong>：Trap 可能在任意时刻发生，导致系统重复进入 Trap 处理程序 <code>trap_handler()</code>。如果它及其调用的函数存在临界区，就有可能因重复进入产生伪并发。</p>
+<p><strong>保护措施</strong>：</p>
+<ul>
+<li>
+<p>在 Trap 处理程序中，一般无法使用锁来保护临界区。考虑下面的死锁情况：</p>
+<ul>
+<li>旧 Trap 拿到锁进入了临界区。</li>
+<li>新 Trap 希望进入临界区，但锁被旧 Trap 占用。</li>
+<li>新 Trap 永远无法返回，旧 Trap 也永远无法释放锁。</li>
+</ul>
+</li>
+<li>
+<p>所以只能尽可能避免发生嵌套 Trap：</p>
+<ol>
+<li>RISC-V 指令集规定，Trap 时自动关闭全局<strong>中断</strong>。</li>
+<li>只要代码写得好，一般不会发生<strong>异常</strong>。</li>
+<li>对于<strong>无法屏蔽的中断</strong>，在处理代码中避免临界区，从而能够安全地重复进入；或者在中断控制器等硬件上为这类特殊的中断实现等待队列，上一个中断处理完成前不发送下一个中断。</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>抢占</strong>：一些临界区不应当被抢占，特别是一些使用自旋锁的临界区。</p>
+<p>让我们考虑优先级调度的情况。设进程 A 和 B 都需要使用一把锁，其中 B 的优先级比 A 高。A 获取锁后被 B 抢占，B 忙等尝试获取锁。此时因为 B 优先级比 A 高，A 永远没有机会运行，无法释放锁，B 也无法获取锁，造成死锁。</p>
+<p><strong>保护措施</strong>：进程结构体添加了 <code>preempt_count</code> 字段，初始值为 0。当进入抢占关键区时，该字段递增；离开时递减。当 <code>preempt_count</code> 不为 0 时，调度器不抢占进程。</p>
+</li>
+</ol>
+</li>
+</ol>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>我们只需要关心内核代码的同步问题，不需要考虑用户态。因为用户态和内核态是完全隔离的，用户态的并发程序应当自己实现同步机制。</p>
+</div>
+<p>一个临界区可能受多种并发来源的影响，也有可能通过多种方式解决。比如上文讲解的 <code>create_pid()</code>，它在多核系统中受到真并发的影响，在单核系统中也会受到抢占的影响，但这两种并发来源都可以通过原子操作解决。</p>
+<p>现在，请你自行分析内核中的代码、数据结构，并应用合适的保护措施。</p>
+<h2 id="预期实验结果">预期实验结果<a class="headerlink" href="#预期实验结果" title="Permanent link">¶</a></h2>
+<p>现在的 <code>start_kernel()</code> 结尾会每隔 1s 创建一个内核进程。预期行为是：</p>
+<ul>
+<li>当进程不断增多时，你的调度器能够尽可能保证公平，即每个核心的任务队列长度差异不大。</li>
+<li>系统内几乎没有同步问题（如死锁、临界区保护不当等），能够多次重复稳定运行，不受日志级别的影响。</li>
+</ul>
+<p>本实验不要求做到完美无缺，毕竟并发问题始终是计算机领域的难点之一，助教们也花了非常多时间才完成。你在实验过程中一定会遇到不少困难，请在报告中详细记录你是如何解决的，这能够证明你确实是自己完成实验的。</p>
+<h2 id="调试建议">调试建议<a class="headerlink" href="#调试建议" title="Permanent link">¶</a></h2>
+<p>调试多线程程序时，如果使用 GDB 命令行将非常复杂。推荐使用 VSCode 的 GDB 调试插件，能够十分便捷地分析各个核心的运行情况。调试图例如下，可以在左侧看到每个核心的调用栈，在右侧看到对应的 C 和汇编代码等。</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../bonusB.assets/vscode.png" data-desc-position="bottom"><img alt="vscode.png" src="../bonusB.assets/vscode.png"></a></p>
+
+
+
+
+
+
+
+  
+    
+  
+  
+    
+  
+
+
+  <aside class="md-source-file">
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Last update">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="2026年1月6日 08:04:05 UTC"><span class="timeago" datetime="2026-01-06T08:04:05+00:00" locale="zh"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="2026年1月6日 08:04:05 UTC">2026-01-06</span>
+  </span>
+
+    
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Created">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"></path></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="2025年12月21日 01:18:48 UTC"><span class="timeago" datetime="2025-12-21T01:18:48+00:00" locale="zh"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="2025年12月21日 01:18:48 UTC">2025-12-21</span>
+  </span>
+
+    
+    
+    
+      
+  <span class="md-source-file__fact">
+    
+      
+  <span class="md-icon" title="Contributors">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"></path></svg>
+  </span>
+  <span>GitHub</span>
+
+    
+    <nav>
+      
+        <a href="https://github.com/hharryz" class="md-author" title="@hharryz">
+          
+          <img src="https://avatars.githubusercontent.com/u/122276274?v=4&amp;size=72" alt="hharryz">
+        </a>
+      
+        <a href="https://github.com/bowling233" class="md-author" title="@bowling233">
+          
+          <img src="https://avatars.githubusercontent.com/u/35755846?v=4&amp;size=72" alt="bowling233">
+        </a>
+      
+      
+      
+    </nav>
+  </span>
+
+    
+  </aside>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer">
+        
+          
+          <a href="../bonusA/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Bonus A：FAT32 文件系统">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Bonus A：FAT32 文件系统
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../z1-spike/" class="md-footer__link md-footer__link--next" aria-label="Next: 附录 1：Spike 工具链">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                附录 1：Spike 工具链
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"></path></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      浙江大学计算机科学与技术学院
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer", "navigation.sections", "navigation.expand", "navigation.indexes", "navigation.tracking", "navigation.path", "navigation.top", "toc.follow", "content.action.edit", "search.suggest", "search.highlight", "search.share"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../js/timeago.min.js"></script>
+      
+        <script src="../js/timeago_mkdocs_material.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/polyfill/index.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax/es5/tex-mml-chtml.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/tablesort/dist/tablesort.min.js"></script>
+      
+        <script src="../javascripts/tablesort.js"></script>
+      
+        <script src="../javascripts/mermaid.mjs" type="module"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>

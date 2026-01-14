@@ -1,0 +1,2453 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="浙江大学操作系统课程实验指导" name="description"/>
+<meta content="浙江大学计算机科学与技术学院" name="author"/>
+<link href="https://zju-os.github.io/doc/lab4/" rel="canonical"/>
+<link href="../lab3/" rel="prev"/>
+<link href="../lab5/" rel="next"/>
+<link href="../assets/zjueagle.png" rel="icon"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.7.1" name="generator"/>
+<title>Lab 4：用户态 - ZJU OS</title>
+<link href="../assets/stylesheets/main.484c7ddc.min.css" rel="stylesheet"/>
+<link href="../assets/stylesheets/palette.ab4e12ef.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<link href="../css/timeago.css" rel="stylesheet"/>
+<link href="../stylesheets/fonts.css" rel="stylesheet"/>
+<link href="../stylesheets/counter.css" rel="stylesheet"/>
+<link href="../stylesheets/neoteroi-v1.1.2.css" rel="stylesheet"/>
+<script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+<link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"/><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+<body data-md-color-accent="indigo" data-md-color-primary="indigo" data-md-color-scheme="default" dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#lab-4用户态">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header md-header--shadow" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="ZJU OS" class="md-header__button md-logo" data-md-component="logo" href=".." title="ZJU OS">
+<img alt="logo" src="../assets/zjueagle_white.svg"/>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            ZJU OS
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              Lab 4：用户态
+            
+          </span>
+</div>
+</div>
+</div>
+<form class="md-header__option" data-md-component="palette">
+<input aria-label="Switch to dark mode" class="md-option" data-md-color-accent="indigo" data-md-color-media="(prefers-color-scheme: light)" data-md-color-primary="indigo" data-md-color-scheme="default" id="__palette_0" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_1" hidden="" title="Switch to dark mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+</label>
+<input aria-label="Switch to light mode" class="md-option" data-md-color-accent="indigo" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-primary="indigo" data-md-color-scheme="slate" id="__palette_1" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_0" hidden="" title="Switch to light mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+</label>
+</form>
+<script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<a aria-label="Share" class="md-search__icon md-icon" data-clipboard="" data-clipboard-text="" data-md-component="search-share" href="javascript:void(0)" tabindex="-1" title="Share">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
+</a>
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+<div class="md-search__suggest" data-md-component="search-suggest"></div>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="" tabindex="0">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="md-header__source">
+<a class="md-source" data-md-component="source" href="https://github.com/ZJU-OS/doc" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    ZJU-OS/doc
+  </div>
+</a>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="ZJU OS" class="md-nav__button md-logo" data-md-component="logo" href=".." title="ZJU OS">
+<img alt="logo" src="../assets/zjueagle_white.svg"/>
+</a>
+    ZJU OS
+  </label>
+<div class="md-nav__source">
+<a class="md-source" data-md-component="source" href="https://github.com/ZJU-OS/doc" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    ZJU-OS/doc
+  </div>
+</a>
+</div>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="..">
+<span class="md-ellipsis">
+    
+  
+    首页
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+<span class="md-ellipsis">
+    
+  
+    实验文档
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="true" aria-labelledby="__nav_2_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_2">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    实验文档
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../manual/">
+<span class="md-ellipsis">
+    
+  
+    实验流程及工具讲解
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../lab0/">
+<span class="md-ellipsis">
+    
+  
+    Lab 0: Linux 内核调试
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../lab1/">
+<span class="md-ellipsis">
+    
+  
+    Lab 1：内核启动与时钟中断
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../lab2/">
+<span class="md-ellipsis">
+    
+  
+    Lab 2：抢占式内核线程调度
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../lab3/">
+<span class="md-ellipsis">
+    
+  
+    Lab 3：Sv39 分页式虚拟内存系统
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+<span class="md-ellipsis">
+    
+  
+    Lab 4：用户态
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="./">
+<span class="md-ellipsis">
+    
+  
+    Lab 4：用户态
+  
+
+    
+  </span>
+</a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#实验简介">
+<span class="md-ellipsis">
+      
+        实验简介
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-0准备工作">
+<span class="md-ellipsis">
+      
+        Part 0：准备工作
+      
+    </span>
+</a>
+<nav aria-label="Part 0：准备工作" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#更新代码">
+<span class="md-ellipsis">
+      
+        更新代码
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-1内核对用户态的支持">
+<span class="md-ellipsis">
+      
+        Part 1：内核对用户态的支持
+      
+    </span>
+</a>
+<nav aria-label="Part 1：内核对用户态的支持" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#用户态内存布局">
+<span class="md-ellipsis">
+      
+        用户态内存布局
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程页表及其拷贝">
+<span class="md-ellipsis">
+      
+        进程页表及其拷贝
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#物理页引用计数">
+<span class="md-ellipsis">
+      
+        物理页引用计数
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task1实现进程页表">
+<span class="md-ellipsis">
+      
+        Task1：实现进程页表
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#用户栈与内核栈">
+<span class="md-ellipsis">
+      
+        用户栈与内核栈
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#从用户态到内核态">
+<span class="md-ellipsis">
+      
+        从用户态到内核态
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task2实现用户栈与内核栈">
+<span class="md-ellipsis">
+      
+        Task2：实现用户栈与内核栈
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-2加载和运行用户态程序">
+<span class="md-ellipsis">
+      
+        Part 2：加载和运行用户态程序
+      
+    </span>
+</a>
+<nav aria-label="Part 2：加载和运行用户态程序" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#用户态程序嵌入内核">
+<span class="md-ellipsis">
+      
+        用户态程序嵌入内核
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#elf-规范阅读">
+<span class="md-ellipsis">
+      
+        ELF 规范阅读
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-3实现-elf-加载器">
+<span class="md-ellipsis">
+      
+        Task 3：实现 ELF 加载器
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#从内核态到用户态">
+<span class="md-ellipsis">
+      
+        从内核态到用户态
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-4运行用户态程序">
+<span class="md-ellipsis">
+      
+        Task 4：运行用户态程序
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-3系统调用">
+<span class="md-ellipsis">
+      
+        Part 3：系统调用
+      
+    </span>
+</a>
+<nav aria-label="Part 3：系统调用" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#系统调用">
+<span class="md-ellipsis">
+      
+        系统调用
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-5实现-write-系统调用">
+<span class="md-ellipsis">
+      
+        Task 5：实现 write 系统调用
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../lab5/">
+<span class="md-ellipsis">
+    
+  
+    Lab 5：缺页异常与 Fork 机制
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../bonusA/">
+<span class="md-ellipsis">
+    
+  
+    Bonus A：FAT32 文件系统
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../bonusB/">
+<span class="md-ellipsis">
+    
+  
+    Bonus B：多核处理器与调度算法
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../z1-spike/">
+<span class="md-ellipsis">
+    
+  
+    附录 1：Spike 工具链
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_3" type="checkbox"/>
+<label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+<span class="md-ellipsis">
+    
+  
+    RISC-V 规范
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_3_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_3">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    RISC-V 规范
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-privileged.html">
+<span class="md-ellipsis">
+    
+  
+    特权级规范
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-unprivileged.html">
+<span class="md-ellipsis">
+    
+  
+    非特权级规范
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-abi.pdf">
+<span class="md-ellipsis">
+    
+  
+    ELF ABI 规范
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-sbi.pdf">
+<span class="md-ellipsis">
+    
+  
+    SBI 规范
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../spec/riscv-asm.pdf">
+<span class="md-ellipsis">
+    
+  
+    汇编规范
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://riscv-programming.org/">
+<span class="md-ellipsis">
+    
+  
+    汇编教程
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_4" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+<span class="md-ellipsis">
+    
+  
+    工具文档
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_4_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_4">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    工具文档
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://www.qemu.org/docs/master/index.html">
+<span class="md-ellipsis">
+    
+  
+    QEMU
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://sourceware.org/gdb/current/onlinedocs/gdb">
+<span class="md-ellipsis">
+    
+  
+    GDB
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://gcc.gnu.org/onlinedocs/">
+<span class="md-ellipsis">
+    
+  
+    GCC
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://sourceware.org/binutils/docs/as">
+<span class="md-ellipsis">
+    
+  
+    as
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://sourceware.org/binutils/docs/ld">
+<span class="md-ellipsis">
+    
+  
+    ld
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://sourceware.org/binutils/docs/binutils">
+<span class="md-ellipsis">
+    
+  
+    binutils
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_5" type="checkbox"/>
+<label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+<span class="md-ellipsis">
+    
+  
+    源码仓库
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_5_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_5">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    源码仓库
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_5_1" type="checkbox"/>
+<label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+<span class="md-ellipsis">
+    
+  
+    Cross Referencer
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_5_1_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_5_1">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    Cross Referencer
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://elixir.bootlin.com/linux">
+<span class="md-ellipsis">
+    
+  
+    Linux
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://elixir.bootlin.com/musl/">
+<span class="md-ellipsis">
+    
+  
+    musl
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://elixir.bootlin.com/opensbi/">
+<span class="md-ellipsis">
+    
+  
+    OpenSBI
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://elixir.bootlin.com/qemu/">
+<span class="md-ellipsis">
+    
+  
+    QEMU
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_5_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+<span class="md-ellipsis">
+    
+  
+    官方/GitHub
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_5_2_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_5_2">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    官方/GitHub
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://github.com/torvalds/linux">
+<span class="md-ellipsis">
+    
+  
+    Linux
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://git.musl-libc.org/cgit/musl">
+<span class="md-ellipsis">
+    
+  
+    musl
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://github.com/riscv-software-src/opensbi">
+<span class="md-ellipsis">
+    
+  
+    OpenSBI
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://github.com/qemu/qemu/">
+<span class="md-ellipsis">
+    
+  
+    QEMU
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_6" type="checkbox"/>
+<label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+<span class="md-ellipsis">
+    
+  
+    助教文档
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_6_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_6">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    助教文档
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/autograder/">
+<span class="md-ellipsis">
+    
+  
+    评测框架
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/dev/">
+<span class="md-ellipsis">
+    
+  
+    源代码管理
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/tool/">
+<span class="md-ellipsis">
+    
+  
+    辅助工具
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_6_4" type="checkbox"/>
+<label class="md-nav__link" for="__nav_6_4" id="__nav_6_4_label" tabindex="0">
+<span class="md-ellipsis">
+    
+  
+    blog
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_6_4_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_6_4">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    blog
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/blog/1.pid0/">
+<span class="md-ellipsis">
+    
+  
+    操作系统小记（一）：从 PID 0 开始
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/blog/2.sync/">
+<span class="md-ellipsis">
+    
+  
+    操作系统小记（二）：内核同步方法
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/blog/3.stack_unwind/">
+<span class="md-ellipsis">
+    
+  
+    操作系统小记（三）：函数序言、调试器断点与堆栈回溯
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ta/blog/4.board/">
+<span class="md-ellipsis">
+    
+  
+    操作系统小记（四）：内核上板历险记
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#实验简介">
+<span class="md-ellipsis">
+      
+        实验简介
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-0准备工作">
+<span class="md-ellipsis">
+      
+        Part 0：准备工作
+      
+    </span>
+</a>
+<nav aria-label="Part 0：准备工作" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#更新代码">
+<span class="md-ellipsis">
+      
+        更新代码
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-1内核对用户态的支持">
+<span class="md-ellipsis">
+      
+        Part 1：内核对用户态的支持
+      
+    </span>
+</a>
+<nav aria-label="Part 1：内核对用户态的支持" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#用户态内存布局">
+<span class="md-ellipsis">
+      
+        用户态内存布局
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#进程页表及其拷贝">
+<span class="md-ellipsis">
+      
+        进程页表及其拷贝
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#物理页引用计数">
+<span class="md-ellipsis">
+      
+        物理页引用计数
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task1实现进程页表">
+<span class="md-ellipsis">
+      
+        Task1：实现进程页表
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#用户栈与内核栈">
+<span class="md-ellipsis">
+      
+        用户栈与内核栈
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#从用户态到内核态">
+<span class="md-ellipsis">
+      
+        从用户态到内核态
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task2实现用户栈与内核栈">
+<span class="md-ellipsis">
+      
+        Task2：实现用户栈与内核栈
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-2加载和运行用户态程序">
+<span class="md-ellipsis">
+      
+        Part 2：加载和运行用户态程序
+      
+    </span>
+</a>
+<nav aria-label="Part 2：加载和运行用户态程序" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#用户态程序嵌入内核">
+<span class="md-ellipsis">
+      
+        用户态程序嵌入内核
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#elf-规范阅读">
+<span class="md-ellipsis">
+      
+        ELF 规范阅读
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-3实现-elf-加载器">
+<span class="md-ellipsis">
+      
+        Task 3：实现 ELF 加载器
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#从内核态到用户态">
+<span class="md-ellipsis">
+      
+        从内核态到用户态
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-4运行用户态程序">
+<span class="md-ellipsis">
+      
+        Task 4：运行用户态程序
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#part-3系统调用">
+<span class="md-ellipsis">
+      
+        Part 3：系统调用
+      
+    </span>
+</a>
+<nav aria-label="Part 3：系统调用" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#系统调用">
+<span class="md-ellipsis">
+      
+        系统调用
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#task-5实现-write-系统调用">
+<span class="md-ellipsis">
+      
+        Task 5：实现 write 系统调用
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<nav aria-label="Navigation" class="md-path">
+<ol class="md-path__list">
+<li class="md-path__item">
+<a class="md-path__link" href="..">
+<span class="md-ellipsis">
+    首页
+  </span>
+</a>
+</li>
+<li class="md-path__item">
+<a class="md-path__link" href="../manual/">
+<span class="md-ellipsis">
+    实验文档
+  </span>
+</a>
+</li>
+</ol>
+</nav>
+<article class="md-content__inner md-typeset">
+<a class="md-content__button md-icon" href="https://github.com/ZJU-OS/doc/blob/main/docs/lab4.md" rel="edit" title="Edit this page">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
+</a>
+<h1 id="lab-4用户态">Lab 4：用户态<a class="headerlink" href="#lab-4用户态" title="Permanent link">¶</a></h1><p style="color:#bdbdbd"><i>Estimated time to read: 13 minutes</i></p>
+
+<div class="admonition danger">
+<p class="admonition-title">DDL</p>
+<ul>
+<li>代码、报告：2025-12-02 23:59</li>
+<li>验收：2025-12-09 实验课</li>
+</ul>
+</div>
+<h2 id="实验简介">实验简介<a class="headerlink" href="#实验简介" title="Permanent link">¶</a></h2>
+<p>经过 Lab2（调度）和 Lab3（虚拟内存）的铺垫，我们的内核已经具备了<strong>多任务</strong>和<strong>地址空间隔离</strong>的基本能力。现在，是时候让我们的操作系统迈出关键一步 —— <strong>运行真正的用户态程序</strong>。</p>
+<p>然而实现用户态并不容易，本次实验的内容量较大，请同学们合理安排时间。我们需要解决下列问题：</p>
+<ul>
+<li>
+<p><strong>如何运行用户态程序？</strong></p>
+<p>在 Lab1 学习链接器脚本时，我们知道普通应用程序是 ELF 格式的可执行文件。所以我们要<strong>写一个 ELF 加载器</strong>，解析 ELF 文件，并将其加载到用户态进程的地址空间中。</p>
+<p>既然要加载到用户态进程的地址空间，我们还需要<strong>设计用户态程序的内存布局</strong>，比如代码、数据、堆栈等段的位置和权限。</p>
+</li>
+<li>
+<p><strong>用户态程序如何调用内核服务？</strong></p>
+<p>在理论课上我们学习了<strong>系统调用</strong>的概念。用户态程序不能直接执行和敏感资源（如硬件设备、内存管理单元等）相关的操作，而是<strong>通过系统调用请求内核代为执行</strong>。因此，我们需要<strong>进一步完善 Trap 处理机制，以实现系统调用</strong>，即处理来自用户态的 ecall 异常。</p>
+</li>
+</ul>
+<p>温馨提示：</p>
+<ul>
+<li>本次实验的栈、内存地址等内容略显复杂，建议同学们仔细阅读实验文档中的图示，也可以自己画图理一理思路。</li>
+</ul>
+<h2 id="part-0准备工作">Part 0：准备工作<a class="headerlink" href="#part-0准备工作" title="Permanent link">¶</a></h2>
+<h3 id="更新代码">更新代码<a class="headerlink" href="#更新代码" title="Permanent link">¶</a></h3>
+<p>现在你位于 <code>lab3</code> 分支。你需要创建 <code>lab4</code> 分支，合并上游的代码：</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>lab4
+</span><span id="__span-0-2"><a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a>git<span class="w"> </span>fetch<span class="w"> </span>upstream
+</span><span id="__span-0-3"><a href="#__codelineno-0-3" id="__codelineno-0-3" name="__codelineno-0-3"></a>git<span class="w"> </span>merge<span class="w"> </span>upstream/lab4
+</span></code></pre></div>
+<p>下面的合并说明供同学们解决合并冲突时参考：</p>
+<ul>
+<li>
+<p><strong>新增实验相关文件</strong></p>
+<p>本次 Lab4 引入 <strong>用户态</strong>、<strong>ELF 加载器</strong>、<strong>系统调用</strong> 三大模块，因此新增文件较多。</p>
+<ol>
+<li>
+<p>新增：ELF 加载器相关</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kernel/arch/riscv/include/binfmts.h</code></td>
+<td>ELF 加载接口声明</td>
+</tr>
+<tr>
+<td><code>kernel/arch/riscv/kernel/binfmt_elf.c</code></td>
+<td>主要的 ELF 加载器实现（load_elf_binary()）</td>
+</tr>
+<tr>
+<td><code>kernel/include/elf.h</code></td>
+<td>完整 ELF 规范结构体定义（所有 ELF header / program header）</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p>新增：系统调用相关</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kernel/arch/riscv/include/syscall.h</code></td>
+<td>syscall 号、trap 编号定义</td>
+</tr>
+<tr>
+<td><code>kernel/include/syscall_table.h</code></td>
+<td>系统调用分发表（用户态号 → 内核处理函数）</td>
+</tr>
+<tr>
+<td><code>kernel/arch/riscv/kernel/syscall.c</code></td>
+<td>系统调用总入口（do_syscall / syscall_handler）</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p>新增：用户态程序构建系统</p>
+<p>这些文件全部来自 <code>kernel/user/</code>：</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kernel/user/Makefile</code></td>
+<td>编译用户态程序 uapp.elf</td>
+</tr>
+<tr>
+<td><code>kernel/user/src/*</code></td>
+<td>用户态 main.c、libc（简化版 printf）、syscalls stub</td>
+</tr>
+<tr>
+<td><code>kernel/user/src/head.S</code></td>
+<td>用户态入口 <code>_start</code></td>
+</tr>
+<tr>
+<td><code>kernel/user/uapp.S</code></td>
+<td>incbin 用户态 ELF 到内核镜像 <code>.uapp</code> 段</td>
+</tr>
+<tr>
+<td><code>kernel/user/uapp.lds</code></td>
+<td>用户态 ELF 链接脚本</td>
+</tr>
+</tbody>
+</table>
+<p><strong>合并注意：</strong></p>
+<ul>
+<li><code>kernel/Makefile</code> 修改：需要把 <code>user/uapp.o</code> 链接进 vmlinux.</li>
+<li><code>kernel/arch/riscv/kernel/vmlinux.lds</code> 修改：新增 ramdisk 区（uapp），详见 Part2 用户态程序嵌入内核。</li>
+</ul>
+</li>
+</ol>
+</li>
+<li>
+<p><strong>对现有内核的修改点</strong></p>
+<ol>
+<li>
+<p><strong>页表 / 虚拟内存模块</strong>扩展：详见 Part1</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>变更</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kernel/arch/riscv/include/mm.h</code></td>
+<td>新增物理页引用计数函数 <code>get_page</code>/<code>put_page</code> 定义</td>
+</tr>
+<tr>
+<td><code>kernel/arch/riscv/include/vm.h</code></td>
+<td>新增页表相关宏与用户态地址空间定义，映射接口扩展、PGD 拷贝函数声明</td>
+</tr>
+<tr>
+<td><code>kernel/arch/riscv/kernel/vm.c</code></td>
+<td>新增 <code>copy_pgd</code>；扩展 <code>create_mapping</code>；新增用户态映射逻辑</td>
+</tr>
+<tr>
+<td><code>kernel/arch/riscv/kernel/mm.c</code></td>
+<td>新增物理页引用计数函数 <code>get_page</code>/<code>put_page</code> 实现</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p><strong>proc（进程结构）</strong>：详见 Part1 进程页表</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>变更</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kernel/arch/riscv/include/proc.h</code></td>
+<td>大量新增：用户态栈、<code>kernel_sp</code>、<code>user_sp</code>、<code>pt_regs</code>、<code>task_pt_regs</code> 宏</td>
+</tr>
+<tr>
+<td><code>kernel/arch/riscv/kernel/proc.c</code></td>
+<td><code>task_init</code> / <code>copy_process</code> / <code>release_task</code> 都新增 pgd / 栈指针维护</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p><strong>用户态、内核态切换与 trap 处理逻辑</strong>：详见 Part1 用户栈与内核栈</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>变更</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kernel/arch/riscv/kernel/head.S</code></td>
+<td>内核运行时处于 S 态，初始化 <code>sscratch</code> 寄存器为 0</td>
+</tr>
+<tr>
+<td><code>kernel/arch/riscv/kernel/entry.S</code></td>
+<td>Trap 开头新增用户态/内核态判断，切换栈；结尾新增 SPP 逻辑</td>
+</tr>
+<tr>
+<td><code>kernel/arch/riscv/kernel/trap.c</code></td>
+<td><code>trap_handler</code> 修改为只接收 *regs</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p><strong>实验测试</strong>：</p>
+<p>在 <code>main.c</code> 中按如下方式创建用户态和内核态进程：</p>
+<div class="language-diff highlight"><span class="filename">kernel/arch/riscv/kernel/main.c</span><pre><span></span><code><span id="__span-1-1"><a href="#__codelineno-1-1" id="__codelineno-1-1" name="__codelineno-1-1"></a><span class="gd">--- a/kernel/arch/riscv/kernel/main.c</span>
+</span><span id="__span-1-2"><a href="#__codelineno-1-2" id="__codelineno-1-2" name="__codelineno-1-2"></a><span class="gi">+++ b/kernel/arch/riscv/kernel/main.c</span>
+</span><span id="__span-1-3"><a href="#__codelineno-1-3" id="__codelineno-1-3" name="__codelineno-1-3"></a><span class="gi">+ user_mode_thread(_sramdisk); // Lab4 Test</span>
+</span><span id="__span-1-4"><a href="#__codelineno-1-4" id="__codelineno-1-4" name="__codelineno-1-4"></a><span class="w"> </span> kernel_thread(kthreadd, NULL); // Lab2 Test3
+</span><span id="__span-1-5"><a href="#__codelineno-1-5" id="__codelineno-1-5" name="__codelineno-1-5"></a><span class="gi">+ user_mode_thread(_sramdisk); // Lab4 Test</span>
+</span><span id="__span-1-6"><a href="#__codelineno-1-6" id="__codelineno-1-6" name="__codelineno-1-6"></a><span class="w"> </span> kthread_create(test_sched, NULL); // Lab2 Test4
+</span></code></pre></div>
+</li>
+</ol>
+</li>
+</ul>
+<h2 id="part-1内核对用户态的支持">Part 1：内核对用户态的支持<a class="headerlink" href="#part-1内核对用户态的支持" title="Permanent link">¶</a></h2>
+<p>作为本次实验的第一步，我们先不管用户态程序是什么样子，而是从内核的视角出发，设计和实现内核对用户态程序的支持。</p>
+<ul>
+<li>首先我们要认识用户态的内存布局，修改 <code>task_struct</code> 以支持各进程页表独立，分离出用户栈与内核栈。</li>
+<li>然后我们要改进 <code>trap_handler()</code>，以支持从用户态陷入内核态。</li>
+</ul>
+<h3 id="用户态内存布局">用户态内存布局<a class="headerlink" href="#用户态内存布局" title="Permanent link">¶</a></h3>
+<p>假设我们有两个用户态程序：微信和 QQ。它们的内存布局如下图所示：</p>
+<figure>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab4.assets/layout.drawio"><div class="mxgraph" data-mxgraph='{"toolbar-position": "bottom", "toolbar-nohide": "0", "tooltips": "1", "border": 5, "resize": "1", "edit": "_blank", "lightbox": "1", "toolbar": "pages tags zoom layers lightbox", "xml": "&lt;mxfile host=\"65bd71144e\"&gt;\n    &lt;diagram id=\"_L1n2iBKLJYxsJgJ_c-A\" name=\"Page-1\"&gt;\n        &lt;mxGraphModel dx=\"472\" dy=\"1518\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"1\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"850\" pageHeight=\"1100\" math=\"0\" shadow=\"0\"&gt;\n            &lt;root&gt;\n                &lt;mxCell id=\"0\"/&gt;\n                &lt;mxCell id=\"1\" parent=\"0\"/&gt;\n                &lt;mxCell id=\"2\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"320\" y=\"-60\" width=\"160\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"54\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;\" parent=\"1\" source=\"3\" target=\"27\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"3\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"320\" y=\"120\" width=\"160\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"5\" value=\"Kernel VA\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#D79B00;fontSize=21;fontStyle=1\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"210\" y=\"115\" width=\"110\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"6\" value=\"PA\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#6C8EBF;fontSize=21;fontStyle=1\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"210\" y=\"50\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"13\" value=\"0x0\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#82B366;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"320\" y=\"-90\" width=\"40\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"15\" value=\"0xffffffd600000000\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#D79B00;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"320\" y=\"140\" width=\"120\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"17\" value=\"0x80000000\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#6C8EBF;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"520\" y=\"80\" width=\"110\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"19\" value=\"Process 1 VA\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#82B366;fontSize=21;fontStyle=1\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"210\" y=\"-11\" width=\"110\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"20\" value=\"Process 2 VA\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#82B366;fontSize=21;fontStyle=1\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"210\" y=\"-71\" width=\"110\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"22\" value=\"0x0\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#82B366;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"320\" y=\"-30\" width=\"40\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"27\" value=\"kernel\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"520\" y=\"60\" width=\"160\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"28\" value=\".text\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"520\" y=\"40\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"29\" value=\".rodata\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"560\" y=\"40\" width=\"80\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"30\" value=\"...\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"640\" y=\"40\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"31\" value=\".uapp\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"600\" y=\"20\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"32\" value=\"buddy system managed\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"680\" y=\"60\" width=\"720\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"34\" value=\"kmem_cache\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"990\" y=\"40\" width=\"80\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"35\" value=\"task_struct\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1080\" y=\"40\" width=\"70\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"36\" value=\"\u5fae\u4fe1\u7a0b\u5e8f\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"680\" y=\"40\" width=\"50\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"37\" value=\"QQ\u7a0b\u5e8f\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"730\" y=\"40\" width=\"50\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"38\" value=\"...\u5404\u79cd\u52a8\u6001\u5206\u914d\u7684\u4e1c\u897f\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1240\" y=\"40\" width=\"140\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"39\" value=\"\u5fae\u4fe1&amp;lt;div&amp;gt;\u7528\u6237\u6808&amp;lt;/div&amp;gt;\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"780\" y=\"40\" width=\"60\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"40\" value=\"QQ&amp;lt;div&amp;gt;&amp;lt;span style=&amp;quot;color: rgb(63, 63, 63); background-color: transparent;&amp;quot;&amp;gt;\u7528\u6237\u6808&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"840\" y=\"40\" width=\"50\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"41\" value=\"\u5fae\u4fe1&amp;lt;br&amp;gt;&amp;lt;div&amp;gt;\u5185\u6838\u6808&amp;lt;/div&amp;gt;\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"890\" y=\"40\" width=\"50\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"42\" value=\"QQ&amp;lt;div&amp;gt;&amp;lt;span style=&amp;quot;color: rgb(63, 63, 63); background-color: transparent;&amp;quot;&amp;gt;\u5185\u6838\u6808&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"940\" y=\"40\" width=\"50\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"43\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"320\" width=\"160\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"47\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;\" parent=\"1\" source=\"44\" target=\"36\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"340\" y=\"-70\"/&gt;\n                            &lt;mxPoint x=\"705\" y=\"-70\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"44\" value=\"\u5fae\u4fe1\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"320\" y=\"-60\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"46\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;\" parent=\"1\" source=\"45\" target=\"39\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"810\" y=\"-50\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"45\" value=\"&amp;lt;span style=&amp;quot;color: rgb(63, 63, 63); background-color: transparent;&amp;quot;&amp;gt;stack&amp;lt;/span&amp;gt;\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"440\" y=\"-60\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"48\" value=\"P2&amp;lt;div&amp;gt;\u9875\u8868&amp;lt;/div&amp;gt;&amp;lt;div&amp;gt;\u6620\u5c04&amp;lt;/div&amp;gt;\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"640\" y=\"-80\" width=\"40\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"51\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;\" parent=\"1\" source=\"49\" target=\"37\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"340\" y=\"-10\"/&gt;\n                            &lt;mxPoint x=\"755\" y=\"-10\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"49\" value=\"QQ\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"320\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"52\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;\" parent=\"1\" source=\"50\" target=\"40\" edge=\"1\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"860\" y=\"10\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"50\" value=\"&amp;lt;span style=&amp;quot;color: rgb(63, 63, 63); background-color: transparent;&amp;quot;&amp;gt;stack&amp;lt;/span&amp;gt;\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"440\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"53\" value=\"P1&amp;lt;div&amp;gt;\u9875\u8868&amp;lt;/div&amp;gt;&amp;lt;div&amp;gt;\u6620\u5c04&amp;lt;/div&amp;gt;\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"640\" y=\"-20\" width=\"40\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"55\" value=\"\u5185\u6838&amp;lt;br&amp;gt;&amp;lt;div&amp;gt;\u9875\u8868&amp;lt;/div&amp;gt;&amp;lt;div&amp;gt;\u6620\u5c04&amp;lt;/div&amp;gt;\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"480\" y=\"80\" width=\"40\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"56\" value=\"0x4000000000\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#82B366;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"480\" y=\"-30\" width=\"120\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"57\" value=\"0x4000000000\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#82B366;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"480\" y=\"-90\" width=\"120\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"58\" value=\"0x88000000\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#6C8EBF;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1400\" y=\"80\" width=\"80\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"59\" value=\"0xffffffd608000000\" style=\"text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#D79B00;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"480\" y=\"140\" width=\"120\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"60\" value=\"\u9875\u8868\" style=\"rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1160\" y=\"40\" width=\"70\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n            &lt;/root&gt;\n        &lt;/mxGraphModel&gt;\n    &lt;/diagram&gt;\n&lt;/mxfile&gt;"}' style="max-width:100%;border:1px solid transparent;"></div></a>
+<figcaption>
+    用户态内存布局
+    </figcaption>
+</figure>
+<p>从图中可以看出虚拟内存起到的作用：</p>
+<ul>
+<li><strong>简化：</strong>每个用户程序都认为自己独占整个内存空间，因此程序可以在固定的虚拟地址上加载与运行，而无需关心实际的物理内存位置或碎片情况。比如从微信和 QQ 的视角来看，它们都认为自己运行在从 <code>0x0</code> 开始的地址空间中，但实际上它们被映射到了不同的物理内存。<ul>
+<li><strong>对应用程序开发者：</strong>不需要关心物理内存的布局、是否碎片化、是否与其他程序冲突。</li>
+<li><strong>对编译器/链接器：</strong>可以统一假设所有程序都从相同的虚拟基地址开始编译（例如 .text 段从 0x0 起），不需要为不同进程做地址重定位。</li>
+</ul>
+</li>
+<li><strong>隔离：</strong>为每个用户态进程提供一个独立的地址空间，防止它们互相干扰。例如图中微信和 QQ 进程的页表各自独立，微信的页表中不会有 QQ 相关内存的映射，微信没有任何办法访问 QQ 的数据，反之亦然。</li>
+</ul>
+<p>在 Lab3 中我们已经知道 <code>0x0000000000000000~0x0000003fffffffff</code> 是用户空间的地址范围，我们可以自由设计这部分空间的布局。本实验采用非常简单的设计：</p>
+<ul>
+<li>把整个程序（代码、数据等）放到这段空间的开头（细节见 Part 2 ELF 加载）。</li>
+<li>把用户态栈放到这段空间的末尾，即设置 <code>sp</code> 初始值为 <code>0x0000004000000000</code>。</li>
+</ul>
+<h3 id="进程页表及其拷贝">进程页表及其拷贝<a class="headerlink" href="#进程页表及其拷贝" title="Permanent link">¶</a></h3>
+<p>为了实现不同进程的地址空间隔离，每个进程都需要有自己的页表。在进程生命周期的各个阶段，我们都需要维护页表。先考虑进程的创建阶段：</p>
+<ul>
+<li>PID 0：最初的进程，应当将其页表设置为内核页表 <code>swapper_pg_dir</code>。</li>
+<li>其他进程：都是由 <code>copy_process()</code> 创建的，应当将父进程的页表进行<strong>深拷贝</strong>，得到子进程的页表。</li>
+</ul>
+<p>页表是三级树形结构，最底层的 PTE 指向相应的物理页。对于这样的间接引用结构，存在两种拷贝方式：</p>
+<ul>
+<li>
+<p><strong>浅拷贝（Shallow Copy）</strong>：仅拷贝页表结构本身，PTE 仍然指向相同的物理页。</p>
+<p>浅拷贝一般需要配合<strong>引用计数</strong>使用，可以联想 C++ 语言中的共享指针（<code>shared_ptr</code>）。</p>
+</li>
+<li>
+<p><strong>深拷贝（Deep Copy）</strong>：不仅拷贝页表结构，还为每个 PTE 指向的物理页分配新的物理页，并将原物理页的内容复制到新页中。</p>
+</li>
+</ul>
+<h3 id="物理页引用计数">物理页引用计数<a class="headerlink" href="#物理页引用计数" title="Permanent link">¶</a></h3>
+<p>现在每个进程都有自己的页表，我们遇到了 C/C++ 语言中最麻烦的问题：共享指针。如下图所示：</p>
+<figure>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab4.assets/ref_count.drawio"><div class="mxgraph" data-mxgraph='{"toolbar-position": "bottom", "toolbar-nohide": "0", "tooltips": "1", "border": 5, "resize": "1", "edit": "_blank", "lightbox": "1", "toolbar": "pages tags zoom layers lightbox", "xml": "&lt;mxfile host=\"65bd71144e\"&gt;\n    &lt;diagram id=\"KWToJfJ6pvnEJC3d2ZJo\" name=\"Page-1\"&gt;\n        &lt;mxGraphModel dx=\"256\" dy=\"391\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"1\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"850\" pageHeight=\"1100\" math=\"0\" shadow=\"0\"&gt;\n            &lt;root&gt;\n                &lt;mxCell id=\"0\"/&gt;\n                &lt;mxCell id=\"1\" parent=\"0\"/&gt;\n                &lt;mxCell id=\"21\" value=\"\" style=\"rounded=1;whiteSpace=wrap;html=1;fillColor=none;dashed=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"160\" y=\"440\" width=\"260\" height=\"90\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"19\" value=\"\" style=\"rounded=1;whiteSpace=wrap;html=1;fillColor=none;dashed=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"440\" y=\"460\" width=\"120\" height=\"50\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"5\" style=\"edgeStyle=none;html=1;\" edge=\"1\" parent=\"1\" source=\"2\" target=\"3\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"2\" value=\"L2\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"240\" y=\"450\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"6\" style=\"edgeStyle=none;html=1;\" edge=\"1\" parent=\"1\" source=\"3\" target=\"4\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"3\" value=\"L1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"300\" y=\"450\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"14\" style=\"edgeStyle=none;html=1;\" edge=\"1\" parent=\"1\" source=\"4\" target=\"7\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"4\" value=\"L0\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"360\" y=\"450\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"7\" value=\"Page\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"460\" y=\"475\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"8\" style=\"edgeStyle=none;html=1;\" edge=\"1\" parent=\"1\" source=\"9\" target=\"11\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"9\" value=\"L2\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"240\" y=\"500\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"10\" style=\"edgeStyle=none;html=1;\" edge=\"1\" parent=\"1\" source=\"11\" target=\"12\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"11\" value=\"L1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"300\" y=\"500\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"13\" style=\"edgeStyle=none;html=1;\" edge=\"1\" parent=\"1\" source=\"12\" target=\"7\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"12\" value=\"L0\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"360\" y=\"500\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"15\" value=\"PID0 \u9875\u8868\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"170\" y=\"445\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"16\" value=\"PID1 \u9875\u8868\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"170\" y=\"495\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"17\" value=\"Buddy System\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"455\" y=\"430\" width=\"90\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"20\" value=\"Page\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"505\" y=\"475\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"22\" value=\"\u8fdb\u7a0b\u9875\u8868\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"240\" y=\"410\" width=\"90\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n            &lt;/root&gt;\n        &lt;/mxGraphModel&gt;\n    &lt;/diagram&gt;\n&lt;/mxfile&gt;"}' style="max-width:100%;border:1px solid transparent;"></div></a>
+<figcaption>
+    不同页表共享物理页
+    </figcaption>
+</figure>
+<p>例如当 PID0 退出时，我们要释放它的页表，那页表指向的页要不要释放呢？这些页可能被其他进程映射，如果直接释放这些物理页，就会导致 PID1 访问非法内存，引发异常。</p>
+<p>为此 Buddy System 提供了物理页的引用计数机制。API 如下：</p>
+<ul>
+<li><code>alloc_page/alloc_pages()</code>：分配物理页时，引用计数初始化为 1。</li>
+<li><code>get_page()</code>：引用计数加 1。</li>
+<li><code>put_page()</code>：引用计数减 1，当引用计数变为 0 时，释放该物理页。</li>
+</ul>
+<p>最后分析页表中存在哪些映射，如何做引用计数管理：</p>
+<ul>
+<li>
+<p><strong>内核空间的映射：</strong>在 Lab3 中我们将物理内存 <code>0x80000000~0x88000000</code> 直接映射到内核空间 <code>0xffffffd600000000~0xffffffd608000000</code>。所有用户态、内核态进程的页表中都包含这部分映射，这些页也永远不需要释放、不需要引用计数管理。</p>
+<p>进一步地，我们可以在三级页表中让这部分页表共享，即指向同一份子页表数据结构，<strong>节省内存开销</strong>。如下图所示：</p>
+<p></p><figure markdown="span">
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab4.assets/shared_kernel_pgtable.drawio"><div class="mxgraph" data-mxgraph='{"toolbar-position": "bottom", "toolbar-nohide": "0", "tooltips": "1", "border": 5, "resize": "1", "edit": "_blank", "lightbox": "1", "toolbar": "pages tags zoom layers lightbox", "xml": "&lt;mxfile host=\"65bd71144e\"&gt;\n    &lt;diagram id=\"MsTYWuzhZy6rGm8E_atJ\" name=\"Page-1\"&gt;\n        &lt;mxGraphModel dx=\"440\" dy=\"289\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"1\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"850\" pageHeight=\"1100\" math=\"0\" shadow=\"0\"&gt;\n            &lt;root&gt;\n                &lt;mxCell id=\"0\"/&gt;\n                &lt;mxCell id=\"1\" parent=\"0\"/&gt;\n                &lt;mxCell id=\"67\" value=\"\" style=\"rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"100\" y=\"280\" width=\"80\" height=\"190\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"66\" value=\"\" style=\"rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"220\" y=\"280\" width=\"80\" height=\"190\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"65\" value=\"\" style=\"rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"340\" y=\"280\" width=\"80\" height=\"190\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"2\" value=\"L2\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"120\" y=\"200\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"5\" value=\"L1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"120\" y=\"300\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"6\" value=\"L2\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"240\" y=\"200\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"7\" value=\"L1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"240\" y=\"300\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"8\" value=\"L2\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"360\" y=\"200\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"9\" value=\"L1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"360\" y=\"300\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"10\" value=\"\u7528\u6237\u6001\u8fdb\u7a0b 1\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"100\" y=\"160\" width=\"80\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"11\" value=\"\u7528\u6237\u6001\u8fdb\u7a0b 2\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"220\" y=\"160\" width=\"80\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"12\" value=\"\u5185\u6838\u6001\u8fdb\u7a0b 1\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"340\" y=\"160\" width=\"80\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"30\" style=\"edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;\" edge=\"1\" parent=\"1\" source=\"16\" target=\"9\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"16\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"150\" y=\"220\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"17\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"140\" y=\"220\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"18\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"130\" y=\"220\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"33\" style=\"edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;\" edge=\"1\" parent=\"1\" source=\"19\" target=\"5\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"19\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"120\" y=\"220\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"29\" style=\"edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;\" edge=\"1\" parent=\"1\" source=\"20\" target=\"9\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"20\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"270\" y=\"220\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"21\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"260\" y=\"220\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"22\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"250\" y=\"220\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"34\" style=\"edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;\" edge=\"1\" parent=\"1\" source=\"23\" target=\"7\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"23\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"240\" y=\"220\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"28\" style=\"edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;\" edge=\"1\" parent=\"1\" source=\"24\" target=\"9\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"24\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"390\" y=\"220\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"25\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"380\" y=\"220\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"26\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"370\" y=\"220\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"27\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"360\" y=\"220\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"35\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"270\" y=\"320\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"36\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"260\" y=\"320\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"37\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"250\" y=\"320\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"48\" style=\"edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;\" edge=\"1\" parent=\"1\" source=\"38\" target=\"43\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"38\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"240\" y=\"320\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"39\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"150\" y=\"320\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"40\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"140\" y=\"320\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"41\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"130\" y=\"320\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"54\" style=\"edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;\" edge=\"1\" parent=\"1\" source=\"42\" target=\"49\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"42\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"120\" y=\"320\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"43\" value=\"L0\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"240\" y=\"390\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"44\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"270\" y=\"410\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"45\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"260\" y=\"410\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"46\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"250\" y=\"410\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"47\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"240\" y=\"410\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"49\" value=\"L0\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"120\" y=\"390\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"50\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"150\" y=\"410\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"51\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"140\" y=\"410\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"52\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"130\" y=\"410\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"53\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"120\" y=\"410\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"55\" value=\"L0\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"360\" y=\"390\" width=\"40\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"56\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"390\" y=\"410\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"57\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"380\" y=\"410\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"58\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"370\" y=\"410\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"59\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"360\" y=\"410\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"60\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"390\" y=\"320\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"61\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"380\" y=\"320\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"62\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"370\" y=\"320\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"63\" value=\"PTE\" style=\"rounded=0;whiteSpace=wrap;html=1;horizontal=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"360\" y=\"320\" width=\"10\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"64\" style=\"edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.492;entryY=0.161;entryDx=0;entryDy=0;entryPerimeter=0;\" edge=\"1\" parent=\"1\" source=\"63\" target=\"55\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"68\" value=\"\u5185\u6838\u7a7a\u95f4\u88ab\u6240\u6709\u8fdb\u7a0b\u5171\u4eab\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"335\" y=\"480\" width=\"90\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"69\" value=\"\u7528\u6237\u6001\u8fdb\u7a0b\u6709\u5404\u81ea\u72ec\u7acb\u7684&amp;lt;div&amp;gt;\u7528\u6237\u6001\u7a7a\u95f4&amp;lt;/div&amp;gt;\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"120\" y=\"480\" width=\"160\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n            &lt;/root&gt;\n        &lt;/mxGraphModel&gt;\n    &lt;/diagram&gt;\n&lt;/mxfile&gt;"}' style="max-width:100%;border:1px solid transparent;"></div></a>
+<figcaption>
+    共享内核空间页表
+    </figcaption>
+</figure><p></p>
+</li>
+<li>
+<p><strong>用户空间的映射：</strong>上一节描述的 <code>0x0000000000000000~0x0000003fffffffff</code> 的区域，将在 Part2 展开讲解。</p>
+<p>简单来说，我们会先 <code>alloc_page()</code> 分配物理页，然后在用户态进程的页表中创建对应的映射。在释放页表时，对用户空间的页面调用 <code>put_page()</code>。</p>
+<p>对于本实验，所有用户态进程的用户态内存都是独立的一份拷贝，并不会出现上面描述的指向同一个页面的情况。此时引用计数看起来好像没什么用，但它为下一个实验的 Fork 和写时复制（Copy-On-Write, COW）打下了基础。</p>
+</li>
+</ul>
+<h3 id="task1实现进程页表">Task1：实现进程页表<a class="headerlink" href="#task1实现进程页表" title="Permanent link">¶</a></h3>
+<p><code>struct task_struct</code> 新增了 <code>pgd</code> 成员来保存进程的页表。你的任务如下：</p>
+<ul>
+<li>
+<p>实现页表的工具函数，见 <code>kernel/arch/riscv/kernel/vm.c</code>：</p>
+<ul>
+<li>
+<p><strong>请你补全</strong> <code>copy_pgd()</code>。该函数接收一个三级页表，对其进行<strong>深拷贝</strong>，返回新页表。它的实现和 Lab3 中的 <code>create_mapping()</code> 类似。</p>
+<p>特例：对于内核空间的页表项，按上面的描述直接共享即可。</p>
+</li>
+<li>
+<p><strong>我们提供</strong>了 <code>free_pgd()</code> 用于释放三级页表，并且用 Buddy System 的 <code>put_page()</code> 释放物理页。同样地，内核空间的页表项指向的物理页直接跳过。</p>
+</li>
+</ul>
+</li>
+<li>
+<p>相应地，进程的整个生命周期也需要维护页表，见 <code>kernel/arch/riscv/kernel/proc.c</code>：</p>
+<ul>
+<li><strong>请你修改</strong> <code>task_init()</code>，设置第一个进程的页表，即将 <code>pgd</code> 指向内核页表 <code>swapper_pg_dir</code>。</li>
+<li><strong>请你修改</strong> <code>release_task()</code>，添加进程页表的释放。</li>
+<li><strong>请你修改</strong> <code>copy_process()</code>，添加进程页表的拷贝。</li>
+</ul>
+</li>
+<li>
+<p><strong>我们修改了</strong> <code>kernel/arch/riscv/kernel/entry.S</code> 的 <code>__switch_to</code>，在切换进程时切换页表。</p>
+</li>
+</ul>
+<div class="admonition success">
+<p class="admonition-title">完成条件</p>
+<p>仅完成该 Task 时，代码并不完善，无法运行。请继续完成下一个 Task。</p>
+</div>
+<h3 id="用户栈与内核栈">用户栈与内核栈<a class="headerlink" href="#用户栈与内核栈" title="Permanent link">¶</a></h3>
+<p>用户态 Trap 进入内核态时，<code>sp</code> 指向用户空间。内核的代码能直接使用这个栈吗？</p>
+<p>答案是否定的，有以下原因：</p>
+<ul>
+<li>
+<p><strong>隔离：</strong>PTE 中的 <code>U</code> 位起到了隔离用户态和内核态数据的作用：</p>
+<blockquote>
+<p>The U bit indicates whether the page is accessible to user mode. U-mode software may only access the page when U=1. If the SUM bit in the sstatus register is set, supervisor mode software may also access pages with U=1. However, supervisor code normally operates with the SUM bit clear, in which case, supervisor code will fault on accesses to user-mode pages. Irrespective of SUM, the supervisor may not execute code on pages with U=1.</p>
+</blockquote>
+<p><code>sstatus.SUM</code> 默认为 0，因此内核态代码无法访问用户态数据，包括用户栈。</p>
+</li>
+<li>
+<p><strong>安全：</strong>把 <code>sstatus.SUM</code> 置 1，内核代码就能使用用户栈了，但这并不安全。使用栈的前后，程序只会移动栈指针，而<strong>不会清理栈上的数据</strong>。如果内核代码使用用户栈，则有可能泄露内核敏感数据到用户态，被恶意程序利用。</p>
+</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">要点：隔离用户态和内核态数据</p>
+<p>很多漏洞都是由于内核态数据泄露引起。感兴趣的同学可以阅读以下资料：</p>
+<ul>
+<li>硬件漏洞：<a href="https://blog.yzsun.me/spectre-meltdown-foreshadow/">幽灵・熔毁・预兆 | 孙耀珠的博客</a>，通过 CPU 乱序执行的漏洞获取内核数据。</li>
+<li>软件漏洞：<a href="https://a13xp0p0v.github.io/2018/11/04/stackleak.html">How STACKLEAK improves Linux kernel security | Alexander Popov</a>，通过内核栈数据泄露的漏洞获取内核数据。</li>
+</ul>
+<p>因此，隔离用户态和内核态数据是操作系统设计中的重要原则。</p>
+</div>
+<p><code>struct task_struct</code> 新增了两个成员：<code>kernel_sp</code> 和 <code>user_sp</code> 用于保存用户态 <code>sp</code> 和内核态 <code>sp</code>。<code>stack</code> 始终指向内核栈的低地址端。</p>
+<figure>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab4.assets/stacks.drawio"><div class="mxgraph" data-mxgraph='{"toolbar-position": "bottom", "toolbar-nohide": "0", "tooltips": "1", "border": 5, "resize": "1", "edit": "_blank", "lightbox": "1", "toolbar": "pages tags zoom layers lightbox", "xml": "&lt;mxfile host=\"65bd71144e\"&gt;\n    &lt;diagram id=\"LuGsNMmTA-ZkflaIOKCQ\" name=\"Page-1\"&gt;\n        &lt;mxGraphModel dx=\"550\" dy=\"1635\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"1\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"850\" pageHeight=\"1100\" math=\"0\" shadow=\"0\"&gt;\n            &lt;root&gt;\n                &lt;mxCell id=\"0\"/&gt;\n                &lt;mxCell id=\"1\" parent=\"0\"/&gt;\n                &lt;mxCell id=\"26\" value=\"\" style=\"rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"670\" y=\"-280\" width=\"120\" height=\"220\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"24\" value=\"\" style=\"rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;dashed=1;strokeColor=#d6b656;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"790\" y=\"-280\" width=\"310\" height=\"220\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"2\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"1000\" y=\"-240\" width=\"80\" height=\"160\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"3\" value=\"\u5185\u6838\u6808\" style=\"text;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"1000\" y=\"-270\" width=\"80\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"4\" value=\"struct pt_regs\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"1000\" y=\"-240\" width=\"80\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"7\" value=\"tp\" style=\"text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"770\" y=\"-91\" width=\"50\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"8\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"840\" y=\"-170\" width=\"80\" height=\"90\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"9\" value=\"\" style=\"endArrow=classic;html=1;\" edge=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"820\" y=\"-80.4\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"840\" y=\"-80.4\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"10\" value=\"task_struct\" style=\"text;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"840\" y=\"-200\" width=\"80\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"11\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;entryX=0;entryY=1;entryDx=0;entryDy=0;\" edge=\"1\" parent=\"1\" source=\"12\" target=\"2\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"960\" y=\"-100\"/&gt;\n                            &lt;mxPoint x=\"960\" y=\"-80\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"12\" value=\".stack\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"840\" y=\"-111\" width=\"80\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"14\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;entryX=0;entryY=1;entryDx=0;entryDy=0;\" edge=\"1\" parent=\"1\" source=\"13\" target=\"22\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"960\" y=\"-121\"/&gt;\n                            &lt;mxPoint x=\"960\" y=\"-200\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"13\" value=\".kernel_sp\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"840\" y=\"-131\" width=\"80\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"15\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"690\" y=\"-240\" width=\"80\" height=\"160\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"16\" value=\"\u7528\u6237\u6808\" style=\"text;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"690\" y=\"-270\" width=\"80\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"19\" style=\"edgeStyle=orthogonalEdgeStyle;html=1;entryX=1;entryY=1;entryDx=0;entryDy=0;\" edge=\"1\" parent=\"1\" source=\"18\" target=\"20\"&gt;\n                    &lt;mxGeometry relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"790\" y=\"-220\" as=\"targetPoint\"/&gt;\n                        &lt;Array as=\"points\"&gt;\n                            &lt;mxPoint x=\"800\" y=\"-141\"/&gt;\n                            &lt;mxPoint x=\"800\" y=\"-220\"/&gt;\n                        &lt;/Array&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"18\" value=\".user_sp\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"840\" y=\"-151\" width=\"80\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"20\" value=\"\u7528\u6237\u6808\u6570\u636e\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"690\" y=\"-240\" width=\"80\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"21\" value=\"\" style=\"endArrow=classic;html=1;\" edge=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"729.72\" y=\"-220\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"729.72\" y=\"-200\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"22\" value=\"\u5185\u6838\u6808\u6570\u636e\" style=\"rounded=0;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"1000\" y=\"-220\" width=\"80\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"23\" value=\"\" style=\"endArrow=classic;html=1;\" edge=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"1039.72\" y=\"-200\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"1039.72\" y=\"-180\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"25\" value=\"\u5185\u6838\u7a7a\u95f4\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"900\" y=\"-310\" width=\"90\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"27\" value=\"\u7528\u6237\u7a7a\u95f4\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;\" vertex=\"1\" parent=\"1\"&gt;\n                    &lt;mxGeometry x=\"685\" y=\"-310\" width=\"90\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n            &lt;/root&gt;\n        &lt;/mxGraphModel&gt;\n    &lt;/diagram&gt;\n&lt;/mxfile&gt;"}' style="max-width:100%;border:1px solid transparent;"></div></a>
+<figcaption>
+    用户栈与内核栈
+    </figcaption>
+</figure>
+<p>Part 2 将介绍用户栈的用法，下一节分析 Linux 是怎么设计 Trap 处理和内核栈布局的。</p>
+<h3 id="从用户态到内核态">从用户态到内核态<a class="headerlink" href="#从用户态到内核态" title="Permanent link">¶</a></h3>
+<p>本节讨论 Trap 处理程序如何实现用户栈与内核栈的切换。RISC-V 提供了一个专门的寄存器 <code>sscratch</code>，见 <a href="https://zju-os.github.io/doc/spec/riscv-privileged.html#_supervisor_scratch_sscratch_register">12.1.6. Supervisor Scratch (sscratch) Register</a>，标准已经说明了它的用法：</p>
+<blockquote>
+<p>Typically, sscratch is used to hold a pointer to the hart-local <strong>supervisor context</strong> while the hart is executing <strong>user code</strong>. At the beginning of a trap handler, software normally uses a CSRRW instruction to swap sscratch with an integer register to obtain an initial working register.</p>
+</blockquote>
+<p>下面是对标准的进一步说明：</p>
+<ul>
+<li><strong>supervisor context</strong> 指的就是 PCB，也就是 <code>struct task_struct</code></li>
+<li><strong>PCB 指针</strong>保存的位置：<ul>
+<li><strong>用户态</strong>：保存在 <code>sscratch</code>。</li>
+<li><strong>内核态</strong>：保存在 <code>tp</code>。特别地，<code>proc.h</code> 将其绑定到 C 语言变量 <code>current</code> 方便使用。此时还将 <code>sscratch</code> 设为 <code>0</code>，下文会解释原因。</li>
+</ul>
+</li>
+</ul>
+<div class="admonition info">
+<p class="admonition-title">FAQ：用户态的 <code>tp</code> 是用来做什么的呢？</p>
+<p>正文讲解了 <code>tp</code> 在内核态中指向进程的 <code>task_struct</code>，那用户态的 <code>tp</code> 是干什么的呢？</p>
+<p>我们可以在 <a href="https://zju-os.github.io/doc/spec/riscv-abi.pdf">RISC-V ABIs Specification</a> 中找到这个问题的答案，毕竟 thread pointer 这个名字就是这个规范定义的。ABI 规范第 8.5 节 Thread Local Storage 详细讲解了 <code>tp</code> 用法。简单来说：</p>
+<ul>
+<li><code>tp</code> 用于实现多线程编程中的线程局部存储（Thread-Local Storage, TLS），例如 C 语言中的 <code>__thread</code> 变量。</li>
+<li>利用 <code>tp + offset</code> 的方式实现线程局部存储，无需全局锁也无需为每个线程生成不同的代码。</li>
+</ul>
+<p>（本段内容写于 2025/11/21，规范的内容可能随时间变化，请同学们以最新版本为准。）</p>
+</div>
+<p>切换流程：</p>
+<ul>
+<li><strong>Trap 发生时</strong>：使用 CSRRW 指令交换 <code>sscratch</code> 和 <code>tp</code>，Trap 处理程序就能通过 <code>tp</code> 访问 <code>task_struct</code>，进而存取其中的 <code>kernel_sp</code> 和 <code>user_sp</code> 了。</li>
+<li><strong>切换栈</strong>：<ul>
+<li>把 <code>sp</code>（现在是用户栈）保存到 <code>user_sp</code></li>
+<li>再把 <code>kernel_sp</code> 加载到 <code>sp</code>，切换到内核栈。</li>
+</ul>
+</li>
+<li>
+<p><strong>在内核栈上保存 Trap 上下文</strong></p>
+<div class="admonition question">
+<p class="admonition-title">考考你：<code>tp</code> 寄存器也是 Trap 上下文的一部分，这个时候要怎么保存 <code>tp</code> 寄存器呢？</p>
+</div>
+</li>
+<li>
+<p><strong>Trap 处理结束后</strong>：</p>
+<ul>
+<li>把 <code>tp</code> 保存回 <code>sscratch</code>。不能让 User 程序知道自己的 PCB 在哪里，这是内核敏感数据。</li>
+<li>恢复 Trap 上下文时，<code>tp</code> 被恢复为进入 Trap 时的用户态的 <code>tp</code>。</li>
+</ul>
+</li>
+</ul>
+<p>通过上面的设计，很自然地能够在 <code>_traps()</code> 开头区分来自用户态的 Trap 和来自内核态的 Trap：</p>
+<ul>
+<li>
+<p>来自用户态的 Trap：<code>sscratch</code> 中保存的是 PCB 地址，不为 0。此时需要：</p>
+<ul>
+<li>切换用户栈和内核栈</li>
+<li>交换 <code>sscratch</code> 和 <code>tp</code></li>
+</ul>
+</li>
+<li>
+<p>来自内核态的 Trap：<code>sscratch</code> 中保存的是 0。此时：</p>
+<ul>
+<li>不需要操作栈，直接使用当前的 <code>sp</code></li>
+<li>也不需要交换 <code>sscratch</code> 和 <code>tp</code></li>
+</ul>
+</li>
+</ul>
+<p>最后，我们考虑嵌套 Trap 的情况。嵌套 Trap 一定是来自内核态的 Trap（先前的 Trap 要么从用户态进入内核态，要么已经在内核态了）。这时会<strong>直接使用当前的 <code>sp</code></strong>，那么 Trap 上下文就依次保存到内核栈上了，不难想象会是下图的情况：</p>
+<figure>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab4.assets/nested_trap.drawio"><div class="mxgraph" data-mxgraph='{"toolbar-position": "bottom", "toolbar-nohide": "0", "tooltips": "1", "border": 5, "resize": "1", "edit": "_blank", "lightbox": "1", "toolbar": "pages tags zoom layers lightbox", "xml": "&lt;mxfile host=\"65bd71144e\"&gt;\n    &lt;diagram id=\"9IsWHgqAN4KXs__CKzsh\" name=\"Page-1\"&gt;\n        &lt;mxGraphModel dx=\"-319\" dy=\"1338\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"1\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"850\" pageHeight=\"1100\" math=\"0\" shadow=\"0\"&gt;\n            &lt;root&gt;\n                &lt;mxCell id=\"0\"/&gt;\n                &lt;mxCell id=\"1\" parent=\"0\"/&gt;\n                &lt;mxCell id=\"2\" value=\"\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1000\" y=\"-240\" width=\"170\" height=\"170\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"3\" value=\"\u7b2c 1 \u6b21 Trap \u4e0a\u4e0b\u6587\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1000\" y=\"-240\" width=\"170\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"4\" value=\"\u7b2c 1 \u6b21 trap_handler() \u8c03\u7528\u6808\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1000\" y=\"-220\" width=\"170\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"5\" value=\"\u7b2c 2 \u6b21 Trap \u4e0a\u4e0b\u6587\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1000\" y=\"-200\" width=\"170\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"6\" value=\"\u7b2c 2 \u6b21 trap_handler() \u8c03\u7528\u6808\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1000\" y=\"-180\" width=\"170\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"7\" value=\"\u7b2c 3 \u6b21 Trap \u4e0a\u4e0b\u6587\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1000\" y=\"-160\" width=\"170\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"8\" value=\"\u7b2c 3 \u6b21 trap_handler() \u8c03\u7528\u6808\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1000\" y=\"-140\" width=\"170\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"9\" value=\"...\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1000\" y=\"-120\" width=\"170\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"11\" value=\"\u5185\u6838\u6808\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1055\" y=\"-270\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"29\" value=\"\u9ad8\u5730\u5740\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1160\" y=\"-260\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"30\" value=\"\u4f4e\u5730\u5740\" style=\"text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"1160\" y=\"-80.45\" width=\"60\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"31\" value=\"\" style=\"endArrow=classic;html=1;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"1084.78\" y=\"-100.45\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"1084.78\" y=\"-80.45\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n            &lt;/root&gt;\n        &lt;/mxGraphModel&gt;\n    &lt;/diagram&gt;\n&lt;/mxfile&gt;"}' style="max-width:100%;border:1px solid transparent;"></div></a>
+<figcaption>
+    嵌套 Trap 时的栈布局
+    </figcaption>
+</figure>
+<p>因此 <code>_traps()</code> 的结尾也需要区分用户态 Trap 的返回和内核态 Trap 的返回。思路也很简单：</p>
+<ul>
+<li><code>call trap_handler</code> 返回后，<code>sp</code> 仍然指向最新的 Trap 上下文。可以获取其中的 <code>sstatus.SPP</code> 位判断要返回到用户态还是内核态。</li>
+<li>如果返回到用户态：<ul>
+<li>需要切换用户栈和内核栈</li>
+<li>需要交换 <code>sscratch</code> 和 <code>tp</code></li>
+</ul>
+</li>
+<li>如果返回到内核态：<ul>
+<li>不需要切换栈</li>
+<li>不需要交换 <code>sscratch</code> 和 <code>tp</code></li>
+</ul>
+</li>
+</ul>
+<div class="admonition info">
+<p class="admonition-title">FAQ：为什么会有嵌套 Trap</p>
+<p>有同学会问，一进 Trap <code>sstatus.SIE</code> 就被移到 <code>sstatus.SPIE</code> 了，内核态中断被禁止了，怎么还会有 Trap 呢？</p>
+<ul>
+<li><code>SIE</code> 只管 Interrupt，你的内核代码写得不好的话，可能会触发 <strong>Exception</strong>，比如访问非法内存地址、除零等。这就造成了嵌套 Trap。</li>
+<li>在现实的硬件中，有一种中断叫 NMIs（Non-Maskable Interrupts，非屏蔽中断），它们是不可屏蔽的中断。实验中不需要考虑，感兴趣的同学可以进一步阅读特权级手册的 <a href="https://zju-os.github.io/doc/spec/riscv-privileged.html#rnmi">8. "Smrnmi" Extension for Resumable Non-Maskable Interrupts, Version 1.0</a> 章节。</li>
+</ul>
+</div>
+<h3 id="task2实现用户栈与内核栈">Task2：实现用户栈与内核栈<a class="headerlink" href="#task2实现用户栈与内核栈" title="Permanent link">¶</a></h3>
+<p>按照上文和下面的说明完成任务。</p>
+<ul>
+<li><code>kernel/arch/riscv/include/proc.h</code>：<ul>
+<li><strong>我们提供</strong> <code>struct pt_regs</code>，用于统一 Trap 上下文的保存格式。</li>
+<li><strong>我们提供</strong> <code>task_pt_regs(tsk)</code> 宏，用于获取最新的 Trap 上下文指针。</li>
+<li><strong>我们提供</strong> <code>user_mode(struct pt_regs *regs)</code> 函数用于判断 Trap 来源于用户态还是内核态。</li>
+<li>在进程的整个生命周期中，<code>user_sp</code> 和 <code>kernel_sp</code> 都需要正确维护。<strong>请你修改</strong> <code>task_init()</code>、<code>release_task()</code> 和 <code>copy_process()</code> 等函数，确保它们被正确设置、拷贝和释放。</li>
+</ul>
+</li>
+<li>
+<p><code>kernel/arch/riscv/kernel/entry.S</code>：</p>
+<ul>
+<li>
+<p><strong>请检查并修改</strong> <code>_traps()</code></p>
+<ul>
+<li>
+<p>确保保存和恢复的内容与 <code>struct pt_regs</code> 定义一致。</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip：建议在 <code>entry.S</code> 中使用 <code>proc.h</code> 中提供的一些偏移量宏，这些宏有编译器静态检查，不容易出错。</p>
+</div>
+</li>
+<li>
+<p>把 Trap 上下文传递给 <code>trap_handler()</code></p>
+</li>
+<li><strong>我们提供</strong> 在 <code>_traps()</code> 返回路径上，根据 <code>sstatus.SPP</code> 判断返回到用户态还是内核态，并执行相应的栈切换和 <code>sscratch</code> 与 <code>tp</code> 交换的逻辑。</li>
+<li><strong>请你修改</strong> <code>_traps()</code> 的开头，判断 Trap 来源于用户态还是内核态，并执行相应的栈切换和 <code>sscratch</code> 与 <code>tp</code> 交换逻辑。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><code>kernel/arch/riscv/kernel/trap.c</code>：</p>
+<ul>
+<li><strong>请你修改</strong> <code>trap_handler()</code>：<ul>
+<li>仅接受一个参数 <code>struct pt_regs *regs</code>，表示本次 Trap 的上下文。</li>
+<li>相关的参数如 <code>scause</code>、<code>sepc</code> 等均从 <code>regs</code> 中获取。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<div class="admonition tip">
+<p class="admonition-title">Tip：遇到困难？</p>
+<ul>
+<li>如果搞不懂 <code>entry.S</code> 怎么写，可以先试试把 Linux 的 <code>arch/riscv/kernel/entry.S</code> 看明白，本 Task 的逻辑与其一致。</li>
+</ul>
+</div>
+<div class="admonition success">
+<p class="admonition-title">完成条件</p>
+<p>该 Task 没有单独的评测。</p>
+<p>你可以尝试注释掉 <code>main.c</code> 中的 <code>user_mode_thread()</code> 函数调用并运行内核，运行结果应和 Lab3 完成时一样，各内核线程正常运行并被调度。</p>
+</div>
+<div class="admonition example">
+<p class="admonition-title">动手做：Trap 来源的判断</p>
+<p>为什么在 Trap 开头<strong>不得不</strong>使用 <code>sscratch</code> 判断 Trap 来源，不能像返回时那样通过 <code>sstatus.SPP</code> 判断呢？为什么非得用 <code>csrrw</code> 指令呢？请你给出解释。</p>
+</div>
+<h2 id="part-2加载和运行用户态程序">Part 2：加载和运行用户态程序<a class="headerlink" href="#part-2加载和运行用户态程序" title="Permanent link">¶</a></h2>
+<p>本节我们先了解用户态程序是怎么编译、嵌入内核的，同时认识 ELF 格式和用户态内存布局。接下来实现一个 ELF 加载器，把用户态程序加载到正确的内存位置并设置好权限。完成后就能运行用户态程序了。</p>
+<h3 id="用户态程序嵌入内核">用户态程序嵌入内核<a class="headerlink" href="#用户态程序嵌入内核" title="Permanent link">¶</a></h3>
+<p>因为我们还没有实现文件系统，所以无法从磁盘加载用户态程序。用户态程序被编译为 ELF 格式的二进制文件，嵌入到内核镜像中。</p>
+<p>请同学们打开 <code>kernel/user/Makefile</code>，了解用户态程序的编译步骤：</p>
+<ul>
+<li>首先将 <code>../lib</code> 和 <code>src</code> 下的所有源文件（<code>.c</code>，对应变量 <code>C_SRC</code>）编译为<strong>目标文件</strong>（<code>.o</code>，对应变量 <code>OBJ</code>）。</li>
+<li>
+<p>然后根据链接脚本 <code>uapp.lds</code> 将这些目标文件链接为 <strong>ELF 格式的可执行文件 <code>uapp.elf</code></strong>。</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-2-1"><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a><span class="k">$(</span>LD<span class="k">)</span><span class="w"> </span>-T<span class="w"> </span>uapp.lds<span class="w"> </span>-o<span class="w"> </span><span class="nv">$@</span><span class="w"> </span><span class="k">$(</span>OBJ<span class="k">)</span>
+</span></code></pre></div>
+<p>链接脚本中的 <code>ENTRY(_start)</code> 指定程序入口点为 <code>_start</code> 符号，它定义在 <code>src/head.S</code> 中。</p>
+</li>
+<li>
+<p>接着编译 <code>uapp.S</code>，这个汇编代码使用 <code>incbin</code> 指令将 <code>uapp.elf</code> <strong>以二进制文件的形式</strong>嵌入到 <code>uapp</code> 段中，得到<strong>目标文件</strong> <code>uapp.o</code>。</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-3-1"><a href="#__codelineno-3-1" id="__codelineno-3-1" name="__codelineno-3-1"></a><span class="k">$(</span>GCC<span class="k">)</span><span class="w"> </span><span class="k">$(</span>CFLAGS<span class="k">)</span><span class="w"> </span>-c<span class="w"> </span>uapp.S
+</span></code></pre></div>
+<div class="language-text highlight"><span class="filename">kernel/user/uapp.S</span><pre><span></span><code><span id="__span-4-1"><a href="#__codelineno-4-1" id="__codelineno-4-1" name="__codelineno-4-1"></a>.section .uapp
+</span><span id="__span-4-2"><a href="#__codelineno-4-2" id="__codelineno-4-2" name="__codelineno-4-2"></a>.incbin "uapp.elf"
+</span></code></pre></div>
+</li>
+<li>
+<p>合并时修改了 <code>vmlinux.lds</code> 和 <code>vmlinux</code> 的链接命令：</p>
+<div class="language-diff highlight"><pre><span></span><code><span id="__span-5-1"><a href="#__codelineno-5-1" id="__codelineno-5-1" name="__codelineno-5-1"></a><span class="gd">--- a/kernel/arch/riscv/kernel/vmlinux.lds</span>
+</span><span id="__span-5-2"><a href="#__codelineno-5-2" id="__codelineno-5-2" name="__codelineno-5-2"></a><span class="gi">+++ b/kernel/arch/riscv/kernel/vmlinux.lds</span>
+</span><span id="__span-5-3"><a href="#__codelineno-5-3" id="__codelineno-5-3" name="__codelineno-5-3"></a><span class="w"> </span>       _edata = .;
+</span><span id="__span-5-4"><a href="#__codelineno-5-4" id="__codelineno-5-4" name="__codelineno-5-4"></a>
+</span><span id="__span-5-5"><a href="#__codelineno-5-5" id="__codelineno-5-5" name="__codelineno-5-5"></a><span class="gi">+        . = ALIGN(0x1000);</span>
+</span><span id="__span-5-6"><a href="#__codelineno-5-6" id="__codelineno-5-6" name="__codelineno-5-6"></a><span class="gi">+        _sramdisk = .;</span>
+</span><span id="__span-5-7"><a href="#__codelineno-5-7" id="__codelineno-5-7" name="__codelineno-5-7"></a><span class="gi">+        *(.uapp .uapp*)</span>
+</span><span id="__span-5-8"><a href="#__codelineno-5-8" id="__codelineno-5-8" name="__codelineno-5-8"></a><span class="gi">+        _eramdisk = .;</span>
+</span><span id="__span-5-9"><a href="#__codelineno-5-9" id="__codelineno-5-9" name="__codelineno-5-9"></a><span class="gi">+</span>
+</span><span id="__span-5-10"><a href="#__codelineno-5-10" id="__codelineno-5-10" name="__codelineno-5-10"></a><span class="w"> </span>       . = ALIGN(0x1000);
+</span><span id="__span-5-11"><a href="#__codelineno-5-11" id="__codelineno-5-11" name="__codelineno-5-11"></a><span class="gd">--- a/kernel/Makefile</span>
+</span><span id="__span-5-12"><a href="#__codelineno-5-12" id="__codelineno-5-12" name="__codelineno-5-12"></a><span class="gi">+++ b/kernel/Makefile</span>
+</span><span id="__span-5-13"><a href="#__codelineno-5-13" id="__codelineno-5-13" name="__codelineno-5-13"></a><span class="w"> </span>           $(LD) -T arch/riscv/kernel/vmlinux.lds \
+</span><span id="__span-5-14"><a href="#__codelineno-5-14" id="__codelineno-5-14" name="__codelineno-5-14"></a><span class="w"> </span>               arch/riscv/kernel/*.o \
+</span><span id="__span-5-15"><a href="#__codelineno-5-15" id="__codelineno-5-15" name="__codelineno-5-15"></a><span class="w"> </span>               lib/*.o \
+</span><span id="__span-5-16"><a href="#__codelineno-5-16" id="__codelineno-5-16" name="__codelineno-5-16"></a><span class="gi">+               user/uapp.o \</span>
+</span><span id="__span-5-17"><a href="#__codelineno-5-17" id="__codelineno-5-17" name="__codelineno-5-17"></a><span class="w"> </span>               -o vmlinux
+</span></code></pre></div>
+<p>上面的修改将所有 <code>uapp</code> 段的内容放在内核的 <code>_sramdisk</code> 和 <code>_eramdisk</code> 符号之间，而上一步就是把 <code>uapp.elf</code> 这个文件放进了 <code>uapp</code> 段。最终这个文件就被嵌入到了内核镜像中。</p>
+</li>
+</ul>
+<h3 id="elf-规范阅读">ELF 规范阅读<a class="headerlink" href="#elf-规范阅读" title="Permanent link">¶</a></h3>
+<p>这是 ELF 规范：<a href="https://refspecs.linuxfoundation.org/elf/elf.pdf">Tool Interface Standard (TIS) Executable and Linking Format (ELF) Specification</a>。本节涉及其中 Book I: Executable and Linking Format (ELF) 的：</p>
+<ul>
+<li>Chapter 1. Object Files 的 Introduction、File Format、ELF Header 部分</li>
+<li>Chapter 2. Program Loading and Dynamic Linking 的 Introduction、Program Header 部分</li>
+</ul>
+<p>建议先看看下面的要点，搞不清楚的地方再回头看规范原文。</p>
+<div class="admonition note">
+<p class="admonition-title">要点：Object Files</p>
+<p><strong>File Format（文件格式）</strong></p>
+<p>📘 核心概念</p>
+<ul>
+<li>ELF（Executable and Linking Format）是一种<strong>可重定位、可执行、可共享库的统一文件格式</strong>。</li>
+<li>同一文件在<strong>链接阶段（Linking View）</strong>与<strong>执行阶段（Execution View）</strong>有不同的视图。</li>
+</ul>
+<p>📂 文件整体结构</p>
+<p>一个 ELF 文件的基本组成如下：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a href="#__codelineno-6-1" id="__codelineno-6-1" name="__codelineno-6-1"></a>ELF Header
+</span><span id="__span-6-2"><a href="#__codelineno-6-2" id="__codelineno-6-2" name="__codelineno-6-2"></a>Program Header Table (optional)
+</span><span id="__span-6-3"><a href="#__codelineno-6-3" id="__codelineno-6-3" name="__codelineno-6-3"></a>Section 1
+</span><span id="__span-6-4"><a href="#__codelineno-6-4" id="__codelineno-6-4" name="__codelineno-6-4"></a>Section 2
+</span><span id="__span-6-5"><a href="#__codelineno-6-5" id="__codelineno-6-5" name="__codelineno-6-5"></a>...
+</span><span id="__span-6-6"><a href="#__codelineno-6-6" id="__codelineno-6-6" name="__codelineno-6-6"></a>Section n
+</span><span id="__span-6-7"><a href="#__codelineno-6-7" id="__codelineno-6-7" name="__codelineno-6-7"></a>Section Header Table (optional)
+</span></code></pre></div>
+<p><strong>两种视图：</strong></p>
+<table>
+<thead>
+<tr>
+<th>视图类型</th>
+<th>用途</th>
+<th>主要结构</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Linking View</td>
+<td>用于链接阶段（编译器/链接器）</td>
+<td>Sections（节）</td>
+</tr>
+<tr>
+<td>Execution View</td>
+<td>用于加载与执行阶段（OS/Loader）</td>
+<td>Segments（段）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>✅ 重点理解：</p>
+<ul>
+<li><strong>Sections</strong>：面向链接器（包含代码、数据、符号表、重定位信息等）。</li>
+<li><strong>Segments</strong>：面向加载器（将文件映射到内存中形成进程映像）。</li>
+<li><strong>Program Header Table</strong>：描述如何将文件内容映射到内存（仅可执行文件和共享库需要）。</li>
+<li><strong>Section Header Table</strong>：描述每个 Section 的信息（仅链接器需要）。</li>
+</ul>
+</blockquote>
+<p>⚠️ 注意事项</p>
+<ul>
+<li>只有 <strong>ELF Header</strong> 位置固定（文件起始处）。</li>
+<li><strong>Program Header Table</strong> 和 <strong>Section Header Table</strong> 的位置可变。</li>
+<li>
+<p>并非所有 ELF 文件都包含两种 Header 表：</p>
+</li>
+<li>
+<p>可执行文件：必须有 Program Header Table。</p>
+</li>
+<li>可重定位文件：必须有 Section Header Table。</li>
+</ul>
+<p><strong>ELF Header（ELF 文件头）</strong></p>
+<p>📘 作用</p>
+<p>ELF Header 位于文件开头，起到“地图”作用，指明文件中其他结构（段、节等）的位置与大小。</p>
+<p>📐 结构定义（简化）</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-7-1"><a href="#__codelineno-7-1" id="__codelineno-7-1" name="__codelineno-7-1"></a><span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-2"><a href="#__codelineno-7-2" id="__codelineno-7-2" name="__codelineno-7-2"></a><span class="kt">unsigned</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">e_ident</span><span class="p">[</span><span class="mi">16</span><span class="p">];</span><span class="w">  </span><span class="c1">// ELF 标识信息</span>
+</span><span id="__span-7-3"><a href="#__codelineno-7-3" id="__codelineno-7-3" name="__codelineno-7-3"></a><span class="n">Elf32_Half</span><span class="w">    </span><span class="n">e_type</span><span class="p">;</span><span class="w">       </span><span class="c1">// 文件类型</span>
+</span><span id="__span-7-4"><a href="#__codelineno-7-4" id="__codelineno-7-4" name="__codelineno-7-4"></a><span class="n">Elf32_Half</span><span class="w">    </span><span class="n">e_machine</span><span class="p">;</span><span class="w">    </span><span class="c1">// 目标架构</span>
+</span><span id="__span-7-5"><a href="#__codelineno-7-5" id="__codelineno-7-5" name="__codelineno-7-5"></a><span class="n">Elf32_Word</span><span class="w">    </span><span class="n">e_version</span><span class="p">;</span><span class="w">    </span><span class="c1">// 文件格式版本</span>
+</span><span id="__span-7-6"><a href="#__codelineno-7-6" id="__codelineno-7-6" name="__codelineno-7-6"></a><span class="n">Elf32_Addr</span><span class="w">    </span><span class="n">e_entry</span><span class="p">;</span><span class="w">      </span><span class="c1">// 程序入口地址</span>
+</span><span id="__span-7-7"><a href="#__codelineno-7-7" id="__codelineno-7-7" name="__codelineno-7-7"></a><span class="n">Elf32_Off</span><span class="w">     </span><span class="n">e_phoff</span><span class="p">;</span><span class="w">      </span><span class="c1">// Program Header 表偏移</span>
+</span><span id="__span-7-8"><a href="#__codelineno-7-8" id="__codelineno-7-8" name="__codelineno-7-8"></a><span class="n">Elf32_Off</span><span class="w">     </span><span class="n">e_shoff</span><span class="p">;</span><span class="w">      </span><span class="c1">// Section Header 表偏移</span>
+</span><span id="__span-7-9"><a href="#__codelineno-7-9" id="__codelineno-7-9" name="__codelineno-7-9"></a><span class="n">Elf32_Word</span><span class="w">    </span><span class="n">e_flags</span><span class="p">;</span><span class="w">      </span><span class="c1">// 架构相关标志</span>
+</span><span id="__span-7-10"><a href="#__codelineno-7-10" id="__codelineno-7-10" name="__codelineno-7-10"></a><span class="n">Elf32_Half</span><span class="w">    </span><span class="n">e_ehsize</span><span class="p">;</span><span class="w">     </span><span class="c1">// ELF Header 大小</span>
+</span><span id="__span-7-11"><a href="#__codelineno-7-11" id="__codelineno-7-11" name="__codelineno-7-11"></a><span class="n">Elf32_Half</span><span class="w">    </span><span class="n">e_phentsize</span><span class="p">;</span><span class="w">  </span><span class="c1">// Program Header 表项大小</span>
+</span><span id="__span-7-12"><a href="#__codelineno-7-12" id="__codelineno-7-12" name="__codelineno-7-12"></a><span class="n">Elf32_Half</span><span class="w">    </span><span class="n">e_phnum</span><span class="p">;</span><span class="w">      </span><span class="c1">// Program Header 表项数量</span>
+</span><span id="__span-7-13"><a href="#__codelineno-7-13" id="__codelineno-7-13" name="__codelineno-7-13"></a><span class="n">Elf32_Half</span><span class="w">    </span><span class="n">e_shentsize</span><span class="p">;</span><span class="w">  </span><span class="c1">// Section Header 表项大小</span>
+</span><span id="__span-7-14"><a href="#__codelineno-7-14" id="__codelineno-7-14" name="__codelineno-7-14"></a><span class="n">Elf32_Half</span><span class="w">    </span><span class="n">e_shnum</span><span class="p">;</span><span class="w">      </span><span class="c1">// Section Header 表项数量</span>
+</span><span id="__span-7-15"><a href="#__codelineno-7-15" id="__codelineno-7-15" name="__codelineno-7-15"></a><span class="n">Elf32_Half</span><span class="w">    </span><span class="n">e_shstrndx</span><span class="p">;</span><span class="w">   </span><span class="c1">// 字符串表所在节索引</span>
+</span><span id="__span-7-16"><a href="#__codelineno-7-16" id="__codelineno-7-16" name="__codelineno-7-16"></a><span class="p">}</span><span class="w"> </span><span class="n">Elf32_Ehdr</span><span class="p">;</span>
+</span></code></pre></div>
+<p>🧭 各字段要点</p>
+<table>
+<thead>
+<tr>
+<th>字段名</th>
+<th>含义</th>
+<th>示例值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>e_ident</strong></td>
+<td>前 16 字节，识别 ELF 文件、字节序、ABI 等</td>
+<td><code>0x7f 'E' 'L' 'F'</code></td>
+</tr>
+<tr>
+<td><strong>e_type</strong></td>
+<td>文件类型</td>
+<td><code>ET_REL=1</code>, <code>ET_EXEC=2</code>, <code>ET_DYN=3</code></td>
+</tr>
+<tr>
+<td><strong>e_machine</strong></td>
+<td>目标机器架构</td>
+<td><code>EM_386=3</code>, <code>EM_MIPS=8</code></td>
+</tr>
+<tr>
+<td><strong>e_version</strong></td>
+<td>ELF 版本号</td>
+<td><code>EV_CURRENT=1</code></td>
+</tr>
+<tr>
+<td><strong>e_entry</strong></td>
+<td>程序入口虚拟地址</td>
+<td>加载器跳转起点</td>
+</tr>
+<tr>
+<td><strong>e_phoff</strong></td>
+<td>Program Header 表在文件中的偏移</td>
+<td>用于加载阶段</td>
+</tr>
+<tr>
+<td><strong>e_shoff</strong></td>
+<td>Section Header 表在文件中的偏移</td>
+<td>用于链接阶段</td>
+</tr>
+<tr>
+<td><strong>e_flags</strong></td>
+<td>CPU 特定标志位</td>
+<td>架构定义</td>
+</tr>
+<tr>
+<td><strong>e_ehsize</strong></td>
+<td>ELF Header 总字节数</td>
+<td>通常为 52 (ELF32)</td>
+</tr>
+<tr>
+<td><strong>e_phentsize / e_phnum</strong></td>
+<td>每个程序头大小 &amp; 数量</td>
+<td>加载时遍历用</td>
+</tr>
+<tr>
+<td><strong>e_shentsize / e_shnum</strong></td>
+<td>每个节头大小 &amp; 数量</td>
+<td>链接器使用</td>
+</tr>
+<tr>
+<td><strong>e_shstrndx</strong></td>
+<td>节名字符串表的索引</td>
+<td>用于节名解析</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>✅ 理解要点：</p>
+<ul>
+<li><strong>ELF Header 决定文件类型和结构布局</strong>；</li>
+<li><strong>e_entry、e_phoff、e_shoff</strong> 是最关键的三个指针；</li>
+<li><strong>可执行文件</strong>关注 <code>Program Header</code>；</li>
+<li><strong>目标文件</strong>关注 <code>Section Header</code>。</li>
+</ul>
+</blockquote>
+</div>
+<p>读完 Chapter 1，应该理解 Linking View 和 Execution View 的区别：</p>
+<ul>
+<li>Linking View 面向编译器和链接器，关注 Sections（节），用于符号解析和重定位。</li>
+<li>Execution View 面向操作系统和加载器，关注 Segments（段），用于将文件内容映射到内存中运行。</li>
+</ul>
+<p>接下来将关注 Execution View 的相关内容，理解怎么加载、执行文件。</p>
+<div class="admonition note">
+<p class="admonition-title">要点：Program Loading and Dynamic Linking</p>
+<p><strong>Program Header（程序头）</strong></p>
+<p>📘 作用</p>
+<p>Program Header Table 描述了<strong>文件中各段（segment）</strong>在内存中的映射方式，是操作系统加载 ELF 的核心依据。</p>
+<p>仅对：</p>
+<ul>
+<li><strong>Executable (ET_EXEC)</strong></li>
+<li><strong>Shared Object (ET_DYN)</strong>
+文件有效。</li>
+</ul>
+<p>📐 结构定义（简化）</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-8-1"><a href="#__codelineno-8-1" id="__codelineno-8-1" name="__codelineno-8-1"></a><span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-8-2"><a href="#__codelineno-8-2" id="__codelineno-8-2" name="__codelineno-8-2"></a><span class="n">Elf32_Word</span><span class="w"> </span><span class="n">p_type</span><span class="p">;</span><span class="w">   </span><span class="c1">// 段类型</span>
+</span><span id="__span-8-3"><a href="#__codelineno-8-3" id="__codelineno-8-3" name="__codelineno-8-3"></a><span class="n">Elf32_Off</span><span class="w">  </span><span class="n">p_offset</span><span class="p">;</span><span class="w"> </span><span class="c1">// 段在文件中的偏移</span>
+</span><span id="__span-8-4"><a href="#__codelineno-8-4" id="__codelineno-8-4" name="__codelineno-8-4"></a><span class="n">Elf32_Addr</span><span class="w"> </span><span class="n">p_vaddr</span><span class="p">;</span><span class="w">  </span><span class="c1">// 段的虚拟地址</span>
+</span><span id="__span-8-5"><a href="#__codelineno-8-5" id="__codelineno-8-5" name="__codelineno-8-5"></a><span class="n">Elf32_Addr</span><span class="w"> </span><span class="n">p_paddr</span><span class="p">;</span><span class="w">  </span><span class="c1">// 段的物理地址（通常未用）</span>
+</span><span id="__span-8-6"><a href="#__codelineno-8-6" id="__codelineno-8-6" name="__codelineno-8-6"></a><span class="n">Elf32_Word</span><span class="w"> </span><span class="n">p_filesz</span><span class="p">;</span><span class="w"> </span><span class="c1">// 文件中占用的字节数</span>
+</span><span id="__span-8-7"><a href="#__codelineno-8-7" id="__codelineno-8-7" name="__codelineno-8-7"></a><span class="n">Elf32_Word</span><span class="w"> </span><span class="n">p_memsz</span><span class="p">;</span><span class="w">  </span><span class="c1">// 内存中占用的字节数</span>
+</span><span id="__span-8-8"><a href="#__codelineno-8-8" id="__codelineno-8-8" name="__codelineno-8-8"></a><span class="n">Elf32_Word</span><span class="w"> </span><span class="n">p_flags</span><span class="p">;</span><span class="w">  </span><span class="c1">// 段权限标志（R/W/X）</span>
+</span><span id="__span-8-9"><a href="#__codelineno-8-9" id="__codelineno-8-9" name="__codelineno-8-9"></a><span class="n">Elf32_Word</span><span class="w"> </span><span class="n">p_align</span><span class="p">;</span><span class="w">  </span><span class="c1">// 对齐要求</span>
+</span><span id="__span-8-10"><a href="#__codelineno-8-10" id="__codelineno-8-10" name="__codelineno-8-10"></a><span class="p">}</span><span class="w"> </span><span class="n">Elf32_Phdr</span><span class="p">;</span>
+</span></code></pre></div>
+<p>🧩 各字段要点</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>含义</th>
+<th>加载阶段作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>p_type</strong></td>
+<td>段类型（见下表）</td>
+<td>决定如何解释此项</td>
+</tr>
+<tr>
+<td><strong>p_offset</strong></td>
+<td>段在文件中的起始偏移</td>
+<td>从文件读入内存时使用</td>
+</tr>
+<tr>
+<td><strong>p_vaddr</strong></td>
+<td>段映射到内存的虚拟地址</td>
+<td>建立进程映像时使用</td>
+</tr>
+<tr>
+<td><strong>p_paddr</strong></td>
+<td>物理地址（少用）</td>
+<td>某些系统上用于硬件加载</td>
+</tr>
+<tr>
+<td><strong>p_filesz</strong></td>
+<td>文件中该段长度</td>
+<td>文件读取长度</td>
+</tr>
+<tr>
+<td><strong>p_memsz</strong></td>
+<td>内存中该段长度</td>
+<td>若 &gt; 文件长度，剩余部分清零</td>
+</tr>
+<tr>
+<td><strong>p_flags</strong></td>
+<td>访问权限</td>
+<td>R/W/X</td>
+</tr>
+<tr>
+<td><strong>p_align</strong></td>
+<td>文件与内存的对齐约束</td>
+<td>通常为页大小（如 0x1000）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>✅ 关键理解：</p>
+<ul>
+<li><code>p_filesz ≤ p_memsz</code>。多出的部分（如 <code>.bss</code> 段）在内存中初始化为 0。</li>
+<li><code>p_vaddr % p_align == p_offset % p_align</code> 必须成立。</li>
+<li>加载器根据这些信息将文件段映射到内存。</li>
+</ul>
+</blockquote>
+<p>🔖 段类型（p_type）</p>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>值</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>PT_NULL</strong></td>
+<td>0</td>
+<td>无效项（忽略）</td>
+</tr>
+<tr>
+<td><strong>PT_LOAD</strong></td>
+<td>1</td>
+<td>可加载段（程序代码、数据等）</td>
+</tr>
+<tr>
+<td><strong>PT_DYNAMIC</strong></td>
+<td>2</td>
+<td>动态链接信息段</td>
+</tr>
+<tr>
+<td><strong>PT_INTERP</strong></td>
+<td>3</td>
+<td>指定解释器路径（如 <code>/lib/ld-linux.so.2</code>）</td>
+</tr>
+<tr>
+<td><strong>PT_NOTE</strong></td>
+<td>4</td>
+<td>辅助信息（调试、core dump）</td>
+</tr>
+<tr>
+<td><strong>PT_SHLIB</strong></td>
+<td>5</td>
+<td>保留，未定义</td>
+</tr>
+<tr>
+<td><strong>PT_PHDR</strong></td>
+<td>6</td>
+<td>程序头表本身</td>
+</tr>
+<tr>
+<td><strong>PT_LOPROC–PT_HIPROC</strong></td>
+<td>0x70000000–0x7fffffff</td>
+<td>处理器专用</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>✅ 通常 ELF 可执行文件中至少包含两个 <code>PT_LOAD</code> 段（代码段 + 数据段）。</p>
+</blockquote>
+</div>
+<p>读完 Chapter 2，应该理解接下来实现的 ELF 加载器就是要根据 Program Header 中的信息将文件内容加载到内存中。Program Header 描述了每个段（Segment）的文件偏移、需要加载到的内存地址、大小和权限等信息，加载器根据这些信息完成加载过程。</p>
+<div class="admonition note">
+<p class="admonition-title">要点：ELF 文件总结</p>
+<p>📘 总结思维导图式理解</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a href="#__codelineno-9-1" id="__codelineno-9-1" name="__codelineno-9-1"></a>ELF File
+</span><span id="__span-9-2"><a href="#__codelineno-9-2" id="__codelineno-9-2" name="__codelineno-9-2"></a>│
+</span><span id="__span-9-3"><a href="#__codelineno-9-3" id="__codelineno-9-3" name="__codelineno-9-3"></a>├── ELF Header —— 描述文件总体结构（文件类型、入口地址、各表偏移）
+</span><span id="__span-9-4"><a href="#__codelineno-9-4" id="__codelineno-9-4" name="__codelineno-9-4"></a>│
+</span><span id="__span-9-5"><a href="#__codelineno-9-5" id="__codelineno-9-5" name="__codelineno-9-5"></a>├── Program Header Table —— [运行时用]
+</span><span id="__span-9-6"><a href="#__codelineno-9-6" id="__codelineno-9-6" name="__codelineno-9-6"></a>│      └── 若为可执行或共享文件，则描述 Segment 映射关系
+</span><span id="__span-9-7"><a href="#__codelineno-9-7" id="__codelineno-9-7" name="__codelineno-9-7"></a>│
+</span><span id="__span-9-8"><a href="#__codelineno-9-8" id="__codelineno-9-8" name="__codelineno-9-8"></a>├── Sections —— [编译/链接时用]
+</span><span id="__span-9-9"><a href="#__codelineno-9-9" id="__codelineno-9-9" name="__codelineno-9-9"></a>│      └── 包含代码(.text)、数据(.data)、符号表(.symtab) 等
+</span><span id="__span-9-10"><a href="#__codelineno-9-10" id="__codelineno-9-10" name="__codelineno-9-10"></a>│
+</span><span id="__span-9-11"><a href="#__codelineno-9-11" id="__codelineno-9-11" name="__codelineno-9-11"></a>└── Section Header Table —— 供链接器解析
+</span></code></pre></div>
+<p>🧭 建议同学理解重点</p>
+<table>
+<thead>
+<tr>
+<th>主题</th>
+<th>应理解的核心问题</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ELF Header</strong></td>
+<td>文件是什么类型？入口在哪？段表和节表在哪？</td>
+</tr>
+<tr>
+<td><strong>Program Header</strong></td>
+<td>如何将文件映射到内存？每个段怎么装载？</td>
+</tr>
+<tr>
+<td><strong>File Format</strong></td>
+<td>Section 与 Segment 的区别与联系是什么？</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="admonition example">
+<p class="admonition-title">动手做：查看 <code>uapp.elf</code> 的 Program Header</p>
+<p>稍后我们实现的 ELF 加载器需要根据 Program Header 将用户态程序 <code>uapp.elf</code> 加载到内存中，所以先了解一下它的内容。</p>
+<p>请同学们使用 <code>readelf -W -l uapp.elf</code> 命令查看 <code>uapp.elf</code> 的 Program Header 信息。请你描述一下根据这个信息，加载器需要将哪些内容加载到内存的哪些位置，并设置什么权限？</p>
+<p>其中有些段的 <code>MemSiz</code> 为 0，意思就是这些段不需要加载到内存中。</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip：这类“查看 xxx”的动手做，没有什么需要思考的，不需要写一大堆</p>
+</div>
+</div>
+<h3 id="task-3实现-elf-加载器">Task 3：实现 ELF 加载器<a class="headerlink" href="#task-3实现-elf-加载器" title="Permanent link">¶</a></h3>
+<p>你的任务是补全 <code>kernel/arch/riscv/kernel/binfmt_elf.c</code> 中的 <code>load_elf_binary()</code> 函数。函数接口定义在相应头文件中，其整体逻辑如下：</p>
+<ul>
+<li><code>file</code> 指向 ELF 文件起始位置，也就是 ELF Header。</li>
+<li>根据 ELF Header 中的信息，找到 Program Header Table。</li>
+<li>
+<p>遍历 Program Header Table 中的每个条目，也就是每个 Segment。如果该 Segment 需要加载，就根据 Segment 的信息完成内存映射和数据拷贝。具体来说，针对每个 Segment：</p>
+<ul>
+<li>根据该段的<strong>大小</strong>，从 Buddy System 中<strong>分配</strong>一些内存页。</li>
+<li>把该段数据<strong>拷贝</strong>到分配的内存页中。</li>
+<li>在该进程的页表中建立相应的<strong>映射</strong>，设置好<strong>权限</strong>。<ul>
+<li><strong>我们提供</strong> <code>flags_phdr_to_pte()</code> 函数用于把 ELF 段的权限转换为 PTE 权限位。</li>
+</ul>
+</li>
+</ul>
+<div class="admonition tip">
+<p class="admonition-title">Tip：这些步骤所需的所有信息都在 Program Header Table 中，上一节已经介绍过，这里就不具体点出了。</p>
+</div>
+</li>
+</ul>
+<p>实现映射和拷贝的时候，请同学们注意处理对齐问题：</p>
+<figure>
+<a class="glightbox" data-desc-position="bottom" data-height="auto" data-type="image" data-width="auto" href="../lab4.assets/elf_load_align.drawio"><div class="mxgraph" data-mxgraph='{"toolbar-position": "bottom", "toolbar-nohide": "0", "tooltips": "1", "border": 5, "resize": "1", "edit": "_blank", "lightbox": "1", "toolbar": "pages tags zoom layers lightbox", "xml": "&lt;mxfile host=\"65bd71144e\"&gt;\n    &lt;diagram name=\"Page-1\" id=\"PbWFjuSmbUx8W6aQrx3k\"&gt;\n        &lt;mxGraphModel dx=\"464\" dy=\"232\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"1\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"827\" pageHeight=\"1169\" math=\"0\" shadow=\"0\"&gt;\n            &lt;root&gt;\n                &lt;mxCell id=\"0\"/&gt;\n                &lt;mxCell id=\"1\" parent=\"0\"/&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-2\" value=\"page\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"270\" y=\"320\" width=\"110\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-9\" value=\"phdr-&amp;amp;gt;p_vaddr&amp;lt;div&amp;gt;ELF \u6bb5\u5e94\u5f53\u6620\u5c04\u5230\u7684\u8d77\u59cb\u4f4d\u7f6e&amp;lt;/div&amp;gt;\" style=\"text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"410\" y=\"340\" width=\"176\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-10\" value=\"\" style=\"endArrow=classic;html=1;rounded=0;entryX=0;entryY=1;entryDx=0;entryDy=0;exitX=0;exitY=0;exitDx=0;exitDy=0;fillColor=#d5e8d4;strokeColor=#82b366;\" parent=\"1\" source=\"k3M7HK1B1WD5cp9YxkTD-17\" target=\"k3M7HK1B1WD5cp9YxkTD-11\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"360\" y=\"400\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"330\" y=\"360\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-11\" value=\"0x1645\" style=\"text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"320\" y=\"340\" width=\"60\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-12\" value=\"\u6574\u4e2a ELF \u6587\u4ef6\" style=\"rounded=0;whiteSpace=wrap;html=1;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"240\" y=\"460\" width=\"355\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-13\" value=\"file\" style=\"text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"240\" y=\"440\" width=\"60\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-14\" value=\"\" style=\"endArrow=none;html=1;rounded=0;entryX=0;entryY=1;entryDx=0;entryDy=0;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"240\" y=\"460\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"240\" y=\"440\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-16\" value=\"\" style=\"endArrow=none;html=1;rounded=0;entryX=0;entryY=1;entryDx=0;entryDy=0;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"340\" y=\"460\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"340\" y=\"440\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-17\" value=\"file + phdr-&amp;amp;gt;p_offset\" style=\"text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"340\" y=\"440\" width=\"110\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-19\" value=\"\" style=\"endArrow=none;html=1;rounded=0;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"470\" y=\"460\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"470\" y=\"440\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-20\" value=\"phdr-&amp;amp;gt;p_filesz\" style=\"endArrow=classic;startArrow=classic;html=1;rounded=0;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"340\" y=\"430\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"470\" y=\"430\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-21\" value=\"\" style=\"endArrow=none;html=1;rounded=0;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"320\" y=\"340\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"320\" y=\"360\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-23\" value=\"\" style=\"endArrow=classic;html=1;rounded=0;\" parent=\"1\" source=\"k3M7HK1B1WD5cp9YxkTD-9\" target=\"k3M7HK1B1WD5cp9YxkTD-11\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"360\" y=\"420\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"410\" y=\"370\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-24\" value=\"0x1000\" style=\"text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"270\" y=\"340\" width=\"60\" height=\"20\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-25\" value=\"\" style=\"endArrow=none;html=1;rounded=0;\" parent=\"1\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"270\" y=\"340\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"270\" y=\"360\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-28\" value=\"\" style=\"endArrow=classic;html=1;rounded=0;entryX=0;entryY=1;entryDx=0;entryDy=0;exitX=0;exitY=0;exitDx=0;exitDy=0;fillColor=#f8cecc;strokeColor=#b85450;\" parent=\"1\" source=\"k3M7HK1B1WD5cp9YxkTD-17\" target=\"k3M7HK1B1WD5cp9YxkTD-24\" edge=\"1\"&gt;\n                    &lt;mxGeometry width=\"50\" height=\"50\" relative=\"1\" as=\"geometry\"&gt;\n                        &lt;mxPoint x=\"340\" y=\"460\" as=\"sourcePoint\"/&gt;\n                        &lt;mxPoint x=\"320\" y=\"370\" as=\"targetPoint\"/&gt;\n                    &lt;/mxGeometry&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-29\" value=\"\u672a\u8003\u8651\u5bf9\u9f50\u95ee\u9898 \u27a1\ufe0f&amp;lt;div&amp;gt;\u76f4\u63a5 memcpy \u5230\u5206\u914d\u7684\u9875\u8d77\u59cb\u5904&amp;lt;/div&amp;gt;\" style=\"text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontColor=#EA6B66;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"120\" y=\"380\" width=\"180\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-30\" value=\"\u2b05\ufe0f \u6b63\u786e\u65b9\u5f0f\" style=\"text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontColor=#82B366;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"340\" y=\"380\" width=\"90\" height=\"30\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-31\" value=\"&amp;lt;h1 style=&amp;quot;margin-top: 0px;&amp;quot;&amp;gt;ELF \u6587\u4ef6&amp;lt;/h1&amp;gt;\" style=\"text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"100\" y=\"440\" width=\"120\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n                &lt;mxCell id=\"k3M7HK1B1WD5cp9YxkTD-32\" value=\"&amp;lt;h1 style=&amp;quot;margin-top: 0px;&amp;quot;&amp;gt;Program VA&amp;lt;/h1&amp;gt;\" style=\"text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;\" parent=\"1\" vertex=\"1\"&gt;\n                    &lt;mxGeometry x=\"100\" y=\"310\" width=\"140\" height=\"40\" as=\"geometry\"/&gt;\n                &lt;/mxCell&gt;\n            &lt;/root&gt;\n        &lt;/mxGraphModel&gt;\n    &lt;/diagram&gt;\n&lt;/mxfile&gt;"}' style="max-width:100%;border:1px solid transparent;"></div></a>
+<figcaption>
+    ELF 加载时的对齐问题
+    </figcaption>
+</figure>
+<div class="admonition success">
+<p class="admonition-title">完成条件</p>
+<p>本 Task 没有单独的评测，和下一个 Task 一起评测。</p>
+</div>
+<h3 id="从内核态到用户态">从内核态到用户态<a class="headerlink" href="#从内核态到用户态" title="Permanent link">¶</a></h3>
+<p>只有一种方法能够进入用户态：当 <code>sstatus.SPP</code> 为 0 时，执行 <code>sret</code> 指令。恰好 <code>entry.S</code> 中 <code>call trap_handler</code> 之后的部分就是执行 <code>sret</code> 指令返回，我们想<strong>复用 Trap 返回的代码路径</strong>来进入用户态。</p>
+<p>为此我们在 <code>entry.S</code> 中为该部分插入一个新的标签 <code>ret_from_trap()</code>。然后需要<strong>构造一个初始的 Trap 上下文</strong>，即为 <code>struct pt_regs</code> 填充合适的值，然后跳转到 <code>ret_from_trap()</code> 按其路径返回即可。在上文“从用户态到内核态”中我们分类讨论了 <code>ret_from_trap()</code> 返回到用户态和内核态的情况，这里就按照返回到用户态的情况来构造 Trap 上下文。</p>
+<p>上下文的构造不难想，无非就是设置好 PC、栈等内容，这里直接给到同学们，同学们需要理解为什么这么设置：</p>
+<ul>
+<li><code>sepc</code>：应当填充用户态程序的入口地址，这一信息也在 ELF Header 中。</li>
+<li><code>sstatus</code>：<ul>
+<li><code>SPIE</code> 应当置 1，以便从用户态返回时重新启用 S 态中断。</li>
+<li><code>SPP</code> 应当置 0，以便从 S 态返回 U 态。</li>
+<li><code>UXL</code> 应当设置为 2，表示用户态程序运行在 64 位模式。</li>
+</ul>
+</li>
+<li><code>sp</code>：应当填充用户栈的初始值，见第一节对用户空间内存布局的介绍。</li>
+</ul>
+<p><strong>我们提供</strong> <code>kernel/arch/riscv/kernel/binfmt_elf.c</code> 的 <code>start_thread()</code> 函数完成这些工作。<code>load_elf_binary()</code> 应当调用它来为新进程构造初始 Trap 上下文。</p>
+<p>最后我们来梳理一遍用户态进程从创建到运行的整体流程：</p>
+<ul>
+<li><strong>创建进程</strong>：调用 <code>copy_process()</code> 创建一个新进程，并加入到进程队列。</li>
+<li><strong>加载程序</strong>：调用 <code>load_elf_binary()</code> 加载用户态程序到新进程的内存空间，并调用 <code>start_thread()</code> 构造初始 Trap 上下文。</li>
+<li><strong>切换进程</strong>：调度器切换到该进程时，执行 <code>__switch_to</code> 切换页表，并跳转到 <code>ret_from_trap()</code>。</li>
+<li><strong>进入用户态</strong>：<code>ret_from_trap()</code> 设置好寄存器后执行 <code>sret</code>，进入用户态运行用户态程序。</li>
+</ul>
+<h3 id="task-4运行用户态程序">Task 4：运行用户态程序<a class="headerlink" href="#task-4运行用户态程序" title="Permanent link">¶</a></h3>
+<p>现在，我们有了 <code>load_elf_binary()</code> 用于加载用户态程序，还有上一个 Lab 实现的 <code>copy_process()</code> 用于创建进程。我们将这些工具包装成 <code>kernel/arch/riscv/kernel/proc.c</code> 中的 <code>user_mode_thread()</code> 函数，用于创建用户态进程。</p>
+<p>你的任务是补全这一函数。它的逻辑如下：</p>
+<ul>
+<li>调用 <code>copy_process()</code> 从当前进程拷贝一个新进程</li>
+<li>调用 <code>load_elf_binary()</code> 加载用户态程序到新进程的内存空间<ul>
+<li>调用 <code>start_thread()</code> 为新进程构造一个 Trap 上下文，用于 <code>ret_from_trap</code> 返回到用户态</li>
+</ul>
+</li>
+<li>设置新进程的 <code>struct thread_struct</code> 中的几个寄存器。<ul>
+<li><code>ra</code>：设置为 <code>ret_from_trap</code> 即可</li>
+<li><code>sp</code>：指向初始 Trap 上下文所在的位置，因为 <code>ret_from_trap</code> 会从这里恢复寄存器</li>
+</ul>
+</li>
+</ul>
+<div class="admonition success">
+<p class="admonition-title">完成条件</p>
+<p>通过评测。</p>
+<p>因为还未实现系统调用，用户态程序没法输出，所以没什么可以观测的现象。当然，你可以开启 DEBUG 级别的 LOG 输出，看看调度器有没有成功切换到用户态进程。</p>
+</div>
+<h2 id="part-3系统调用">Part 3：系统调用<a class="headerlink" href="#part-3系统调用" title="Permanent link">¶</a></h2>
+<h3 id="系统调用">系统调用<a class="headerlink" href="#系统调用" title="Permanent link">¶</a></h3>
+<p>同学们在理论课上学习了系统调用，<strong>它是用户态程序请求内核提供服务的接口</strong>。我们将实现 Linux 风格的系统调用机制，相关资料如下：</p>
+<ul>
+<li>
+<p>Linux 的系统调用规范见 <a href="https://man7.org/linux/man-pages/man2/syscall.2.html">syscall(2) - Linux manual page</a>，可以在其中看到 RISC-V 架构的系统调用约定：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a href="#__codelineno-10-1" id="__codelineno-10-1" name="__codelineno-10-1"></a>    The first table lists the instruction used to transition to kernel
+</span><span id="__span-10-2"><a href="#__codelineno-10-2" id="__codelineno-10-2" name="__codelineno-10-2"></a>mode (which might not be the fastest or best way to transition to
+</span><span id="__span-10-3"><a href="#__codelineno-10-3" id="__codelineno-10-3" name="__codelineno-10-3"></a>the kernel, so you might have to refer to vdso(7)), the register
+</span><span id="__span-10-4"><a href="#__codelineno-10-4" id="__codelineno-10-4" name="__codelineno-10-4"></a>used to indicate the system call number, the register(s) used to
+</span><span id="__span-10-5"><a href="#__codelineno-10-5" id="__codelineno-10-5" name="__codelineno-10-5"></a>return the system call result, and the register used to signal an
+</span><span id="__span-10-6"><a href="#__codelineno-10-6" id="__codelineno-10-6" name="__codelineno-10-6"></a>error.
+</span><span id="__span-10-7"><a href="#__codelineno-10-7" id="__codelineno-10-7" name="__codelineno-10-7"></a>Arch/ABI    Instruction           System  Ret  Ret  Error    Notes
+</span><span id="__span-10-8"><a href="#__codelineno-10-8" id="__codelineno-10-8" name="__codelineno-10-8"></a>                                    call #  val  val2
+</span><span id="__span-10-9"><a href="#__codelineno-10-9" id="__codelineno-10-9" name="__codelineno-10-9"></a>───────────────────────────────────────────────────────────────────
+</span><span id="__span-10-10"><a href="#__codelineno-10-10" id="__codelineno-10-10" name="__codelineno-10-10"></a>riscv       ecall                 a7      a0   a1   -
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a href="#__codelineno-11-1" id="__codelineno-11-1" name="__codelineno-11-1"></a>    The second table shows the registers used to pass the system call
+</span><span id="__span-11-2"><a href="#__codelineno-11-2" id="__codelineno-11-2" name="__codelineno-11-2"></a>arguments.
+</span><span id="__span-11-3"><a href="#__codelineno-11-3" id="__codelineno-11-3" name="__codelineno-11-3"></a>Arch/ABI      arg1  arg2  arg3  arg4  arg5  arg6  arg7  Notes
+</span><span id="__span-11-4"><a href="#__codelineno-11-4" id="__codelineno-11-4" name="__codelineno-11-4"></a>──────────────────────────────────────────────────────────────
+</span><span id="__span-11-5"><a href="#__codelineno-11-5" id="__codelineno-11-5" name="__codelineno-11-5"></a>riscv         a0    a1    a2    a3    a4    a5    -
+</span></code></pre></div>
+<p>同学们应该想起 RISC-V SBI 规范也有类似的规定。</p>
+</li>
+<li>
+<p>Linux 提供的所有系统调用见 <a href="https://man7.org/linux/man-pages/man2/syscalls.2.html">syscalls(2) - Linux manual page</a>。</p>
+<p>本次实验，我们需要实现 <code>getpid()</code>、<code>write()</code> 两个系统调用，请同学们简单看看这两个系统调用的文档描述：</p>
+<ul>
+<li><a href="https://man7.org/linux/man-pages/man2/getpid.2.html">getpid(2) - Linux manual page</a></li>
+<li><a href="https://man7.org/linux/man-pages/man2/write.2.html">write(2) - Linux manual page</a></li>
+</ul>
+</li>
+</ul>
+<p>请同学们阅读代码并理解：</p>
+<ul>
+<li><code>kernel/user/src/syscalls.c</code>：这是系统调用在用户态侧的接口实现，你应当想起 Lab1 中 SBI 调用的实现，基本类似。</li>
+<li><code>kernel/arch/riscv/kernel/syscall.c</code>：这是系统调用在内核态侧的处理实现。</li>
+<li><code>kernel/arch/riscv/kernel/trap.c</code>：这里的 <code>do_ecall_u()</code> 调用系统调用处理函数。</li>
+</ul>
+<div class="admonition example">
+<p class="admonition-title">动手做：系统调用路径</p>
+<p>请你以 <code>getpid()</code> 为例进行 GDB 调试，并<strong>绘制函数调用路径图</strong>描述系统调用从用户态到内核态再返回用户态的完整路径。你需要：</p>
+<ul>
+<li>指出相关函数。</li>
+<li>指出进入 <code>trap_handler()</code> 函数时，<code>sp</code>、当前进程的 <code>task_struct</code> 中的 <code>kernel_sp</code> 和 <code>user_sp</code> 分别指向哪里。</li>
+<li>指出进入 <code>_traps</code> 和返回时，<code>sepc</code> 发生的变化，以及为什么会有这样的变化。</li>
+<li>指出用户态和内核态是如何传递参数和返回值的。</li>
+</ul>
+<p>本动手做并不复杂，主要是为了确保所有同学熟悉 Trap 处理和系统调用的整体流程。</p>
+<p>另外，同学们也会发现，像 <code>getpid()</code> 这样简单的系统调用，也需要陷入内核态进行处理。今天的 Linux 为了性能，提供了像 <a href="https://man7.org/linux/man-pages/man7/vdso.7.html">vDSO</a> 这样的机制，允许某些系统调用在用户态直接完成，避免陷入内核态的开销。感兴趣的同学可以进一步阅读了解。</p>
+</div>
+<div class="admonition question">
+<p class="admonition-title">考点：系统调用的实现</p>
+<p>系统调用的用户态、内核态接口以前要同学们自己写，但是没什么意思。现在直接给出了，验收时会对这些代码提问，你要能讲清楚它是怎么工作的。</p>
+</div>
+<h3 id="task-5实现-write-系统调用">Task 5：实现 <code>write</code> 系统调用<a class="headerlink" href="#task-5实现-write-系统调用" title="Permanent link">¶</a></h3>
+<p>在实验中，<code>write()</code> 系统调用使用 <code>sbi_debug_console_write()</code> 来输出字符。但 SBI 运行在 M 模式，不经过 S 模式的地址翻译，所以它只接受物理地址作为参数。而 <code>write()</code> 系统调用中的第二个参数（<code>char *buf</code>）从用户态传过来时，是用户态的虚拟地址。需要在这两个地址间进行转换。</p>
+<p><strong>请你补全</strong> <code>kernel/arch/riscv/kernel/syscall.c</code> 的 <code>UVA2PA()</code> 函数，把用户态的虚拟地址转换为物理地址。</p>
+<div class="admonition example">
+<p class="admonition-title">动手做：“正确”使用 <code>write</code> 系统调用😈</p>
+<p>请你尝试调包 <code>kernel/user/src/main.c</code> 下的 <code>main()</code> 函数如下：</p>
+<div class="language-c highlight"><span class="filename">kernel/user/src/main.c</span><pre><span></span><code><span id="__span-12-1"><a href="#__codelineno-12-1" id="__codelineno-12-1" name="__codelineno-12-1"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+</span><span id="__span-12-2"><a href="#__codelineno-12-2" id="__codelineno-12-2" name="__codelineno-12-2"></a><span class="p">{</span>
+</span><span id="__span-12-3"><a href="#__codelineno-12-3" id="__codelineno-12-3" name="__codelineno-12-3"></a><span class="w">    </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">base_addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="mh">0xffffffd600205000</span><span class="p">;</span>
+</span><span id="__span-12-4"><a href="#__codelineno-12-4" id="__codelineno-12-4" name="__codelineno-12-4"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">len</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">100</span><span class="p">;</span>
+</span><span id="__span-12-5"><a href="#__codelineno-12-5" id="__codelineno-12-5" name="__codelineno-12-5"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">20</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-12-6"><a href="#__codelineno-12-6" id="__codelineno-12-6" name="__codelineno-12-6"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n\x1b</span><span class="s">[44m[U]</span><span class="se">\x1b</span><span class="s">[0m </span><span class="se">\x1b</span><span class="s">[31m[PID = %d]</span><span class="se">\x1b</span><span class="s">[0m</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+</span><span id="__span-12-7"><a href="#__codelineno-12-7" id="__codelineno-12-7" name="__codelineno-12-7"></a><span class="w">            </span><span class="n">getpid</span><span class="p">());</span>
+</span><span id="__span-12-8"><a href="#__codelineno-12-8" id="__codelineno-12-8" name="__codelineno-12-8"></a><span class="w">        </span><span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span><span class="w"> </span><span class="n">base_addr</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">len</span><span class="p">),</span><span class="w"> </span><span class="n">len</span><span class="p">);</span>
+</span><span id="__span-12-9"><a href="#__codelineno-12-9" id="__codelineno-12-9" name="__codelineno-12-9"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+</span><span id="__span-12-10"><a href="#__codelineno-12-10" id="__codelineno-12-10" name="__codelineno-12-10"></a><span class="w">        </span><span class="n">delay</span><span class="p">(</span><span class="n">DELAY_TIME</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">5</span><span class="p">);</span>
+</span><span id="__span-12-11"><a href="#__codelineno-12-11" id="__codelineno-12-11" name="__codelineno-12-11"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-12-12"><a href="#__codelineno-12-12" id="__codelineno-12-12" name="__codelineno-12-12"></a>
+</span><span id="__span-12-13"><a href="#__codelineno-12-13" id="__codelineno-12-13" name="__codelineno-12-13"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+</span><span id="__span-12-14"><a href="#__codelineno-12-14" id="__codelineno-12-14" name="__codelineno-12-14"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>其中，你需要修改 <code>base_addr</code>：</p>
+<ol>
+<li>为 <code>System.map</code> 符号表中 <code>_srodata</code> 符号所在的地址并将其填入;</li>
+<li>为 <code>0x80000000</code>.</li>
+</ol>
+<p>然后请你尝试运行内核。<strong>你分别观察到了什么现象？</strong></p>
+<ul>
+<li>请你分析，这样的现象符合我们对用户态和内核态隔离的设计初衷吗？为什么会出现这样的现象？</li>
+<li>请你思考，如何防止这种现象的发生？并尝试给出一些解决方案。（提示：可以从地址转换方式和页表权限等方面入手）</li>
+</ul>
+</div>
+<div class="admonition success">
+<p class="admonition-title">完成条件</p>
+<p>通过评测。</p>
+<p>用户态程序见 <code>kernel/user/src/main.c</code>，请你阅读它的代码，理解它在干什么。你应该能在控制台看到用户态程序打印出五颜六色的文本。</p>
+</div>
+<aside class="md-source-file">
+<span class="md-source-file__fact">
+<span class="md-icon" title="Last update">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
+</span>
+<span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="2025年12月6日 10:08:06 UTC"><span class="timeago" datetime="2025-12-06T10:08:06+00:00" locale="zh"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="2025年12月6日 10:08:06 UTC">2025-12-06</span>
+</span>
+<span class="md-source-file__fact">
+<span class="md-icon" title="Created">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"></path></svg>
+</span>
+<span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="2025年10月28日 03:55:38 UTC"><span class="timeago" datetime="2025-10-28T03:55:38+00:00" locale="zh"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="2025年10月28日 03:55:38 UTC">2025-10-28</span>
+</span>
+<span class="md-source-file__fact">
+<span class="md-icon" title="Contributors">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"></path></svg>
+</span>
+<span>GitHub</span>
+<nav>
+<a class="md-author" href="https://github.com/bowling233" title="@bowling233">
+<img alt="bowling233" src="https://avatars.githubusercontent.com/u/35755846?v=4&amp;size=72"/>
+</a>
+<a class="md-author" href="https://github.com/hharryz" title="@hharryz">
+<img alt="hharryz" src="https://avatars.githubusercontent.com/u/122276274?v=4&amp;size=72"/>
+</a>
+</nav>
+</span>
+</aside>
+</article>
+</div>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+</div>
+<button class="md-top md-icon" data-md-component="top" hidden="" type="button">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+</main>
+<footer class="md-footer">
+<nav aria-label="Footer" class="md-footer__inner md-grid">
+<a aria-label="Previous: Lab 3：Sv39 分页式虚拟内存系统" class="md-footer__link md-footer__link--prev" href="../lab3/">
+<div class="md-footer__button md-icon">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</div>
+<div class="md-footer__title">
+<span class="md-footer__direction">
+                Previous
+              </span>
+<div class="md-ellipsis">
+                Lab 3：Sv39 分页式虚拟内存系统
+              </div>
+</div>
+</a>
+<a aria-label="Next: Lab 5：缺页异常与 Fork 机制" class="md-footer__link md-footer__link--next" href="../lab5/">
+<div class="md-footer__title">
+<span class="md-footer__direction">
+                Next
+              </span>
+<div class="md-ellipsis">
+                Lab 5：缺页异常与 Fork 机制
+              </div>
+</div>
+<div class="md-footer__button md-icon">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"></path></svg>
+</div>
+</a>
+</nav>
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+<div class="md-copyright__highlight">
+      浙江大学计算机科学与技术学院
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.code.select", "content.code.annotate", "navigation.footer", "navigation.sections", "navigation.expand", "navigation.indexes", "navigation.tracking", "navigation.path", "navigation.top", "toc.follow", "content.action.edit", "search.suggest", "search.highlight", "search.share"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+<script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+<script src="../js/timeago.min.js"></script>
+<script src="../js/timeago_mkdocs_material.js"></script>
+<script src="../javascripts/mathjax.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/polyfill/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax/es5/tex-mml-chtml.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tablesort/dist/tablesort.min.js"></script>
+<script src="../javascripts/tablesort.js"></script>
+<script src="../javascripts/mermaid.mjs" type="module"></script>
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script><script src="https://viewer.diagrams.net/js/viewer-static.min.js"></script></body></html>
